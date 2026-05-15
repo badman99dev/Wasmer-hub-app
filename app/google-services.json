@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "191496010275",
+    "project_id": "wasmer-hub",
+    "storage_bucket": "wasmer-hub.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:191496010275:android:71711904d15b0332894f96",
+        "android_client_info": {
+          "package_name": "com.wasmer.hub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "191496010275-k7lsc1hi3ckr9qg8l7n4rqoeupvbdhn7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wasmer.hub",
+            "certificate_hash": "847a3fb5d075175097e910ba344878236111f74a"
+          }
+        },
+        {
+          "client_id": "191496010275-p10c39vmqdvv3iku6dd3do2ec8s389fa.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wasmer.hub",
+            "certificate_hash": "8fb5bed29d07540be3e56d101b95728c4655f16f"
+          }
+        },
+        {
+          "client_id": "191496010275-1el0keetbtndhei2sn3ots6le8bta6ln.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSNUJkzYly72bN3Z0NaNNiJiaTli02iUk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "191496010275-1el0keetbtndhei2sn3ots6le8bta6ln.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
