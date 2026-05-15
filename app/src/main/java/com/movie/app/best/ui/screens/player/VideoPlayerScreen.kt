@@ -92,9 +92,9 @@ fun VideoPlayerScreen(
     var showSpeedOverlay by remember { mutableStateOf(false) }
     var gestureIndicator by remember { mutableStateOf(GestureIndicatorState()) }
 
-    // Double tap animation state
-    var doubleTapRight   by remember { mutableStateOf(false) }
-    var doubleTapLeft    by remember { mutableStateOf(false) }
+    // Double tap animation state — Int counter so rapid taps always retrigger
+    var doubleTapRightCount by remember { mutableIntStateOf(0) }
+    var doubleTapLeftCount  by remember { mutableIntStateOf(0) }
 
     var showQualityMenu  by remember { mutableStateOf(false) }
     var showSpeedMenu    by remember { mutableStateOf(false) }
@@ -237,14 +237,6 @@ fun VideoPlayerScreen(
         }
     }
 
-    // Auto-reset double tap animation after 600ms
-    LaunchedEffect(doubleTapRight) {
-        if (doubleTapRight) { delay(600); doubleTapRight = false }
-    }
-    LaunchedEffect(doubleTapLeft) {
-        if (doubleTapLeft) { delay(600); doubleTapLeft = false }
-    }
-
     LaunchedEffect(isControlsVisible, isLocked, showQualityMenu, showSpeedMenu, showAudioMenu, showOverflowMenu, showDebugPanel) {
         if (isControlsVisible && !isLocked && !showQualityMenu && !showSpeedMenu && !showAudioMenu && !showOverflowMenu && !showDebugPanel) {
             delay(4000)
@@ -310,23 +302,23 @@ fun VideoPlayerScreen(
                 currentBrightness     = currentBrightness,
                 swipeSeekState        = swipeSeekState,
                 onTap = {
-                    when {
-                        showQualityMenu || showSpeedMenu || showAudioMenu || showOverflowMenu -> {
-                            showQualityMenu = false; showSpeedMenu = false
-                            showAudioMenu = false; showOverflowMenu = false
-                        }
-                        else -> isControlsVisible = !isControlsVisible
+                    // ✅ BLINK BUG FIX: Don't close menus here.
+                    // Each menu has its own scrim that dismisses on tap.
+                    // If we also close in onTap, the menu flickers open-then-closed
+                    // because the button click fires before this handler.
+                    if (!showQualityMenu && !showSpeedMenu && !showAudioMenu && !showOverflowMenu) {
+                        isControlsVisible = !isControlsVisible
                     }
                 },
                 onDoubleTap = { isRight ->
                     if (isRight) {
                         exoPlayer.seekTo(minOf(exoPlayer.currentPosition + 10_000, durationMs))
-                        doubleTapRight = true
-                        doubleTapLeft  = false
+                        doubleTapRightCount++
+                        doubleTapLeftCount = 0
                     } else {
                         exoPlayer.seekTo(maxOf(0L, exoPlayer.currentPosition - 10_000))
-                        doubleTapLeft  = true
-                        doubleTapRight = false
+                        doubleTapLeftCount++
+                        doubleTapRightCount = 0
                     }
                 },
                 onLongPressStart = {
@@ -470,8 +462,8 @@ fun VideoPlayerScreen(
         SwipeSeekOverlay(swipeSeekState, currentPositionMs, durationMs)
 
         // Double tap seek animations
-        DoubleTapSeekOverlay(isRight = true,  visible = doubleTapRight)
-        DoubleTapSeekOverlay(isRight = false, visible = doubleTapLeft)
+        DoubleTapSeekOverlay(isRight = true,  fireCount = doubleTapRightCount)
+        DoubleTapSeekOverlay(isRight = false, fireCount = doubleTapLeftCount)
 
         if (showSpeedOverlay)
             SpeedOverlay(2.0f)
@@ -544,32 +536,19 @@ fun VideoPlayerScreen(
                         exoPlayer = exoPlayer, currentPositionMs = currentPositionMs,
                         durationMs = durationMs, bufferPercent = bufferPercent,
                         seekDragState = seekDragState, currentSpeed = currentSpeed,
-                        isLandscape = isLandscape, activity = activity,
+                        isLandscape = isLandscape, useNativePlayer = useNativePlayer,
+                        activity = activity,
                         onSeekStart  = { seekDragState = SeekDragState(isDragging = true, dragFraction = it) },
                         onSeekChange = { seekDragState = seekDragState.copy(dragFraction = it) },
                         onSeekEnd    = { exoPlayer.seekTo((it * durationMs).toLong()); seekDragState = SeekDragState() },
                         onQualityClick = { showQualityMenu = true },
                         onSpeedClick   = { showSpeedMenu   = true },
                         onAudioClick   = { showAudioMenu   = true },
+                        onLockClick    = { isLocked = true },
+                        onPipClick     = { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) enterPipMode(activity) },
+                        onPlayerToggle = { useNativePlayer = !useNativePlayer; if (useNativePlayer) showStartOverlay = true },
                         modifier = Modifier.align(Alignment.BottomStart)
                     )
-
-                    // Lock + PiP + P1/P2 small buttons above seekbar
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 16.dp, bottom = 76.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        SmallIconButton(icon = Icons.Default.Lock, onClick = { isLocked = true })
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && useNativePlayer) {
-                            SmallIconButton(icon = Icons.Default.PictureInPicture, onClick = { enterPipMode(activity) })
-                        }
-                        SmallTextButton(
-                            text = if (useNativePlayer) "P2" else "P1",
-                            onClick = { useNativePlayer = !useNativePlayer; if (useNativePlayer) showStartOverlay = true }
-                        )
-                    }
                 }
             }
         }
@@ -598,30 +577,4 @@ fun VideoPlayerScreen(
     }
 }
 
-@Composable
-private fun SmallIconButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit
-) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier
-            .size(36.dp)
-            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(50))
-    ) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
-    }
-}
 
-@Composable
-private fun SmallTextButton(text: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(50))
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text, color = Color(0xFFE50914), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-    }
-}

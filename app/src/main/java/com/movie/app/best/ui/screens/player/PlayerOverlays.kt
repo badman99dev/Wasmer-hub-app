@@ -230,8 +230,12 @@ fun ErrorOverlay(error: String, onRetry: () -> Unit, onSwitchPlayer: () -> Unit)
 }
 
 // ── Double tap seek animation — YouTube wavefront style ──────────────────────
+// Uses fireCount (Int) instead of Boolean so rapid successive double-taps
+// always re-trigger the animation even when the previous one hasn't finished.
 @Composable
-fun DoubleTapSeekOverlay(isRight: Boolean, visible: Boolean, seconds: Int = 10) {
+fun DoubleTapSeekOverlay(isRight: Boolean, fireCount: Int, seconds: Int = 10) {
+
+    var visible by remember { mutableStateOf(false) }
 
     // Multiple expanding ripple waves — YouTube feel
     val wave1Scale = remember { Animatable(0f) }
@@ -244,53 +248,44 @@ fun DoubleTapSeekOverlay(isRight: Boolean, visible: Boolean, seconds: Int = 10) 
     // Chevron wave — 3 chevrons light up sequentially
     var chevronStep by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(visible) {
-        if (visible) {
-            // Reset all
-            wave1Scale.snapTo(0f); wave1Alpha.snapTo(0f)
-            wave2Scale.snapTo(0f); wave2Alpha.snapTo(0f)
-            wave3Scale.snapTo(0f); wave3Alpha.snapTo(0f)
-            chevronStep = 0
+    // Re-triggers every time fireCount changes (increments), so rapid taps work
+    LaunchedEffect(fireCount) {
+        if (fireCount <= 0) return@LaunchedEffect
 
-            // Wave 1 — immediate, fast expand
-            wave1Alpha.snapTo(0.55f)
-            launch {
-                wave1Scale.animateTo(1f, tween(500, easing = FastOutSlowInEasing))
-            }
-            launch {
-                wave1Alpha.animateTo(0f, tween(500, easing = LinearEasing))
-            }
+        visible = true
 
-            delay(80)
+        // Reset all wave animatables immediately
+        wave1Scale.snapTo(0f); wave1Alpha.snapTo(0f)
+        wave2Scale.snapTo(0f); wave2Alpha.snapTo(0f)
+        wave3Scale.snapTo(0f); wave3Alpha.snapTo(0f)
+        chevronStep = 0
 
-            // Wave 2
-            wave2Alpha.snapTo(0.40f)
-            launch {
-                wave2Scale.animateTo(1f, tween(500, easing = FastOutSlowInEasing))
-            }
-            launch {
-                wave2Alpha.animateTo(0f, tween(500, easing = LinearEasing))
-            }
+        // Wave 1 — immediate, fast expand
+        wave1Alpha.snapTo(0.55f)
+        launch { wave1Scale.animateTo(1f, tween(500, easing = FastOutSlowInEasing)) }
+        launch { wave1Alpha.animateTo(0f, tween(500, easing = LinearEasing)) }
 
-            delay(80)
+        delay(80)
 
-            // Wave 3
-            wave3Alpha.snapTo(0.28f)
-            launch {
-                wave3Scale.animateTo(1f, tween(500, easing = FastOutSlowInEasing))
-            }
-            launch {
-                wave3Alpha.animateTo(0f, tween(500, easing = LinearEasing))
-            }
+        // Wave 2
+        wave2Alpha.snapTo(0.40f)
+        launch { wave2Scale.animateTo(1f, tween(500, easing = FastOutSlowInEasing)) }
+        launch { wave2Alpha.animateTo(0f, tween(500, easing = LinearEasing)) }
 
-            // Chevron sequential light-up
-            repeat(3) { i ->
-                chevronStep = i + 1
-                delay(90)
-            }
-        } else {
-            chevronStep = 0
-        }
+        delay(80)
+
+        // Wave 3
+        wave3Alpha.snapTo(0.28f)
+        launch { wave3Scale.animateTo(1f, tween(500, easing = FastOutSlowInEasing)) }
+        launch { wave3Alpha.animateTo(0f, tween(500, easing = LinearEasing)) }
+
+        // Chevron sequential light-up
+        repeat(3) { i -> chevronStep = i + 1; delay(90) }
+
+        // Hold for a moment then fade out
+        delay(350)
+        visible = false
+        chevronStep = 0
     }
 
     AnimatedVisibility(

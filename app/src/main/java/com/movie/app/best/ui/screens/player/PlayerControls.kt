@@ -2,7 +2,9 @@ package com.movie.app.best.ui.screens.player
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -173,6 +175,7 @@ fun PlayerBottomBar(
     seekDragState: SeekDragState,
     currentSpeed: Float,
     isLandscape: Boolean,
+    useNativePlayer: Boolean,
     activity: Activity?,
     onSeekStart: (Float) -> Unit,
     onSeekChange: (Float) -> Unit,
@@ -180,6 +183,9 @@ fun PlayerBottomBar(
     onQualityClick: () -> Unit,
     onSpeedClick: () -> Unit,
     onAudioClick: () -> Unit,
+    onLockClick: () -> Unit,
+    onPipClick: () -> Unit,
+    onPlayerToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -190,7 +196,7 @@ fun PlayerBottomBar(
                     colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
                 )
             )
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         PlayerSeekBar(
             currentPositionMs = currentPositionMs,
@@ -203,44 +209,102 @@ fun PlayerBottomBar(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
+        // ── Single unified control row: LEFT = utility | RIGHT = playback options
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BottomBarIconButton(icon = Icons.Default.HighQuality, label = "Quality", onClick = onQualityClick)
-            BottomBarIconButton(icon = Icons.Default.AudioFile,   label = "Audio",   onClick = onAudioClick)
+            // ── LEFT: Lock · PiP · Player-switch ──────────────────────────────
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Lock screen
+                SmallControlButton(icon = Icons.Default.Lock, onClick = onLockClick)
 
-            // Speed badge
-            IconButton(onClick = onSpeedClick, modifier = Modifier.size(48.dp)) {
-                if (currentSpeed == 1.0f) {
-                    Icon(Icons.Default.Speed, "Speed", tint = Color.White,
-                        modifier = Modifier.size(26.dp))
-                } else {
-                    Text("${currentSpeed}x", color = Color(0xFFFFD600),
-                        fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                // Picture-in-Picture (Android 8+, native player only)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && useNativePlayer) {
+                    SmallControlButton(
+                        icon = Icons.Default.PictureInPicture,
+                        onClick = onPipClick
+                    )
+                }
+
+                // P1 / P2 toggle badge
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
+                        .clickable { onPlayerToggle() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (useNativePlayer) "P2" else "P1",
+                        color = Color(0xFFE50914),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
                 }
             }
 
-            // Fullscreen
-            IconButton(
-                onClick = {
-                    activity?.requestedOrientation =
-                        if (isLandscape) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                        else             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                },
-                modifier = Modifier.size(48.dp)
+            // ── RIGHT: Quality · Audio · Speed · Fullscreen ───────────────────
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = if (isLandscape) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                    contentDescription = "Fullscreen",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
+                BottomBarIconButton(icon = Icons.Default.HighQuality, label = "Quality", onClick = onQualityClick)
+                BottomBarIconButton(icon = Icons.Default.AudioFile,   label = "Audio",   onClick = onAudioClick)
+
+                // Speed badge — shows value when not 1×
+                IconButton(onClick = onSpeedClick, modifier = Modifier.size(48.dp)) {
+                    if (currentSpeed == 1.0f) {
+                        Icon(Icons.Default.Speed, "Speed", tint = Color.White,
+                            modifier = Modifier.size(24.dp))
+                    } else {
+                        Text(
+                            text = "${currentSpeed}x",
+                            color = Color(0xFFFFD600),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+
+                // Fullscreen toggle
+                IconButton(
+                    onClick = {
+                        activity?.requestedOrientation =
+                            if (isLandscape) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                            else             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isLandscape) Icons.Default.FullscreenExit
+                                      else             Icons.Default.Fullscreen,
+                        contentDescription = "Fullscreen",
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
         }
+    }
+}
+
+// ── Shared small circular button (Lock, PiP) ──────────────────────────────────
+@Composable
+fun SmallControlButton(icon: ImageVector, tint: Color = Color.White, onClick: () -> Unit) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(36.dp)
+            .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
+    ) {
+        Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -248,6 +312,6 @@ fun PlayerBottomBar(
 private fun BottomBarIconButton(icon: ImageVector, label: String, onClick: () -> Unit) {
     IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
         Icon(imageVector = icon, contentDescription = label,
-            tint = Color.White, modifier = Modifier.size(26.dp))
+            tint = Color.White, modifier = Modifier.size(24.dp))
     }
 }
