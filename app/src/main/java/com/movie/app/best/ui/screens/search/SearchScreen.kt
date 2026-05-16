@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerMovie
+import com.movie.app.best.ui.components.BlurOverlay
 import com.movie.app.best.ui.components.SkeletonPosterCard
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -392,6 +393,11 @@ fun WasmerSearchItem(
                     )
                 }
             }
+
+            BlurOverlay(
+                shouldBlur = movie.shouldBlurPoster,
+                modifier = Modifier.fillMaxSize()
+            )
 
             Box(
                 modifier = Modifier

@@ -206,6 +206,11 @@ fun TrendingMovieItem(
                     )
             )
 
+            com.movie.app.best.ui.components.BlurOverlay(
+                shouldBlur = movie.shouldBlurPoster,
+                modifier = Modifier.fillMaxSize()
+            )
+
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)

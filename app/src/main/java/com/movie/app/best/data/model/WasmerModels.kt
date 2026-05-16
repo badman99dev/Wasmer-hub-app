@@ -5,6 +5,17 @@ import com.google.gson.annotations.SerializedName
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
+data class ContentModeration(
+    val poster: String = "safe",
+    val screenshots: String = "safe",
+    val storyline: String = "none"
+) : Parcelable {
+    val isPosterSexual get() = poster == "sexual"
+    val isScreenshotsSexual get() = screenshots == "sexual"
+    val isStorylineSexual get() = storyline == "sexual"
+}
+
+@Parcelize
 data class WasmerMovie(
     val id: Int,
     val slug: String,
@@ -17,8 +28,14 @@ data class WasmerMovie(
     @SerializedName("is_series") val isSeries: Boolean,
     @SerializedName("has_stream") val hasStream: Boolean,
     val views: Int,
-    @SerializedName("_rank") val rank: Int
-) : Parcelable
+    @SerializedName("_rank") val rank: Int,
+    @SerializedName("content_moderation") val contentModeration: ContentModeration? = null,
+    @SerializedName("poster_moderation") val posterModeration: String? = null,
+    @SerializedName("stream_avl") val streamAvl: Boolean? = null
+) : Parcelable {
+    val shouldBlurPoster: Boolean
+        get() = contentModeration?.isPosterSexual == true || posterModeration == "sexual"
+}
 
 @Parcelize
 data class WasmerMovieDetails(
@@ -44,7 +61,8 @@ data class WasmerMovieDetails(
     @SerializedName("is_series") val isSeries: Boolean,
     @SerializedName("has_stream") val hasStream: Boolean,
     @SerializedName("stream_url") val streamUrl: String,
-    @SerializedName("player_url") val playerUrl: String
+    @SerializedName("player_url") val playerUrl: String,
+    @SerializedName("content_moderation") val contentModeration: ContentModeration? = null
 ) : Parcelable
 
 @Parcelize
@@ -102,7 +120,8 @@ data class WasmerSeriesDetails(
     @SerializedName("series_group_id") val seriesGroupId: Int,
     @SerializedName("has_stream") val hasStream: Boolean,
     @SerializedName("stream_url") val streamUrl: String,
-    @SerializedName("player_url") val playerUrl: String
+    @SerializedName("player_url") val playerUrl: String,
+    @SerializedName("content_moderation") val contentModeration: ContentModeration? = null
 ) : Parcelable
 
 @Parcelize

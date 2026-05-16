@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerMovie
+import com.movie.app.best.ui.components.BlurOverlay
 import com.movie.app.best.ui.theme.WasmerAmber
 import com.movie.app.best.ui.theme.WasmerRed
 import kotlinx.coroutines.delay
@@ -174,6 +175,12 @@ private fun HeroSlide(
                         )
                     )
                 )
+        )
+
+        BlurOverlay(
+            shouldBlur = movie.shouldBlurPoster,
+            modifier = Modifier.fillMaxSize(),
+            blurRadius = 25
         )
 
         // Content overlay at bottom

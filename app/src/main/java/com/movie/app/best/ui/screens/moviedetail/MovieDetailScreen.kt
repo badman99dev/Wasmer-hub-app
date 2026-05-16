@@ -19,8 +19,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.movie.app.best.data.model.WasmerMovieDetails
+import com.movie.app.best.ui.components.BlurOverlay
 import com.movie.app.best.ui.components.ErrorView
 import com.movie.app.best.ui.components.SkeletonDetailPage
+import com.movie.app.best.ui.components.StorylineWarningBadge
 import com.movie.app.best.ui.screens.moviedetail.components.*
 
 @Composable
@@ -176,6 +178,9 @@ private fun MovieDetailContent(
             // 4. Description
             if (movie.description.isNotEmpty()) {
                 ExpandableDescription(text = movie.description)
+                if (movie.contentModeration?.isStorylineSexual == true) {
+                    StorylineWarningBadge(isSexual = true, modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
+                }
             }
 
             Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp))
@@ -226,7 +231,10 @@ private fun MovieDetailContent(
             // 10. Screenshots
             if (uiState.screenshots.isNotEmpty()) {
                 Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp))
-                ScreenshotsSection(screenshots = uiState.screenshots)
+                ScreenshotsSection(
+                    screenshots = uiState.screenshots,
+                    shouldBlur = movie.contentModeration?.isScreenshotsSexual == true
+                )
             }
 
             // 11. Comments

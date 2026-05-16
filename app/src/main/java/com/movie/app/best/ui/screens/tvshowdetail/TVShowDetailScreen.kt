@@ -79,8 +79,10 @@ import com.movie.app.best.data.model.WasmerDownloadLink
 import com.movie.app.best.data.model.WasmerEpisode
 import com.movie.app.best.data.model.WasmerSeason
 import com.movie.app.best.data.model.WasmerSeriesDetails
+import com.movie.app.best.ui.components.BlurOverlay
 import com.movie.app.best.ui.components.SkeletonDetailPage
 import com.movie.app.best.ui.components.ErrorView
+import com.movie.app.best.ui.components.StorylineWarningBadge
 import com.movie.app.best.ui.screens.moviedetail.components.DetailActionButtons
 import kotlinx.coroutines.delay
 
@@ -146,6 +148,7 @@ private fun TVShowDetailContent(
 ) {
     val seasonKeys = uiState.episodesBySeason.keys.sorted()
     var selectedSeason by remember { mutableStateOf(seasonKeys.firstOrNull() ?: 1) }
+    val shouldBlurPoster = series.contentModeration?.isPosterSexual == true
 
     Column(
         modifier = Modifier
@@ -178,6 +181,12 @@ private fun TVShowDetailContent(
                             endY = 1000f
                         )
                     )
+            )
+
+            BlurOverlay(
+                shouldBlur = shouldBlurPoster,
+                modifier = Modifier.fillMaxSize(),
+                blurRadius = 25
             )
 
             IconButton(
@@ -364,6 +373,9 @@ private fun TVShowDetailContent(
                 color = Color.White.copy(alpha = 0.7f),
                 modifier = Modifier.padding(16.dp)
             )
+            if (series.contentModeration?.isStorylineSexual == true) {
+                StorylineWarningBadge(isSexual = true, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            }
         }
 
         if (series.director.isNotEmpty()) {
@@ -448,6 +460,7 @@ private fun TVShowDetailContent(
         }
 
         if (uiState.screenshots.isNotEmpty()) {
+            val shouldBlurScreenshots = series.contentModeration?.isScreenshotsSexual == true
             SectionTitle("Screenshots")
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
@@ -458,14 +471,23 @@ private fun TVShowDetailContent(
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.width(240.dp)
                     ) {
-                        AsyncImage(
-                            model = url,
-                            contentDescription = "Screenshot",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(16f / 9f)
-                        )
+                        Box {
+                            AsyncImage(
+                                model = url,
+                                contentDescription = "Screenshot",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(16f / 9f)
+                            )
+                            BlurOverlay(
+                                shouldBlur = shouldBlurScreenshots,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(16f / 9f)
+                                    .align(Alignment.Center)
+                            )
+                        }
                     }
                 }
             }

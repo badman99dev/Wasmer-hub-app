@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerMovie
+import com.movie.app.best.ui.components.BlurOverlay
 import com.movie.app.best.ui.theme.WasmerGreen
 import com.movie.app.best.ui.theme.WasmerRed
 
@@ -147,6 +148,11 @@ fun MoviePosterCard(
                     Text("S", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
             }
+
+            BlurOverlay(
+                shouldBlur = movie.shouldBlurPoster,
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         Spacer(modifier = Modifier.height(5.dp))

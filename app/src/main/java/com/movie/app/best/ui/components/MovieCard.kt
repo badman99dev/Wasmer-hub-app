@@ -12,6 +12,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,15 +70,15 @@ fun MovieCard(
                 contentDescription = movie.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .clip(RoundedCornerShape(8.dp)),
                 loading = {
-                    Box(modifier = Modifier.fillMaxWidth().aspectRatio(2f/3f).background(Color(0xFF1C1C1C)))
+                    Box(modifier = Modifier.fillMaxSize().aspectRatio(2f/3f).background(Color(0xFF1C1C1C)))
                 },
                 error = {
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxWidth().aspectRatio(2f/3f).background(Color(0xFF1C1C1C))
+                        modifier = Modifier.fillMaxSize().aspectRatio(2f/3f).background(Color(0xFF1C1C1C))
                     ) {
                         Icon(Icons.Default.BrokenImage, contentDescription = null, tint = Color(0xFF555555))
                     }
@@ -93,7 +94,11 @@ fun MovieCard(
                 )
             }
 
-            // Bottom gradient + title
+            BlurOverlay(
+                shouldBlur = movie.shouldBlurPoster,
+                modifier = Modifier.fillMaxSize()
+            )
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -22,7 +22,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.movie.app.best.data.model.ContentModeration
 import com.movie.app.best.data.model.WasmerMovieDetails
+import com.movie.app.best.ui.components.BlurOverlay
 import com.movie.app.best.ui.theme.WasmerAmber
 import com.movie.app.best.ui.theme.WasmerRed
 
@@ -35,6 +37,8 @@ fun DetailHeroSection(
     onBackClick: () -> Unit,
     onShareClick: () -> Unit = {}
 ) {
+    val shouldBlur = movie.contentModeration?.isPosterSexual == true
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -63,6 +67,12 @@ fun DetailHeroSection(
                         )
                     )
                 )
+        )
+
+        BlurOverlay(
+            shouldBlur = shouldBlur,
+            modifier = Modifier.fillMaxSize(),
+            blurRadius = 25
         )
 
         // ── Top bar ───────────────────────────────────

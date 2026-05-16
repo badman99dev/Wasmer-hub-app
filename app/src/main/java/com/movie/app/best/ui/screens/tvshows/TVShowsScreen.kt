@@ -238,6 +238,11 @@ fun TVShowGridItem(
                 )
             }
 
+            com.movie.app.best.ui.components.BlurOverlay(
+                shouldBlur = movie.shouldBlurPoster,
+                modifier = Modifier.fillMaxSize()
+            )
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
