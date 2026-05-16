@@ -5,6 +5,8 @@ import com.movie.app.best.data.model.WasmerMovie
 import com.movie.app.best.data.model.WasmerPageResult
 import com.movie.app.best.data.model.WasmerSearchResult
 import com.movie.app.best.data.model.WasmerSliderResult
+import com.movie.app.best.data.model.ContentModerationResponse
+import retrofit2.http.Body
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
@@ -118,4 +120,24 @@ interface MovieApiService {
         @Header("Authorization") authHeader: String,
         @Query("movie_id") movieId: Int
     ): WasmerApiResponse<Map<String, Boolean>>
+
+    @POST("content-moderation")
+    suspend fun postContentModeration(
+        @Header("Authorization") authHeader: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any>
+    ): WasmerApiResponse<ContentModerationApiResponse>
+
+    @GET("latest-uploads")
+    suspend fun getLatestUploads(
+        @Query("offset") offset: Int = 0,
+        @Query("limit") limit: Int = 20
+    ): WasmerApiResponse<Map<String, Any>>
 }
+
+data class ContentModerationApiResponse(
+    val verdict: String? = null,
+    val moderation: ContentModerationResponse? = null,
+    val previous_moderation: Any? = null,
+    val images_analyzed: Int = 0,
+    val debug: List<String> = emptyList()
+)

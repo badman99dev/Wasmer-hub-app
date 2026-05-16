@@ -23,6 +23,7 @@ dataStore = "1.1.1"
 playServicesAuth = "21.0.0"
 firebaseBom = "33.1.0"
 googleServices = "4.4.2"
+lottieCompose = "6.4.0"
 
 [libraries]
 accompanist-placeholder = { module = "com.google.accompanist:accompanist-placeholder", version.ref = "accompanistPlaceholder" }
@@ -64,6 +65,7 @@ play-services-auth = { module = "com.google.android.gms:play-services-auth", ver
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
 firebase-firestore = { module = "com.google.firebase:firebase-firestore-ktx" }
+lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottieCompose" }
 google-services = { module = "com.google.gms:google-services", version.ref = "googleServices" }
 
 [plugins]

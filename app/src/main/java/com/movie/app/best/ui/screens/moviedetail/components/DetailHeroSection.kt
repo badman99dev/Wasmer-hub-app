@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -35,7 +36,8 @@ import com.movie.app.best.ui.theme.WasmerRed
 fun DetailHeroSection(
     movie: WasmerMovieDetails,
     onBackClick: () -> Unit,
-    onShareClick: () -> Unit = {}
+    onShareClick: () -> Unit = {},
+    onReportClick: () -> Unit = {}
 ) {
     val shouldBlur = movie.contentModeration?.isPosterSexual == true
 
@@ -114,6 +116,24 @@ fun DetailHeroSection(
                     Icon(
                         imageVector  = Icons.Default.Share,
                         contentDescription = "Share",
+                        tint         = Color.White,
+                        modifier     = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // Report
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE50914).copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center
+            ) {
+                IconButton(onClick = onReportClick, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        imageVector  = Icons.Default.Flag,
+                        contentDescription = "Report",
                         tint         = Color.White,
                         modifier     = Modifier.size(20.dp)
                     )

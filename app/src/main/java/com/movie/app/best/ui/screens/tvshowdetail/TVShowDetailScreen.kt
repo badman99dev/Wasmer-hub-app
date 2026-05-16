@@ -80,10 +80,14 @@ import com.movie.app.best.data.model.WasmerEpisode
 import com.movie.app.best.data.model.WasmerSeason
 import com.movie.app.best.data.model.WasmerSeriesDetails
 import com.movie.app.best.ui.components.BlurOverlay
+import com.movie.app.best.ui.components.CelebrationOverlay
 import com.movie.app.best.ui.components.SkeletonDetailPage
 import com.movie.app.best.ui.components.ErrorView
 import com.movie.app.best.ui.components.StorylineWarningBadge
 import com.movie.app.best.ui.screens.moviedetail.components.DetailActionButtons
+import com.movie.app.best.ui.screens.moviedetail.components.ReportDrawer
+import com.movie.app.best.ui.screens.moviedetail.components.ReportWaitingPopup
+import com.movie.app.best.ui.screens.moviedetail.components.ReportResultModal
 import kotlinx.coroutines.delay
 
 @Composable
@@ -124,7 +128,53 @@ fun TVShowDetailScreen(
                     onResetCommentState = viewModel::resetCommentState,
                     onResetReportState = viewModel::resetReportState,
                     onToggleBookmark = viewModel::toggleBookmark,
-                    onToggleLike = viewModel::toggleLike
+                    onToggleLike = viewModel::toggleLike,
+                    onReportClick = viewModel::openReportDrawer
+                )
+            }
+        }
+
+        CelebrationOverlay(
+            play = uiState.showCelebration,
+            onFinished = viewModel::dismissCelebration
+        )
+
+        if (uiState.showReportDrawer) {
+            androidx.compose.material3.ModalBottomSheet(
+                onDismissRequest = viewModel::closeReportDrawer,
+                containerColor = Color(0xFF1A1A1A)
+            ) {
+                ReportDrawer(
+                    movieId = uiState.series?.id ?: 0,
+                    onSubmit = { movieId, reportType, reason ->
+                        viewModel.submitContentModeration(movieId, reportType, reason)
+                    },
+                    onDismiss = viewModel::closeReportDrawer
+                )
+            }
+        }
+
+        if (uiState.showReportWaiting) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.8f)),
+                contentAlignment = Alignment.Center
+            ) {
+                ReportWaitingPopup()
+            }
+        }
+
+        if (uiState.reportModerationResult != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.85f)),
+                contentAlignment = Alignment.Center
+            ) {
+                ReportResultModal(
+                    moderation = uiState.reportModerationResult!!,
+                    onDismiss = viewModel::dismissReportResult
                 )
             }
         }
@@ -144,7 +194,8 @@ private fun TVShowDetailContent(
     onResetCommentState: () -> Unit,
     onResetReportState: () -> Unit,
     onToggleBookmark: () -> Unit,
-    onToggleLike: () -> Unit
+    onToggleLike: () -> Unit,
+    onReportClick: () -> Unit = {}
 ) {
     val seasonKeys = uiState.episodesBySeason.keys.sorted()
     var selectedSeason by remember { mutableStateOf(seasonKeys.firstOrNull() ?: 1) }
@@ -203,6 +254,24 @@ private fun TVShowDetailContent(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+
+            IconButton(
+                onClick = onReportClick,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(end = 16.dp, bottom = 16.dp)
+                    .background(
+                        color = Color(0xFFE50914).copy(alpha = 0.6f),
+                        shape = CircleShape
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Flag,
+                    contentDescription = "Report",
                     tint = Color.White
                 )
             }

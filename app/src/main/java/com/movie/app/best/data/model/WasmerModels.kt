@@ -13,7 +13,17 @@ data class ContentModeration(
     val isPosterSexual get() = poster == "sexual"
     val isScreenshotsSexual get() = screenshots == "sexual"
     val isStorylineSexual get() = storyline == "sexual"
+    val hasAnyFlag get() = isPosterSexual || isScreenshotsSexual || isStorylineSexual
 }
+
+data class ContentModerationResponse(
+    val poster: String = "safe",
+    val screenshots: String = "safe",
+    val storyline: String = "none",
+    val confidence: String = "low",
+    val reasoning: String = "",
+    val model: String = ""
+)
 
 @Parcelize
 data class WasmerMovie(

@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 @HiltViewModel
@@ -284,6 +285,58 @@ class MovieDetailViewModel @Inject constructor(
             )
         }
     }
+
+    fun openReportDrawer() {
+        _uiState.update { it.copy(showReportDrawer = true) }
+    }
+
+    fun closeReportDrawer() {
+        _uiState.update { it.copy(showReportDrawer = false) }
+    }
+
+    fun submitContentModeration(movieId: Int, reportType: String, reason: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(showReportDrawer = false, showReportWaiting = true) }
+            try {
+                val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                val tokenResult = user?.getIdToken(false)?.await()
+                val authHeader = "Bearer ${tokenResult?.token ?: ""}"
+                val response = repository.submitContentModeration(authHeader, movieId, reportType, reason)
+                val modResult = response.moderation
+                val hasAnyFlag = modResult?.poster == "sexual" || modResult?.screenshots == "sexual" || modResult?.storyline == "sexual"
+                _uiState.update { state ->
+                    state.copy(
+                        showReportWaiting = false,
+                        reportModerationResult = modResult,
+                        showCelebration = hasAnyFlag
+                    )
+                }
+                if (modResult != null) {
+                    val newCm = com.movie.app.best.data.model.ContentModeration(
+                        poster = modResult.poster,
+                        screenshots = modResult.screenshots,
+                        storyline = modResult.storyline
+                    )
+                    _uiState.update { it.copy(movie = it.movie?.copy(contentModeration = newCm)) }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        showReportWaiting = false,
+                        reportError = e.message
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissReportResult() {
+        _uiState.update { it.copy(reportModerationResult = null) }
+    }
+
+    fun dismissCelebration() {
+        _uiState.update { it.copy(showCelebration = false) }
+    }
 }
 
 data class MovieDetailUiState(
@@ -314,5 +367,10 @@ data class MovieDetailUiState(
     val downloadError: String? = null,
 
     val isBookmarked: Boolean = false,
-    val isLiked: Boolean = false
+    val isLiked: Boolean = false,
+
+    val showReportDrawer: Boolean = false,
+    val showReportWaiting: Boolean = false,
+    val reportModerationResult: com.movie.app.best.data.model.ContentModerationResponse? = null,
+    val showCelebration: Boolean = false
 )

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.movie.app.best.data.model.WasmerMovieDetails
 import com.movie.app.best.ui.components.BlurOverlay
+import com.movie.app.best.ui.components.CelebrationOverlay
 import com.movie.app.best.ui.components.ErrorView
 import com.movie.app.best.ui.components.SkeletonDetailPage
 import com.movie.app.best.ui.components.StorylineWarningBadge
@@ -112,7 +113,53 @@ fun MovieDetailScreen(
                     onResetReportState  = viewModel::resetReportState,
                     onSeriesClick      = onSeriesClick,
                     onToggleBookmark   = viewModel::toggleBookmark,
-                    onToggleLike       = viewModel::toggleLike
+                    onToggleLike       = viewModel::toggleLike,
+                    onReportClick      = viewModel::openReportDrawer
+                )
+            }
+        }
+
+        CelebrationOverlay(
+            play = uiState.showCelebration,
+            onFinished = viewModel::dismissCelebration
+        )
+
+        if (uiState.showReportDrawer) {
+            androidx.compose.material3.ModalBottomSheet(
+                onDismissRequest = viewModel::closeReportDrawer,
+                containerColor = Color(0xFF1A1A1A)
+            ) {
+                ReportDrawer(
+                    movieId = uiState.movie?.id ?: 0,
+                    onSubmit = { movieId, reportType, reason ->
+                        viewModel.submitContentModeration(movieId, reportType, reason)
+                    },
+                    onDismiss = viewModel::closeReportDrawer
+                )
+            }
+        }
+
+        if (uiState.showReportWaiting) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.8f)),
+                contentAlignment = Alignment.Center
+            ) {
+                ReportWaitingPopup()
+            }
+        }
+
+        if (uiState.reportModerationResult != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.85f)),
+                contentAlignment = Alignment.Center
+            ) {
+                ReportResultModal(
+                    moderation = uiState.reportModerationResult!!,
+                    onDismiss = viewModel::dismissReportResult
                 )
             }
         }
@@ -136,7 +183,8 @@ private fun MovieDetailContent(
     onResetReportState: () -> Unit,
     onSeriesClick: (String) -> Unit,
     onToggleBookmark: () -> Unit,
-    onToggleLike: () -> Unit
+    onToggleLike: () -> Unit,
+    onReportClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -146,7 +194,8 @@ private fun MovieDetailContent(
         // 1. Full-bleed hero
         DetailHeroSection(
             movie       = movie,
-            onBackClick = onBackClick
+            onBackClick = onBackClick,
+            onReportClick = onReportClick
         )
 
         Column(

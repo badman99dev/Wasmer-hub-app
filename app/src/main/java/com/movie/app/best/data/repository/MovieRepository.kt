@@ -109,4 +109,13 @@ class MovieRepository @Inject constructor(
         emit(Resource.Loading())
         emit(safeApiCall { apiService.postMovieRequest(imdbId, title, message) })
     }
+
+    suspend fun submitContentModeration(authHeader: String, movieId: Int, reportType: String, reason: String): com.movie.app.best.data.remote.ContentModerationApiResponse {
+        val response = apiService.postContentModeration(authHeader, mapOf(
+            "movie_id" to movieId,
+            "report_type" to reportType,
+            "reason" to reason
+        ))
+        return response.data ?: com.movie.app.best.data.remote.ContentModerationApiResponse()
+    }
 }
