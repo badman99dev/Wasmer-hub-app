@@ -14,14 +14,6 @@ data class ContentModeration(
     val isScreenshotsSexual get() = screenshots == "sexual"
     val isStorylineSexual get() = storyline == "sexual"
     val hasAnyFlag get() = isPosterSexual || isScreenshotsSexual || isStorylineSexual
-
-    fun getFlaggedTypes(): List<String> {
-        val types = mutableSetOf<String>()
-        if (poster != "safe" && poster != "none") types.add(poster)
-        if (screenshots != "safe" && screenshots != "none") types.add(screenshots)
-        if (storyline != "safe" && storyline != "none") types.add(storyline)
-        return types.toList()
-    }
 }
 
 data class ContentModerationResponse(
@@ -53,11 +45,6 @@ data class WasmerMovie(
 ) : Parcelable {
     val shouldBlurPoster: Boolean
         get() = contentModeration?.isPosterSexual == true || posterModeration == "sexual"
-
-    val flaggedModerationTypes: List<String>
-        get() = contentModeration?.getFlaggedTypes()
-            ?: if (posterModeration != null && posterModeration != "safe") listOf(posterModeration!!)
-            else emptyList()
 }
 
 @Parcelize

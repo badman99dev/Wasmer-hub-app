@@ -53,7 +53,6 @@ import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerMovie
 import com.movie.app.best.ui.components.SkeletonPosterCard
 import com.movie.app.best.ui.components.AppHeader
-import com.movie.app.best.ui.components.BlurredContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -174,21 +173,14 @@ fun TVShowGridItem(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
         Box {
-            BlurredContent(
-                shouldBlur = movie.shouldBlurPoster,
-                modifier = Modifier.fillMaxSize(),
-                moderationTypes = movie.flaggedModerationTypes,
-                enableDoubleTap = true
-            ) {
-                AsyncImage(
-                    model = movie.posterUrl,
-                    contentDescription = movie.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(2 / 3f)
-                )
-            }
+            AsyncImage(
+                model = movie.posterUrl,
+                contentDescription = movie.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(2 / 3f)
+            )
 
             Card(
                 modifier = Modifier
@@ -247,6 +239,11 @@ fun TVShowGridItem(
                         .size(14.dp)
                 )
             }
+
+            com.movie.app.best.ui.components.BlurOverlay(
+                shouldBlur = movie.shouldBlurPoster,
+                modifier = Modifier.fillMaxSize()
+            )
 
             Box(
                 modifier = Modifier

@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.movie.app.best.data.model.WasmerMovieDetails
+import com.movie.app.best.ui.components.BlurOverlay
 import com.movie.app.best.ui.components.CelebrationOverlay
 import com.movie.app.best.ui.components.ErrorView
 import com.movie.app.best.ui.components.SkeletonDetailPage
@@ -276,8 +277,7 @@ private fun MovieDetailContent(
                 Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp))
                 ScreenshotsSection(
                     screenshots = uiState.screenshots,
-                    shouldBlur = movie.contentModeration?.isScreenshotsSexual == true,
-                    moderationTypes = movie.contentModeration?.getFlaggedTypes() ?: emptyList()
+                    shouldBlur = movie.contentModeration?.isScreenshotsSexual == true
                 )
             }
 
