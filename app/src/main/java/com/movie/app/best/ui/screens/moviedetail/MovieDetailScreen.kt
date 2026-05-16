@@ -26,6 +26,7 @@ import com.movie.app.best.ui.components.SkeletonDetailPage
 import com.movie.app.best.ui.components.StorylineWarningBadge
 import com.movie.app.best.ui.screens.moviedetail.components.*
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun MovieDetailScreen(
     slug: String,

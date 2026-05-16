@@ -90,6 +90,7 @@ import com.movie.app.best.ui.screens.moviedetail.components.ReportWaitingPopup
 import com.movie.app.best.ui.screens.moviedetail.components.ReportResultModal
 import kotlinx.coroutines.delay
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun TVShowDetailScreen(
     slug: String,
