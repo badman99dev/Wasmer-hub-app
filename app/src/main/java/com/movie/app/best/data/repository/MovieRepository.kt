@@ -4,6 +4,7 @@ import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.model.WasmerApiResponse
 import com.movie.app.best.data.model.WasmerContentDetailResponse
 import com.movie.app.best.data.model.WasmerNotification
+import com.movie.app.best.data.model.WasmerCategory
 import com.movie.app.best.data.model.WasmerCategoryOffsetResult
 import com.movie.app.best.data.model.WasmerOffsetResult
 import com.movie.app.best.data.model.WasmerSearchResult
@@ -64,6 +65,11 @@ class MovieRepository @Inject constructor(
     fun getCategoryMovies(slug: String, offset: Int = 0, limit: Int = 45): Flow<Resource<WasmerCategoryOffsetResult>> = flow {
         emit(Resource.Loading())
         emit(safeApiCall { apiService.getCategoryMovies(slug, offset, limit) })
+    }
+
+    fun getCategories(): Flow<Resource<List<WasmerCategory>>> = flow {
+        emit(Resource.Loading())
+        emit(safeApiCall { apiService.getCategories() })
     }
 
     fun postComment(authHeader: String, movieId: Int, msg: String): Flow<Resource<Map<String, String>>> = flow {
