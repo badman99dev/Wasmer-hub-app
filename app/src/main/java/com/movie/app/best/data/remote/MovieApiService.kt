@@ -2,7 +2,6 @@ package com.movie.app.best.data.remote
 
 import com.movie.app.best.data.model.WasmerApiResponse
 import com.movie.app.best.data.model.WasmerMovie
-import com.movie.app.best.data.model.WasmerPageResult
 import com.movie.app.best.data.model.WasmerSearchResult
 import com.movie.app.best.data.model.WasmerSliderResult
 import com.movie.app.best.data.model.ContentModerationResponse
@@ -26,18 +25,6 @@ interface MovieApiService {
     @GET("slider")
     suspend fun getSlider(): WasmerApiResponse<WasmerSliderResult>
 
-    @POST("tabs/all")
-    @FormUrlEncoded
-    suspend fun getAllTab(
-        @Field("ajax") ajax: String = "1"
-    ): WasmerApiResponse<List<WasmerMovie>>
-
-    @POST("tabs/popular")
-    @FormUrlEncoded
-    suspend fun getPopularTab(
-        @Field("ajax") ajax: String = "1"
-    ): WasmerApiResponse<List<WasmerMovie>>
-
     @GET("movie/{slug}")
     suspend fun getMovieDetails(@Path("slug") slug: String): WasmerApiResponse<com.movie.app.best.data.model.WasmerMovieDetailResponse>
 
@@ -50,12 +37,12 @@ interface MovieApiService {
         @Query("page") page: Int = 1
     ): WasmerApiResponse<WasmerSearchResult>
 
-    @GET("page")
-    suspend fun getPage(
-        @Query("category_slug") categorySlug: String? = null,
-        @Query("s") search: String? = null,
-        @Query("page") page: Int = 1
-    ): WasmerApiResponse<WasmerPageResult>
+    @GET("category/{slug}")
+    suspend fun getCategoryMovies(
+        @Path("slug") slug: String,
+        @Query("offset") offset: Int = 0,
+        @Query("limit") limit: Int = 45
+    ): WasmerApiResponse<WasmerCategoryOffsetResult>
 
     @GET("categories")
     suspend fun getCategories(): WasmerApiResponse<List<com.movie.app.best.data.model.WasmerCategory>>
@@ -130,8 +117,14 @@ interface MovieApiService {
     @GET("latest-uploads")
     suspend fun getLatestUploads(
         @Query("offset") offset: Int = 0,
-        @Query("limit") limit: Int = 20
-    ): WasmerApiResponse<Map<String, Any>>
+        @Query("limit") limit: Int = 45
+    ): WasmerApiResponse<WasmerOffsetResult>
+
+    @GET("watchable-content")
+    suspend fun getWatchableContent(
+        @Query("offset") offset: Int = 0,
+        @Query("limit") limit: Int = 45
+    ): WasmerApiResponse<WasmerOffsetResult>
 }
 
 data class ContentModerationApiResponse(

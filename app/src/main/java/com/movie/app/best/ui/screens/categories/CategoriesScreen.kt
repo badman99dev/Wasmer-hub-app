@@ -281,13 +281,13 @@ fun CategoryPageScreen(
 
         val gridState = rememberLazyGridState()
 
-        LaunchedEffect(gridState, uiState.movies.size) {
-            val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val totalItems = gridState.layoutInfo.totalItemsCount
-            if (lastVisibleIndex >= totalItems - 4 && uiState.currentPage < uiState.totalPages && !uiState.isLoading) {
-                viewModel.loadNextPage()
-            }
+    LaunchedEffect(gridState, uiState.movies.size) {
+        val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        val totalItems = gridState.layoutInfo.totalItemsCount
+        if (lastVisibleIndex >= totalItems - 6 && uiState.canLoadMore && !uiState.isLoading) {
+            viewModel.loadNextPage()
         }
+    }
 
         Box(
             modifier = Modifier

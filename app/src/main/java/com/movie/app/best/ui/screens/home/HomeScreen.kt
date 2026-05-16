@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -39,6 +41,18 @@ fun HomeScreen(
     val newReleases = remember(allMovies) { allMovies.sortedByDescending { it.id }.take(12) }
     val series      = remember(allMovies) { allMovies.filter { it.isSeries }.take(12) }
     val forYou      = remember(allMovies) { allMovies.shuffled().take(12) }
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val totalItems = listState.layoutInfo.totalItemsCount
+            lastVisible >= totalItems - 6 && uiState.canLoadMoreAllTab && !uiState.isAllTabLoadingMore
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) viewModel.loadMoreAllTab()
+    }
 
     Box(
         modifier = Modifier
@@ -123,6 +137,22 @@ fun HomeScreen(
             }
 
             item { Spacer(modifier = Modifier.height(80.dp)) }
+
+            if (uiState.isAllTabLoadingMore) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                            modifier = Modifier.height(32.dp)
+                        )
+                    }
+                }
+            }
         }
 
         AppHeader(

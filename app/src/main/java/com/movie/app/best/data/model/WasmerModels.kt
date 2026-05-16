@@ -197,6 +197,21 @@ data class WasmerSearchResult(
     @SerializedName("total_pages") val totalPages: Int
 )
 
+data class WasmerOffsetResult(
+    val items: List<WasmerMovie>,
+    val total: Int,
+    val offset: Int,
+    val limit: Int
+)
+
+data class WasmerCategoryOffsetResult(
+    val category: WasmerCategory,
+    val items: List<WasmerMovie>,
+    val total: Int,
+    val offset: Int,
+    val limit: Int
+)
+
 data class WasmerPageResult(
     val movies: List<WasmerMovie>,
     val total: Int,

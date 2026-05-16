@@ -16,13 +16,21 @@ import javax.inject.Inject
 data class TrendingUiState(
     val popularMovies: List<WasmerMovie> = emptyList(),
     val isPopularLoading: Boolean = false,
-    val popularError: String? = null
+    val isPopularLoadingMore: Boolean = false,
+    val popularError: String? = null,
+    val currentOffset: Int = 0,
+    val total: Int = 0,
+    val canLoadMore: Boolean = false
 )
 
 @HiltViewModel
 class TrendingViewModel @Inject constructor(
     private val repository: MovieRepository
 ) : ViewModel() {
+
+    companion object {
+        private const val PAGE_LIMIT = 45
+    }
 
     private val _uiState = MutableStateFlow(TrendingUiState())
     val uiState: StateFlow<TrendingUiState> = _uiState.asStateFlow()
@@ -34,15 +42,19 @@ class TrendingViewModel @Inject constructor(
     fun loadPopular() {
         viewModelScope.launch {
             _uiState.update { it.copy(isPopularLoading = true) }
-            repository.getPopularTab().collect { result ->
+            repository.getLatestUploads(offset = 0, limit = PAGE_LIMIT).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
+                        val data = result.data
                         _uiState.update {
                             it.copy(
-                                popularMovies = result.data ?: emptyList(),
+                                popularMovies = data?.items ?: emptyList(),
                                 isPopularLoading = false,
-                                popularError = null
+                                popularError = null,
+                                currentOffset = data?.offset ?: 0,
+                                total = data?.total ?: 0,
+                                canLoadMore = (data?.items?.size ?: 0) >= PAGE_LIMIT && ((data?.offset ?: 0) + (data?.items?.size ?: 0)) < (data?.total ?: 0)
                             )
                         }
                     }
@@ -53,6 +65,37 @@ class TrendingViewModel @Inject constructor(
                                 popularError = result.error
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    fun loadMorePopular() {
+        val current = _uiState.value
+        if (current.isPopularLoadingMore || !current.canLoadMore) return
+
+        val nextOffset = current.currentOffset + current.popularMovies.size
+        if (nextOffset >= current.total) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isPopularLoadingMore = true) }
+            repository.getLatestUploads(offset = nextOffset, limit = PAGE_LIMIT).collect { result ->
+                when (result) {
+                    is Resource.Loading -> {}
+                    is Resource.Success -> {
+                        val newItems = result.data?.items ?: emptyList()
+                        _uiState.update {
+                            it.copy(
+                                popularMovies = it.popularMovies + newItems,
+                                isPopularLoadingMore = false,
+                                currentOffset = result.data?.offset ?: nextOffset,
+                                canLoadMore = newItems.size >= PAGE_LIMIT && (nextOffset + newItems.size) < (result.data?.total ?: 0)
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        _uiState.update { it.copy(isPopularLoadingMore = false) }
                     }
                 }
             }

@@ -69,11 +69,11 @@ fun TVShowsScreen(
     val shouldPaginate by remember {
         derivedStateOf {
             val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisible >= uiState.tvShows.size - 6
+            lastVisible >= uiState.tvShows.size - 6 && uiState.canLoadMore && !uiState.isLoading
         }
     }
 
-    if (shouldPaginate && !uiState.isLoading && uiState.currentPage < uiState.totalPages) {
+    if (shouldPaginate) {
         viewModel.loadNextPage()
     }
 

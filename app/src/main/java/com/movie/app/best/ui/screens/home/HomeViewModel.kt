@@ -23,6 +23,10 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    companion object {
+        private const val PAGE_LIMIT = 45
+    }
+
     init {
         loadAllContent()
     }
@@ -64,17 +68,22 @@ class HomeViewModel @Inject constructor(
 
     fun loadAllTab() {
         viewModelScope.launch {
-            repository.getAllTab().collect { result ->
+            _uiState.update { it.copy(isAllTabLoading = true) }
+            repository.getLatestUploads(offset = 0, limit = PAGE_LIMIT).collect { result ->
                 when (result) {
                     is Resource.Loading -> {
                         _uiState.update { it.copy(isAllTabLoading = true) }
                     }
                     is Resource.Success -> {
+                        val data = result.data
                         _uiState.update {
                             it.copy(
-                                allTabMovies = result.data ?: emptyList(),
+                                allTabMovies = data?.items ?: emptyList(),
                                 isAllTabLoading = false,
-                                allTabError = null
+                                allTabError = null,
+                                allTabOffset = data?.offset ?: 0,
+                                allTabTotal = data?.total ?: 0,
+                                canLoadMoreAllTab = (data?.items?.size ?: 0) >= PAGE_LIMIT && ((data?.offset ?: 0) + (data?.items?.size ?: 0)) < (data?.total ?: 0)
                             )
                         }
                     }
@@ -85,6 +94,37 @@ class HomeViewModel @Inject constructor(
                                 allTabError = result.error
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    fun loadMoreAllTab() {
+        val current = _uiState.value
+        if (current.isAllTabLoadingMore || !current.canLoadMoreAllTab) return
+
+        val nextOffset = current.allTabOffset + current.allTabMovies.size
+        if (nextOffset >= current.allTabTotal) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isAllTabLoadingMore = true) }
+            repository.getLatestUploads(offset = nextOffset, limit = PAGE_LIMIT).collect { result ->
+                when (result) {
+                    is Resource.Loading -> {}
+                    is Resource.Success -> {
+                        val newItems = result.data?.items ?: emptyList()
+                        _uiState.update {
+                            it.copy(
+                                allTabMovies = it.allTabMovies + newItems,
+                                isAllTabLoadingMore = false,
+                                allTabOffset = result.data?.offset ?: nextOffset,
+                                canLoadMoreAllTab = newItems.size >= PAGE_LIMIT && (nextOffset + newItems.size) < (result.data?.total ?: 0)
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        _uiState.update { it.copy(isAllTabLoadingMore = false) }
                     }
                 }
             }
@@ -132,7 +172,11 @@ data class HomeUiState(
 
     val allTabMovies: List<WasmerMovie> = emptyList(),
     val isAllTabLoading: Boolean = false,
+    val isAllTabLoadingMore: Boolean = false,
     val allTabError: String? = null,
+    val allTabOffset: Int = 0,
+    val allTabTotal: Int = 0,
+    val canLoadMoreAllTab: Boolean = false,
 
     val notification: WasmerNotification? = null,
     val isNotificationLoading: Boolean = false,

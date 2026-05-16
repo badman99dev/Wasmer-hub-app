@@ -67,38 +67,43 @@ class CategoryPageViewModel @Inject constructor(
     private val repository: MovieRepository
 ) : ViewModel() {
 
+    companion object {
+        private const val PAGE_LIMIT = 45
+    }
+
     private val _uiState = MutableStateFlow(CategoryPageUiState())
     val uiState: StateFlow<CategoryPageUiState> = _uiState.asStateFlow()
 
     private var currentCategorySlug: String? = null
 
-    fun loadMovies(categorySlug: String, page: Int = 1) {
+    fun loadMovies(categorySlug: String, offset: Int = 0) {
         currentCategorySlug = categorySlug
         viewModelScope.launch {
-            repository.getPage(categorySlug, null, page).collect { result ->
+            _uiState.update { it.copy(isLoading = true) }
+            repository.getCategoryMovies(categorySlug, offset, PAGE_LIMIT).collect { result ->
                 when (result) {
                     is Resource.Loading -> {
                         _uiState.update { it.copy(isLoading = true) }
                     }
                     is Resource.Success -> {
                         val data = result.data
-                        val movies = data?.movies ?: emptyList()
+                        val movies = data?.items ?: emptyList()
+                        val newOffset = data?.offset ?: offset
+                        val total = data?.total ?: 0
                         _uiState.update {
                             it.copy(
-                                movies = if (page == 1) movies else it.movies + movies,
+                                movies = if (offset == 0) movies else it.movies + movies,
                                 isLoading = false,
                                 error = null,
-                                currentPage = data?.page ?: 1,
-                                totalPages = data?.totalPages ?: 1
+                                currentOffset = newOffset,
+                                total = total,
+                                canLoadMore = movies.size >= PAGE_LIMIT && (newOffset + movies.size) < total
                             )
                         }
                     }
                     is Resource.Error -> {
                         _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                error = result.error
-                            )
+                            it.copy(isLoading = false, error = result.error)
                         }
                     }
                 }
@@ -108,8 +113,8 @@ class CategoryPageViewModel @Inject constructor(
 
     fun loadNextPage() {
         val current = _uiState.value
-        if (current.currentPage < current.totalPages && !current.isLoading) {
-            loadMovies(currentCategorySlug ?: return, current.currentPage + 1)
+        if (current.canLoadMore && !current.isLoading) {
+            loadMovies(currentCategorySlug ?: return, current.currentOffset + current.movies.size)
         }
     }
 }
@@ -118,6 +123,7 @@ data class CategoryPageUiState(
     val movies: List<WasmerMovie> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val currentPage: Int = 1,
-    val totalPages: Int = 1
+    val currentOffset: Int = 0,
+    val total: Int = 0,
+    val canLoadMore: Boolean = false
 )

@@ -20,6 +20,10 @@ class SearchViewModel @Inject constructor(
     private val repository: MovieRepository
 ) : ViewModel() {
 
+    companion object {
+        private const val PAGE_LIMIT = 45
+    }
+
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
@@ -49,22 +53,23 @@ class SearchViewModel @Inject constructor(
                     }
                     is Resource.Success -> {
                         val results = result.data?.results ?: emptyList()
+                        val total = result.data?.total ?: 0
+                        val totalPages = result.data?.totalPages ?: 1
                         _uiState.update {
                             it.copy(
                                 searchResults = if (page == 1) results else it.searchResults + results,
                                 isLoading = false,
                                 error = null,
                                 currentPage = result.data?.page ?: 1,
-                                totalPages = result.data?.totalPages ?: 1
+                                totalPages = totalPages,
+                                totalResults = total,
+                                canLoadMore = page < totalPages
                             )
                         }
                     }
                     is Resource.Error -> {
                         _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                error = result.error
-                            )
+                            it.copy(isLoading = false, error = result.error)
                         }
                     }
                 }
@@ -74,7 +79,7 @@ class SearchViewModel @Inject constructor(
 
     fun loadNextPage() {
         val current = _uiState.value
-        if (current.searchQuery.isNotEmpty() && current.currentPage < current.totalPages && !current.isLoading) {
+        if (current.searchQuery.isNotEmpty() && current.canLoadMore && !current.isLoading) {
             searchMovies(current.searchQuery, current.currentPage + 1)
         }
     }
@@ -107,5 +112,7 @@ data class SearchUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val currentPage: Int = 1,
-    val totalPages: Int = 1
+    val totalPages: Int = 1,
+    val totalResults: Int = 0,
+    val canLoadMore: Boolean = false
 )

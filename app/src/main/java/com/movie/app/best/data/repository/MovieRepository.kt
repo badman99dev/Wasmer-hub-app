@@ -9,7 +9,8 @@ import com.movie.app.best.data.model.WasmerMovieDetailResponse
 import com.movie.app.best.data.model.WasmerSeriesDetailResponse
 import com.movie.app.best.data.model.WasmerMovieDetails
 import com.movie.app.best.data.model.WasmerNotification
-import com.movie.app.best.data.model.WasmerPageResult
+import com.movie.app.best.data.model.WasmerCategoryOffsetResult
+import com.movie.app.best.data.model.WasmerOffsetResult
 import com.movie.app.best.data.model.WasmerSearchResult
 import com.movie.app.best.data.model.WasmerSliderResult
 import com.movie.app.best.data.remote.MovieApiService
@@ -50,16 +51,6 @@ class MovieRepository @Inject constructor(
         emit(safeApiCall { apiService.getSlider() })
     }
 
-    fun getAllTab(): Flow<Resource<List<WasmerMovie>>> = flow {
-        emit(Resource.Loading())
-        emit(safeApiCall { apiService.getAllTab() })
-    }
-
-    fun getPopularTab(): Flow<Resource<List<WasmerMovie>>> = flow {
-        emit(Resource.Loading())
-        emit(safeApiCall { apiService.getPopularTab() })
-    }
-
     fun getMovieDetails(slug: String): Flow<Resource<WasmerMovieDetailResponse>> = flow {
         emit(Resource.Loading())
         emit(safeApiCall { apiService.getMovieDetails(slug) })
@@ -75,19 +66,19 @@ class MovieRepository @Inject constructor(
         emit(safeApiCall { apiService.searchMovies(query, page) })
     }
 
-    fun getPage(categorySlug: String? = null, search: String? = null, page: Int = 1): Flow<Resource<WasmerPageResult>> = flow {
+    fun getLatestUploads(offset: Int = 0, limit: Int = 45): Flow<Resource<WasmerOffsetResult>> = flow {
         emit(Resource.Loading())
-        emit(safeApiCall { apiService.getPage(categorySlug, search, page) })
+        emit(safeApiCall { apiService.getLatestUploads(offset, limit) })
     }
 
-    fun getCategories(): Flow<Resource<List<WasmerCategory>>> = flow {
+    fun getWatchableContent(offset: Int = 0, limit: Int = 45): Flow<Resource<WasmerOffsetResult>> = flow {
         emit(Resource.Loading())
-        emit(safeApiCall { apiService.getCategories() })
+        emit(safeApiCall { apiService.getWatchableContent(offset, limit) })
     }
 
-    fun getDownloadInfo(slug: String, linkId: Int): Flow<Resource<WasmerDownloadResult>> = flow {
+    fun getCategoryMovies(slug: String, offset: Int = 0, limit: Int = 45): Flow<Resource<WasmerCategoryOffsetResult>> = flow {
         emit(Resource.Loading())
-        emit(safeApiCall { apiService.getDownloadInfo(slug, linkId) })
+        emit(safeApiCall { apiService.getCategoryMovies(slug, offset, limit) })
     }
 
     fun postComment(movieId: Int, name: String, msg: String): Flow<Resource<Map<String, String>>> = flow {

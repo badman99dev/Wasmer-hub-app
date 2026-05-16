@@ -89,7 +89,7 @@ fun SearchScreen(
         }
     }
 
-    if (shouldPaginate && !uiState.isLoading && uiState.currentPage < uiState.totalPages && uiState.searchQuery.isNotEmpty()) {
+    if (shouldPaginate && !uiState.isLoading && uiState.canLoadMore && uiState.searchQuery.isNotEmpty()) {
         viewModel.loadNextPage()
     }
 

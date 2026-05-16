@@ -71,11 +71,11 @@ fun MoviesScreen(
     val shouldPaginate by remember {
         derivedStateOf {
             val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisible >= uiState.movies.size - 6
+            lastVisible >= uiState.movies.size - 6 && uiState.canLoadMore && !uiState.isMoviesLoading
         }
     }
 
-    if (shouldPaginate && !uiState.isMoviesLoading && uiState.currentPage < uiState.totalPages) {
+    if (shouldPaginate) {
         viewModel.loadNextPage()
     }
 

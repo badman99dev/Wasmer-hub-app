@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.model.WasmerCategory
 import com.movie.app.best.data.model.WasmerMovie
-import com.movie.app.best.data.model.WasmerPageResult
 import com.movie.app.best.data.repository.MovieRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +18,10 @@ import javax.inject.Inject
 class MoviesViewModel @Inject constructor(
     private val repository: MovieRepository
 ) : ViewModel() {
+
+    companion object {
+        private const val PAGE_LIMIT = 45
+    }
 
     private val _uiState = MutableStateFlow(MoviesUiState())
     val uiState: StateFlow<MoviesUiState> = _uiState.asStateFlow()
@@ -57,33 +60,33 @@ class MoviesViewModel @Inject constructor(
         }
     }
 
-    fun loadMovies(categorySlug: String? = null, search: String? = null, page: Int = 1) {
+    fun loadMovies(categorySlug: String? = null, offset: Int = 0) {
         viewModelScope.launch {
             _uiState.update { it.copy(isMoviesLoading = true) }
-            repository.getPage(categorySlug, search, page).collect { result ->
+            val slug = categorySlug ?: "bollywood"
+            repository.getCategoryMovies(slug, offset, PAGE_LIMIT).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
                         val data = result.data
-                        val movies = data?.movies ?: emptyList()
+                        val movies = data?.items ?: emptyList()
+                        val newOffset = data?.offset ?: offset
+                        val total = data?.total ?: 0
                         _uiState.update {
                             it.copy(
-                                movies = if (page == 1) movies else it.movies + movies,
+                                movies = if (offset == 0) movies else it.movies + movies,
                                 isMoviesLoading = false,
                                 moviesError = null,
-                                currentPage = data?.page ?: 1,
-                                totalPages = data?.totalPages ?: 1,
-                                currentCategorySlug = categorySlug,
-                                currentSearch = search
+                                currentOffset = newOffset,
+                                total = total,
+                                canLoadMore = movies.size >= PAGE_LIMIT && (newOffset + movies.size) < total,
+                                currentCategorySlug = categorySlug
                             )
                         }
                     }
                     is Resource.Error -> {
                         _uiState.update {
-                            it.copy(
-                                isMoviesLoading = false,
-                                moviesError = result.error
-                            )
+                            it.copy(isMoviesLoading = false, moviesError = result.error)
                         }
                     }
                 }
@@ -93,17 +96,13 @@ class MoviesViewModel @Inject constructor(
 
     fun loadNextPage() {
         val current = _uiState.value
-        if (current.currentPage < current.totalPages && !current.isMoviesLoading) {
-            loadMovies(current.currentCategorySlug, current.currentSearch, current.currentPage + 1)
+        if (current.canLoadMore && !current.isMoviesLoading) {
+            loadMovies(current.currentCategorySlug, current.currentOffset + current.movies.size)
         }
     }
 
     fun selectCategory(slug: String?) {
-        loadMovies(categorySlug = slug, page = 1)
-    }
-
-    fun searchMovies(query: String) {
-        loadMovies(search = query.ifBlank { null }, page = 1)
+        loadMovies(categorySlug = slug, offset = 0)
     }
 }
 
@@ -116,8 +115,8 @@ data class MoviesUiState(
     val isMoviesLoading: Boolean = false,
     val moviesError: String? = null,
 
-    val currentPage: Int = 1,
-    val totalPages: Int = 1,
-    val currentCategorySlug: String? = null,
-    val currentSearch: String? = null
+    val currentOffset: Int = 0,
+    val total: Int = 0,
+    val canLoadMore: Boolean = false,
+    val currentCategorySlug: String? = null
 )

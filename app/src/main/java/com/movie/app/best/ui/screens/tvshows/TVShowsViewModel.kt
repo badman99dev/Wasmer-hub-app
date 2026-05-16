@@ -19,6 +19,10 @@ class TVShowsViewModel @Inject constructor(
     private val repository: MovieRepository
 ) : ViewModel() {
 
+    companion object {
+        private const val PAGE_LIMIT = 45
+    }
+
     private val _uiState = MutableStateFlow(TVShowsUiState())
     val uiState: StateFlow<TVShowsUiState> = _uiState.asStateFlow()
 
@@ -26,31 +30,31 @@ class TVShowsViewModel @Inject constructor(
         loadTVShows()
     }
 
-    fun loadTVShows(page: Int = 1) {
+    fun loadTVShows(offset: Int = 0) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            repository.getPage(categorySlug = "web-series", page = page).collect { result ->
+            repository.getCategoryMovies("web-series", offset, PAGE_LIMIT).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
                         val data = result.data
-                        val movies = data?.movies ?: emptyList()
+                        val movies = data?.items ?: emptyList()
+                        val newOffset = data?.offset ?: offset
+                        val total = data?.total ?: 0
                         _uiState.update {
                             it.copy(
-                                tvShows = if (page == 1) movies else it.tvShows + movies,
+                                tvShows = if (offset == 0) movies else it.tvShows + movies,
                                 isLoading = false,
                                 error = null,
-                                currentPage = data?.page ?: 1,
-                                totalPages = data?.totalPages ?: 1
+                                currentOffset = newOffset,
+                                total = total,
+                                canLoadMore = movies.size >= PAGE_LIMIT && (newOffset + movies.size) < total
                             )
                         }
                     }
                     is Resource.Error -> {
                         _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                error = result.error
-                            )
+                            it.copy(isLoading = false, error = result.error)
                         }
                     }
                 }
@@ -60,8 +64,8 @@ class TVShowsViewModel @Inject constructor(
 
     fun loadNextPage() {
         val current = _uiState.value
-        if (current.currentPage < current.totalPages && !current.isLoading) {
-            loadTVShows(current.currentPage + 1)
+        if (current.canLoadMore && !current.isLoading) {
+            loadTVShows(current.currentOffset + current.tvShows.size)
         }
     }
 }
@@ -70,6 +74,7 @@ data class TVShowsUiState(
     val tvShows: List<WasmerMovie> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val currentPage: Int = 1,
-    val totalPages: Int = 1
+    val currentOffset: Int = 0,
+    val total: Int = 0,
+    val canLoadMore: Boolean = false
 )
