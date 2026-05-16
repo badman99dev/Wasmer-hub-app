@@ -3,6 +3,8 @@ package com.movie.app.best.data.remote
 import com.movie.app.best.data.model.WasmerApiResponse
 import com.movie.app.best.data.model.WasmerSearchResult
 import com.movie.app.best.data.model.WasmerSliderResult
+import com.movie.app.best.data.model.WasmerOffsetResult
+import com.movie.app.best.data.model.WasmerCategoryOffsetResult
 import com.movie.app.best.data.model.ContentModerationResponse
 import retrofit2.http.Body
 import retrofit2.http.Field

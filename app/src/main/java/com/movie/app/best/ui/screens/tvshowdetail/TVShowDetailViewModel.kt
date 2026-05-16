@@ -86,7 +86,12 @@ class TVShowDetailViewModel @Inject constructor(
         val seriesId = _uiState.value.series?.id ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isCommentPosting = true) }
-            repository.postComment(seriesId, name, msg).collect { result ->
+            val authHeader = try {
+                val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                val tokenResult = user?.getIdToken(false)?.await()
+                "Bearer ${tokenResult?.token ?: ""}"
+            } catch (_: Exception) { "" }
+            repository.postComment(authHeader, seriesId, msg).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
@@ -154,10 +159,6 @@ class TVShowDetailViewModel @Inject constructor(
 
     fun resetCommentState() {
         _uiState.update { it.copy(commentPosted = false, commentError = null) }
-    }
-
-    fun resetReportState() {
-        _uiState.update { it.copy(reportPosted = false, reportError = null) }
     }
 
     fun checkBookmarkAndLikeStatus() {
@@ -261,7 +262,7 @@ class TVShowDetailViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         showReportWaiting = false,
-                        reportError = e.message
+                        moderationError = e.message
                     )
                 }
             }
@@ -305,6 +306,7 @@ data class TVShowDetailUiState(
 
     val showReportDrawer: Boolean = false,
     val showReportWaiting: Boolean = false,
+    val moderationError: String? = null,
     val reportModerationResult: com.movie.app.best.data.model.ContentModerationResponse? = null,
     val showCelebration: Boolean = false
 )

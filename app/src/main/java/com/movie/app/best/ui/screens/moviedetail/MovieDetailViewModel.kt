@@ -86,7 +86,12 @@ class MovieDetailViewModel @Inject constructor(
         val movieId = _uiState.value.movie?.id ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isCommentPosting = true) }
-            repository.postComment(movieId, name, msg).collect { result ->
+            val authHeader = try {
+                val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                val tokenResult = user?.getIdToken(false)?.await()
+                "Bearer ${tokenResult?.token ?: ""}"
+            } catch (_: Exception) { "" }
+            repository.postComment(authHeader, movieId, msg).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
@@ -318,6 +323,7 @@ data class MovieDetailUiState(
 
     val showReportDrawer: Boolean = false,
     val showReportWaiting: Boolean = false,
+    val moderationError: String? = null,
     val reportModerationResult: com.movie.app.best.data.model.ContentModerationResponse? = null,
     val showCelebration: Boolean = false
 )
