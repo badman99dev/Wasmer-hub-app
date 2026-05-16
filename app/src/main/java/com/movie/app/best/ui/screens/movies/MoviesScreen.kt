@@ -62,6 +62,7 @@ fun MoviesScreen(
     navController: androidx.navigation.NavController,
     onContentClick: (String, Boolean) -> Unit,
     onSearchClick: () -> Unit = {},
+    onMenuClick: () -> Unit = {},
     viewModel: MoviesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -87,6 +88,7 @@ fun MoviesScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             AppHeader(
+                onMenuClick = onMenuClick,
                 onSearchClick = onSearchClick,
                 onNotificationClick = { navController.navigate(com.movie.app.best.ui.navigation.Screen.Notifications.route) },
                 hasNotification = false

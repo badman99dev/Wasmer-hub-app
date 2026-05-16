@@ -28,6 +28,7 @@ fun HomeScreen(
     navController: NavController,
     onSearchClick: () -> Unit = {},
     onDownloadClick: () -> Unit = {},
+    onMenuClick: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -125,6 +126,7 @@ fun HomeScreen(
         }
 
         AppHeader(
+            onMenuClick         = onMenuClick,
             onSearchClick       = onSearchClick,
             onDownloadClick     = onDownloadClick,
             onNotificationClick = { navController.navigate(com.movie.app.best.ui.navigation.Screen.Notifications.route) },

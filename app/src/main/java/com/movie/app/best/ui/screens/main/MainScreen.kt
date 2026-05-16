@@ -9,12 +9,16 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -22,11 +26,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.movie.app.best.ui.components.CategoryDrawerContent
 import com.movie.app.best.ui.navigation.AppNavigation
 import com.movie.app.best.ui.navigation.BottomNavigationBar
 import com.movie.app.best.ui.navigation.Screen
 import com.movie.app.best.ui.screens.auth.AuthViewModel
 import com.movie.app.best.ui.screens.splash.SplashScreen
+import kotlinx.coroutines.launch
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -65,6 +71,8 @@ fun MainContent() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     var prevLoggedIn by remember { mutableStateOf(authState.isLoggedIn) }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(authState.isLoggedIn) {
         if (prevLoggedIn != authState.isLoggedIn) {
@@ -93,18 +101,43 @@ fun MainContent() {
         Screen.Profile.route
     )
 
-    Scaffold(
-        bottomBar = {
-            if (shouldShowBottomBar) {
-                BottomNavigationBar(
-                    navController = navController
-                )
-            }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = currentRoute in listOf(
+            Screen.Home.route,
+            Screen.Trending.route,
+            Screen.Library.route,
+            Screen.Downloads.route,
+            Screen.Profile.route,
+            Screen.Categories.route
+        ),
+        drawerContent = {
+            CategoryDrawerContent(
+                onCategoryClick = { slug, name ->
+                    scope.launch { drawerState.close() }
+                    navController.navigate(Screen.CategoryPage.createRoute(slug, name))
+                },
+                onAllCategoriesClick = {
+                    scope.launch { drawerState.close() }
+                    navController.navigate(Screen.Categories.route)
+                }
+            )
         }
-    ) { innerPadding ->
-        AppNavigation(
-            navController = navController,
-        )
+    ) {
+        Scaffold(
+            bottomBar = {
+                if (shouldShowBottomBar) {
+                    BottomNavigationBar(
+                        navController = navController
+                    )
+                }
+            }
+        ) { innerPadding ->
+            AppNavigation(
+                navController = navController,
+                onMenuClick = { scope.launch { drawerState.open() } }
+            )
+        }
     }
 }
 

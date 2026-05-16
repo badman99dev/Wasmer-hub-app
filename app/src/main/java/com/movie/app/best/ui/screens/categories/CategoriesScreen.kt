@@ -69,6 +69,7 @@ fun CategoriesScreen(
     onContentClick: (slug: String, isSeries: Boolean) -> Unit = { _, _ -> },
     onSearchClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
+    onMenuClick: () -> Unit = {},
     viewModel: CategoriesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -82,6 +83,7 @@ fun CategoriesScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             AppHeader(
+                onMenuClick = onMenuClick,
                 onSearchClick = onSearchClick,
                 onNotificationClick = onNotificationClick,
                 hasNotification = false

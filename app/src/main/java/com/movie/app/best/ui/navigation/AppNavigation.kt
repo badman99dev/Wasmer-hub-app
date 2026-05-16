@@ -71,6 +71,7 @@ sealed class Screen(val route: String) {
 @Composable
 fun AppNavigation(
     navController: NavHostController,
+    onMenuClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     fun navigateToContent(slug: String, isSeries: Boolean) {
@@ -162,7 +163,8 @@ fun AppNavigation(
                 onContentClick = { slug, isSeries -> navigateToContent(slug, isSeries) },
                 navController = navController,
                 onSearchClick = { navController.navigate(Screen.Search.route) },
-                onDownloadClick = { navController.navigate(Screen.Downloads.route) }
+                onDownloadClick = { navController.navigate(Screen.Downloads.route) },
+                onMenuClick = onMenuClick
             )
         }
 
@@ -209,7 +211,8 @@ fun AppNavigation(
             TVShowsScreen(
                 onContentClick = { slug, isSeries -> navigateToContent(slug, isSeries) },
                 navController = navController,
-                onSearchClick = { navController.navigate(Screen.Search.route) }
+                onSearchClick = { navController.navigate(Screen.Search.route) },
+                onMenuClick = onMenuClick
             )
         }
 
@@ -220,7 +223,8 @@ fun AppNavigation(
                 },
                 onContentClick = { slug, isSeries -> navigateToContent(slug, isSeries) },
                 onSearchClick = { navController.navigate(Screen.Search.route) },
-                onNotificationClick = { navController.navigate(Screen.Notifications.route) }
+                onNotificationClick = { navController.navigate(Screen.Notifications.route) },
+                onMenuClick = onMenuClick
             )
         }
 
@@ -271,7 +275,8 @@ fun AppNavigation(
             MoviesScreen(
                 onContentClick = { slug, isSeries -> navigateToContent(slug, isSeries) },
                 navController = navController,
-                onSearchClick = { navController.navigate(Screen.Search.route) }
+                onSearchClick = { navController.navigate(Screen.Search.route) },
+                onMenuClick = onMenuClick
             )
         }
 

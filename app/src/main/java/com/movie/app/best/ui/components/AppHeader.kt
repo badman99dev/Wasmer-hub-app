@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -32,6 +33,7 @@ import com.movie.app.best.ui.theme.WasmerRed
 
 @Composable
 fun AppHeader(
+    onMenuClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     onDownloadClick: () -> Unit = {},
@@ -52,23 +54,36 @@ fun AppHeader(
             .height(60.dp)
             .padding(horizontal = 16.dp)
     ) {
-        // ── Logo ─────────────────────────────────────────
-        Text(
-            text = buildAnnotatedString {
-                withStyle(SpanStyle(color = WasmerRed, fontWeight = FontWeight.Black)) {
-                    append("W")
-                }
-                withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.ExtraBold)) {
-                    append("ASMER ")
-                }
-                withStyle(SpanStyle(color = WasmerRed, fontWeight = FontWeight.Black)) {
-                    append("HUB")
-                }
-            },
-            fontSize = 20.sp,
-            letterSpacing = (-0.5).sp,
-            modifier = Modifier.align(Alignment.CenterStart)
-        )
+        // ── Hamburger + Logo ────────────────────────────────
+        Row(
+            modifier = Modifier.align(Alignment.CenterStart),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HeaderIconButton(onClick = onMenuClick) {
+                Icon(
+                    imageVector = Icons.Default.Menu,
+                    contentDescription = "Menu",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = WasmerRed, fontWeight = FontWeight.Black)) {
+                        append("W")
+                    }
+                    withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.ExtraBold)) {
+                        append("ASMER ")
+                    }
+                    withStyle(SpanStyle(color = WasmerRed, fontWeight = FontWeight.Black)) {
+                        append("HUB")
+                    }
+                },
+                fontSize = 20.sp,
+                letterSpacing = (-0.5).sp
+            )
+        }
 
         // ── Action Icons ─────────────────────────────────
         Row(
