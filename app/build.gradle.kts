@@ -43,11 +43,11 @@ android {
             )
         }
         debug {
-            buildConfigField("String", "BASE_URL", "\"https://wasmer-5v0k1b5sq-badals-projects-03fab3df.vercel.app/v1/\"")
+            buildConfigField("String", "BASE_URL", "\"https://wasmer-hub.vercel.app/v1/\"")
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
-            buildConfigField("String", "BASE_URL", "\"https://wasmer-5v0k1b5sq-badals-projects-03fab3df.vercel.app/v1/\"")
+            buildConfigField("String", "BASE_URL", "\"https://wasmer-hub.vercel.app/v1/\"")
         }
     }
     compileOptions {
