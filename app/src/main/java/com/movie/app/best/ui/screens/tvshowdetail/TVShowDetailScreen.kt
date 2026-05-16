@@ -78,7 +78,7 @@ import com.movie.app.best.data.model.WasmerComment
 import com.movie.app.best.data.model.WasmerDownloadLink
 import com.movie.app.best.data.model.WasmerEpisode
 import com.movie.app.best.data.model.WasmerSeason
-import com.movie.app.best.data.model.WasmerSeriesDetails
+import com.movie.app.best.data.model.WasmerMovieDetails
 import com.movie.app.best.ui.components.BlurOverlay
 import com.movie.app.best.ui.components.CelebrationOverlay
 import com.movie.app.best.ui.components.SkeletonDetailPage
@@ -184,7 +184,7 @@ fun TVShowDetailScreen(
 
 @Composable
 private fun TVShowDetailContent(
-    series: WasmerSeriesDetails,
+    series: WasmerMovieDetails,
     uiState: TVShowDetailUiState,
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String) -> Unit,

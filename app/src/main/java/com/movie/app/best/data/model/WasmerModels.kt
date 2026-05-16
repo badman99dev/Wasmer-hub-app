@@ -72,7 +72,11 @@ data class WasmerMovieDetails(
     @SerializedName("has_stream") val hasStream: Boolean,
     @SerializedName("stream_url") val streamUrl: String,
     @SerializedName("player_url") val playerUrl: String,
-    @SerializedName("content_moderation") val contentModeration: ContentModeration? = null
+    @SerializedName("content_moderation") val contentModeration: ContentModeration? = null,
+    val status: String = "",
+    @SerializedName("season_label") val seasonLabel: String = "",
+    @SerializedName("total_episodes") val totalEpisodes: Int = 0,
+    @SerializedName("series_group_id") val seriesGroupId: Int = 0
 ) : Parcelable
 
 @Parcelize
@@ -100,38 +104,6 @@ data class WasmerComment(
     @SerializedName("user_name") val userName: String,
     val comment: String,
     @SerializedName("created_at") val createdAt: String
-) : Parcelable
-
-@Parcelize
-data class WasmerSeriesDetails(
-    val id: Int,
-    val slug: String,
-    val title: String,
-    @SerializedName("original_title") val originalTitle: String,
-    @SerializedName("poster_url") val posterUrl: String,
-    @SerializedName("backdrop_url") val backdropUrl: String,
-    @SerializedName("quality_label") val qualityLabel: String,
-    @SerializedName("release_year") val releaseYear: String,
-    val rating: String,
-    val runtime: String,
-    val director: String,
-    val cast: String,
-    @SerializedName("audio_label") val audioLabel: String,
-    val language: String,
-    val description: String,
-    val country: String,
-    @SerializedName("youtube_id") val youtubeId: String,
-    @SerializedName("imdb_id") val imdbId: String,
-    val views: Int,
-    @SerializedName("is_series") val isSeries: Boolean,
-    val status: String,
-    @SerializedName("season_label") val seasonLabel: String,
-    @SerializedName("total_episodes") val totalEpisodes: Int,
-    @SerializedName("series_group_id") val seriesGroupId: Int,
-    @SerializedName("has_stream") val hasStream: Boolean,
-    @SerializedName("stream_url") val streamUrl: String,
-    @SerializedName("player_url") val playerUrl: String,
-    @SerializedName("content_moderation") val contentModeration: ContentModeration? = null
 ) : Parcelable
 
 @Parcelize
@@ -247,15 +219,17 @@ data class WasmerSliderResult(
     val movies: List<WasmerMovie>
 )
 
-data class WasmerMovieDetailResponse(
+data class WasmerContentDetailResponse(
+    @SerializedName("content_type") val contentType: String,
     val movie: WasmerMovieDetails,
-    val categories: List<WasmerCategorySimple>,
-    val download_links: List<WasmerDownloadLink>,
+    val genres: List<String>,
+    @SerializedName("download_links") val downloadLinks: List<WasmerDownloadLink>,
     val comments: List<WasmerComment>,
     val screenshots: List<String>,
-    /** Optional similar / related movies returned by the API */
-    @SerializedName("similar_movies")
-    val similar_movies: List<WasmerMovie> = emptyList()
+    @SerializedName("episodes_by_season") val episodesBySeason: Map<String, List<WasmerEpisode>> = emptyMap(),
+    @SerializedName("links_by_episode") val linksByEpisode: Map<String, List<WasmerDownloadLink>> = emptyMap(),
+    @SerializedName("links_no_episode") val linksNoEpisode: List<WasmerDownloadLink> = emptyList(),
+    @SerializedName("more_seasons") val moreSeasons: List<WasmerSeason> = emptyList()
 )
 
 @Parcelize
@@ -265,13 +239,3 @@ data class WasmerCategorySimple(
     val slug: String
 ) : Parcelable
 
-data class WasmerSeriesDetailResponse(
-    val movie: WasmerSeriesDetails,
-    val categories: List<WasmerCategorySimple>,
-    val episodes_by_season: Map<String, List<WasmerEpisode>>,
-    val links_by_episode: Map<String, List<WasmerDownloadLink>>,
-    val links_no_episode: List<WasmerDownloadLink>,
-    val comments: List<WasmerComment>,
-    val screenshots: List<String>,
-    val more_seasons: List<WasmerSeason>
-)

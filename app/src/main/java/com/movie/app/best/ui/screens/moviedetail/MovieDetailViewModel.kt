@@ -7,9 +7,9 @@ import com.movie.app.best.data.model.BookmarkItem
 import com.movie.app.best.data.model.FirebaseHistoryItem
 import com.movie.app.best.data.model.LikeItem
 import com.movie.app.best.data.model.Resource
+import com.movie.app.best.data.model.WasmerContentDetailResponse
 import com.movie.app.best.data.model.WasmerDownloadLink
 import com.movie.app.best.data.model.WasmerMovieDetails
-import com.movie.app.best.data.model.WasmerMovieDetailResponse
 import com.movie.app.best.data.repository.DownloadRepository
 import com.movie.app.best.data.repository.FirebaseRepository
 import com.movie.app.best.data.repository.MovieRepository
@@ -45,7 +45,7 @@ class MovieDetailViewModel @Inject constructor(
 
     fun loadMovieDetails() {
         viewModelScope.launch {
-            repository.getMovieDetails(slug).collect { result ->
+            repository.getContentDetails(slug).collect { result ->
                 when (result) {
                     is Resource.Loading -> {
                         _uiState.update { it.copy(isLoading = true) }
@@ -55,11 +55,11 @@ class MovieDetailViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 movie = detailData?.movie,
-                                downloadLinks = detailData?.download_links ?: emptyList(),
+                                downloadLinks = detailData?.downloadLinks ?: emptyList(),
                                 comments = detailData?.comments ?: emptyList(),
                                 screenshots = detailData?.screenshots ?: emptyList(),
-                                categories = detailData?.categories ?: emptyList(),
-                                allMovies = detailData?.similar_movies ?: emptyList(),
+                                categories = emptyList(),
+                                allMovies = emptyList(),
                                 isLoading = false,
                                 error = null
                             )

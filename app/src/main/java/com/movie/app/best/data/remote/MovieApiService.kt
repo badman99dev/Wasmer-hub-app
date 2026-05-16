@@ -25,11 +25,8 @@ interface MovieApiService {
     @GET("slider")
     suspend fun getSlider(): WasmerApiResponse<WasmerSliderResult>
 
-    @GET("movie/{slug}")
-    suspend fun getMovieDetails(@Path("slug") slug: String): WasmerApiResponse<com.movie.app.best.data.model.WasmerMovieDetailResponse>
-
-    @GET("series/{slug}")
-    suspend fun getSeriesDetails(@Path("slug") slug: String): WasmerApiResponse<com.movie.app.best.data.model.WasmerSeriesDetailResponse>
+    @GET("content/{slug}")
+    suspend fun getContentDetails(@Path("slug") slug: String): WasmerApiResponse<com.movie.app.best.data.model.WasmerContentDetailResponse>
 
     @GET("search")
     suspend fun searchMovies(

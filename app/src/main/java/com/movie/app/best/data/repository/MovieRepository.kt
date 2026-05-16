@@ -3,10 +3,9 @@ package com.movie.app.best.data.repository
 import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.model.WasmerApiResponse
 import com.movie.app.best.data.model.WasmerCategory
+import com.movie.app.best.data.model.WasmerContentDetailResponse
 import com.movie.app.best.data.model.WasmerDownloadResult
 import com.movie.app.best.data.model.WasmerMovie
-import com.movie.app.best.data.model.WasmerMovieDetailResponse
-import com.movie.app.best.data.model.WasmerSeriesDetailResponse
 import com.movie.app.best.data.model.WasmerMovieDetails
 import com.movie.app.best.data.model.WasmerNotification
 import com.movie.app.best.data.model.WasmerCategoryOffsetResult
@@ -51,14 +50,9 @@ class MovieRepository @Inject constructor(
         emit(safeApiCall { apiService.getSlider() })
     }
 
-    fun getMovieDetails(slug: String): Flow<Resource<WasmerMovieDetailResponse>> = flow {
+    fun getContentDetails(slug: String): Flow<Resource<WasmerContentDetailResponse>> = flow {
         emit(Resource.Loading())
-        emit(safeApiCall { apiService.getMovieDetails(slug) })
-    }
-
-    fun getSeriesDetails(slug: String): Flow<Resource<WasmerSeriesDetailResponse>> = flow {
-        emit(Resource.Loading())
-        emit(safeApiCall { apiService.getSeriesDetails(slug) })
+        emit(safeApiCall { apiService.getContentDetails(slug) })
     }
 
     fun searchMovies(query: String, page: Int = 1): Flow<Resource<WasmerSearchResult>> = flow {

@@ -10,9 +10,8 @@ import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.model.WasmerComment
 import com.movie.app.best.data.model.WasmerDownloadLink
 import com.movie.app.best.data.model.WasmerEpisode
+import com.movie.app.best.data.model.WasmerMovieDetails
 import com.movie.app.best.data.model.WasmerSeason
-import com.movie.app.best.data.model.WasmerSeriesDetailResponse
-import com.movie.app.best.data.model.WasmerSeriesDetails
 import com.movie.app.best.data.repository.DownloadRepository
 import com.movie.app.best.data.repository.FirebaseRepository
 import com.movie.app.best.data.repository.MovieRepository
@@ -46,7 +45,7 @@ class TVShowDetailViewModel @Inject constructor(
 
     fun loadSeriesDetails() {
         viewModelScope.launch {
-            repository.getSeriesDetails(slug).collect { result ->
+            repository.getContentDetails(slug).collect { result ->
                 when (result) {
                     is Resource.Loading -> {
                         _uiState.update { it.copy(isLoading = true) }
@@ -57,12 +56,12 @@ class TVShowDetailViewModel @Inject constructor(
                             _uiState.update {
                                 it.copy(
                                     series = data.movie,
-                                    episodesBySeason = data.episodes_by_season.mapKeys { it.key.toIntOrNull() ?: 0 },
-                                    linksByEpisode = data.links_by_episode.mapKeys { it.key.toIntOrNull() ?: 0 },
+                                    episodesBySeason = data.episodesBySeason.mapKeys { it.key.toIntOrNull() ?: 0 },
+                                    linksByEpisode = data.linksByEpisode.mapKeys { it.key.toIntOrNull() ?: 0 },
                                     comments = data.comments,
                                     screenshots = data.screenshots,
-                                    moreSeasons = data.more_seasons,
-                                    downloadLinks = data.links_no_episode,
+                                    moreSeasons = data.moreSeasons,
+                                    downloadLinks = data.linksNoEpisode,
                                     isLoading = false,
                                     error = null
                                 )
@@ -301,7 +300,7 @@ class TVShowDetailViewModel @Inject constructor(
 }
 
 data class TVShowDetailUiState(
-    val series: WasmerSeriesDetails? = null,
+    val series: WasmerMovieDetails? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
 
