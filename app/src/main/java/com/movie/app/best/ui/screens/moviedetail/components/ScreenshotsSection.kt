@@ -14,12 +14,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.movie.app.best.ui.components.BlurOverlay
+import com.movie.app.best.ui.components.BlurredContent
 
 @Composable
 fun ScreenshotsSection(
     screenshots: List<String>,
     shouldBlur: Boolean = false,
+    moderationTypes: List<String> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -36,7 +37,14 @@ fun ScreenshotsSection(
                     shape  = RoundedCornerShape(10.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
                 ) {
-                    Box {
+                    BlurredContent(
+                        shouldBlur = shouldBlur,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 130.dp),
+                        moderationTypes = moderationTypes,
+                        enableDoubleTap = false
+                    ) {
                         AsyncImage(
                             model              = url,
                             contentDescription = null,
@@ -44,13 +52,6 @@ fun ScreenshotsSection(
                             modifier           = Modifier
                                 .fillMaxWidth()
                                 .heightIn(max = 130.dp)
-                        )
-                        BlurOverlay(
-                            shouldBlur = shouldBlur,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 130.dp)
-                                .align(Alignment.Center)
                         )
                     }
                 }

@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerMovie
-import com.movie.app.best.ui.components.BlurOverlay
+import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.theme.WasmerGreen
 import com.movie.app.best.ui.theme.WasmerRed
 
@@ -104,13 +104,19 @@ fun MoviePosterCard(
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color(0xFF1A1A1A))
         ) {
-            // Poster image
-            AsyncImage(
-                model = movie.posterUrl,
-                contentDescription = movie.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            BlurredContent(
+                shouldBlur = movie.shouldBlurPoster,
+                modifier = Modifier.fillMaxSize(),
+                moderationTypes = movie.flaggedModerationTypes,
+                enableDoubleTap = true
+            ) {
+                AsyncImage(
+                    model = movie.posterUrl,
+                    contentDescription = movie.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
             // Gradient overlay at bottom for title
             Box(
@@ -148,11 +154,6 @@ fun MoviePosterCard(
                     Text("S", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
             }
-
-            BlurOverlay(
-                shouldBlur = movie.shouldBlurPoster,
-                modifier = Modifier.fillMaxSize()
-            )
         }
 
         Spacer(modifier = Modifier.height(5.dp))

@@ -56,6 +56,7 @@ import androidx.navigation.NavController
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerMovie
+import com.movie.app.best.ui.components.BlurredContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -177,14 +178,21 @@ fun TrendingMovieItem(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
         Box {
-            AsyncImage(
-                model = movie.posterUrl,
-                contentDescription = movie.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(2 / 3f)
-            )
+            BlurredContent(
+                shouldBlur = movie.shouldBlurPoster,
+                modifier = Modifier.fillMaxSize(),
+                moderationTypes = movie.flaggedModerationTypes,
+                enableDoubleTap = true
+            ) {
+                AsyncImage(
+                    model = movie.posterUrl,
+                    contentDescription = movie.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(2 / 3f)
+                )
+            }
 
             if (movie.qualityLabel.isNotBlank()) {
                 val bgColor = when {
@@ -229,11 +237,6 @@ fun TrendingMovieItem(
                             startY = 60f
                         )
                     )
-            )
-
-            com.movie.app.best.ui.components.BlurOverlay(
-                shouldBlur = movie.shouldBlurPoster,
-                modifier = Modifier.fillMaxSize()
             )
 
             Column(

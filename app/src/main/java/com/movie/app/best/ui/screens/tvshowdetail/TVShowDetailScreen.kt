@@ -76,7 +76,7 @@ import com.movie.app.best.data.model.WasmerDownloadLink
 import com.movie.app.best.data.model.WasmerEpisode
 import com.movie.app.best.data.model.WasmerSeason
 import com.movie.app.best.data.model.WasmerMovieDetails
-import com.movie.app.best.ui.components.BlurOverlay
+import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.components.CelebrationOverlay
 import com.movie.app.best.ui.components.SkeletonDetailPage
 import com.movie.app.best.ui.components.ErrorView
@@ -205,12 +205,19 @@ private fun TVShowDetailContent(
                 .fillMaxWidth()
                 .height(550.dp)
         ) {
-            AsyncImage(
-                model = series.backdropUrl.ifEmpty { series.posterUrl },
-                contentDescription = series.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            BlurredContent(
+                shouldBlur = shouldBlurPoster,
+                modifier = Modifier.fillMaxSize(),
+                moderationTypes = series.contentModeration?.getFlaggedTypes() ?: emptyList(),
+                enableDoubleTap = true
+            ) {
+                AsyncImage(
+                    model = series.backdropUrl.ifEmpty { series.posterUrl },
+                    contentDescription = series.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
             Box(
                 modifier = Modifier
@@ -226,12 +233,6 @@ private fun TVShowDetailContent(
                             endY = 1000f
                         )
                     )
-            )
-
-            BlurOverlay(
-                shouldBlur = shouldBlurPoster,
-                modifier = Modifier.fillMaxSize(),
-                blurRadius = 25
             )
 
             IconButton(
@@ -534,7 +535,14 @@ private fun TVShowDetailContent(
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.width(240.dp)
                     ) {
-                        Box {
+                        BlurredContent(
+                            shouldBlur = shouldBlurScreenshots,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f),
+                            moderationTypes = series.contentModeration?.getFlaggedTypes() ?: emptyList(),
+                            enableDoubleTap = false
+                        ) {
                             AsyncImage(
                                 model = url,
                                 contentDescription = "Screenshot",
@@ -542,13 +550,6 @@ private fun TVShowDetailContent(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .aspectRatio(16f / 9f)
-                            )
-                            BlurOverlay(
-                                shouldBlur = shouldBlurScreenshots,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(16f / 9f)
-                                    .align(Alignment.Center)
                             )
                         }
                     }
