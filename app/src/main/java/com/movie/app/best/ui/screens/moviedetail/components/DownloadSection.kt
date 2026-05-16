@@ -31,8 +31,7 @@ fun DownloadSection(
     isDownloadLoading: Boolean,
     downloadStarted: Boolean,
     downloadError: String?,
-    movieSlug: String,
-    onStartDownload: (slug: String, linkId: Int) -> Unit,
+    onStartDownload: (linkUrl: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -52,7 +51,7 @@ fun DownloadSection(
                     DownloadLinkCard(
                         link               = link,
                         isLoading          = isDownloadLoading,
-                        onDownload         = { onStartDownload(movieSlug, link.id) }
+                        onDownload         = { onStartDownload(link.linkUrl) }
                     )
                 }
             }

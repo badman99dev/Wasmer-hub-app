@@ -112,40 +112,10 @@ class MovieDetailViewModel @Inject constructor(
         }
     }
 
-    fun postReport(issue: String, details: String) {
-        val movieId = _uiState.value.movie?.id ?: return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isReportPosting = true) }
-            repository.postReport(movieId, issue, details).collect { result ->
-                when (result) {
-                    is Resource.Loading -> {}
-                    is Resource.Success -> {
-                        _uiState.update {
-                            it.copy(
-                                isReportPosting = false,
-                                reportPosted = true,
-                                reportError = null
-                            )
-                        }
-                    }
-                    is Resource.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                isReportPosting = false,
-                                reportPosted = false,
-                                reportError = result.error
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     fun requestStream() {
-        val movieId = _uiState.value.movie?.id ?: return
+        val slug = _uiState.value.movie?.slug ?: return
         viewModelScope.launch {
-            repository.postStreamRequest(movieId).collect { result ->
+            repository.postStreamRequest(slug).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
@@ -157,25 +127,11 @@ class MovieDetailViewModel @Inject constructor(
         }
     }
 
-    fun requestMovie(imdbId: String, title: String, message: String) {
-        viewModelScope.launch {
-            repository.postMovieRequest(imdbId, title, message).collect { result ->
-                when (result) {
-                    is Resource.Loading -> {}
-                    is Resource.Success -> {
-                        _uiState.update { it.copy(movieRequested = true) }
-                    }
-                    is Resource.Error -> {}
-                }
-            }
-        }
-    }
-
-    fun startDownload(slug: String, linkId: Int) {
+    fun startDownload(linkUrl: String) {
         val title = _uiState.value.movie?.title ?: "Movie"
         viewModelScope.launch {
             _uiState.update { it.copy(isDownloadLoading = true, downloadError = null, downloadUrl = "") }
-            downloadRepository.resolveDownloadUrl(slug, linkId).collect { result ->
+            downloadRepository.resolveDownloadUrl(linkUrl).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
@@ -216,10 +172,6 @@ class MovieDetailViewModel @Inject constructor(
 
     fun resetCommentState() {
         _uiState.update { it.copy(commentPosted = false, commentError = null) }
-    }
-
-    fun resetReportState() {
-        _uiState.update { it.copy(reportPosted = false, reportError = null) }
     }
 
     fun checkBookmarkAndLikeStatus() {
@@ -323,7 +275,7 @@ class MovieDetailViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         showReportWaiting = false,
-                        reportError = e.message
+                        moderationError = e.message
                     )
                 }
             }
@@ -354,12 +306,7 @@ data class MovieDetailUiState(
     val commentPosted: Boolean = false,
     val commentError: String? = null,
 
-    val isReportPosting: Boolean = false,
-    val reportPosted: Boolean = false,
-    val reportError: String? = null,
-
     val streamRequested: Boolean = false,
-    val movieRequested: Boolean = false,
 
     val downloadUrl: String = "",
     val isDownloadLoading: Boolean = false,

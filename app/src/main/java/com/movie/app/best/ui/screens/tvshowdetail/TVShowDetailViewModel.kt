@@ -104,32 +104,10 @@ class TVShowDetailViewModel @Inject constructor(
         }
     }
 
-    fun postReport(issue: String, details: String) {
-        val seriesId = _uiState.value.series?.id ?: return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isReportPosting = true) }
-            repository.postReport(seriesId, issue, details).collect { result ->
-                when (result) {
-                    is Resource.Loading -> {}
-                    is Resource.Success -> {
-                        _uiState.update {
-                            it.copy(isReportPosting = false, reportPosted = true, reportError = null)
-                        }
-                    }
-                    is Resource.Error -> {
-                        _uiState.update {
-                            it.copy(isReportPosting = false, reportPosted = false, reportError = result.error)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     fun requestStream() {
-        val seriesId = _uiState.value.series?.id ?: return
+        val slug = _uiState.value.series?.slug ?: return
         viewModelScope.launch {
-            repository.postStreamRequest(seriesId).collect { result ->
+            repository.postStreamRequest(slug).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
@@ -141,11 +119,11 @@ class TVShowDetailViewModel @Inject constructor(
         }
     }
 
-    fun startDownload(slug: String, linkId: Int) {
+    fun startDownload(linkUrl: String) {
         val title = _uiState.value.series?.title ?: "Series"
         viewModelScope.launch {
             _uiState.update { it.copy(isDownloadLoading = true, downloadError = null, downloadUrl = "") }
-            downloadRepository.resolveDownloadUrl(slug, linkId).collect { result ->
+            downloadRepository.resolveDownloadUrl(linkUrl).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
@@ -314,10 +292,6 @@ data class TVShowDetailUiState(
     val isCommentPosting: Boolean = false,
     val commentPosted: Boolean = false,
     val commentError: String? = null,
-
-    val isReportPosting: Boolean = false,
-    val reportPosted: Boolean = false,
-    val reportError: String? = null,
 
     val streamRequested: Boolean = false,
 

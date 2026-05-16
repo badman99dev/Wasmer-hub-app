@@ -41,10 +41,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -123,11 +120,9 @@ fun TVShowDetailScreen(
                     onBackClick = onBackClick,
                     onPlayClick = onPlayClick,
                     onPostComment = viewModel::postComment,
-                    onPostReport = viewModel::postReport,
                     onRequestStream = viewModel::requestStream,
                     onStartDownload = viewModel::startDownload,
                     onResetCommentState = viewModel::resetCommentState,
-                    onResetReportState = viewModel::resetReportState,
                     onToggleBookmark = viewModel::toggleBookmark,
                     onToggleLike = viewModel::toggleLike,
                     onReportClick = viewModel::openReportDrawer
@@ -189,11 +184,9 @@ private fun TVShowDetailContent(
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String) -> Unit,
     onPostComment: (name: String, msg: String) -> Unit,
-    onPostReport: (issue: String, details: String) -> Unit,
     onRequestStream: () -> Unit,
-    onStartDownload: (slug: String, linkId: Int) -> Unit,
+    onStartDownload: (linkUrl: String) -> Unit,
     onResetCommentState: () -> Unit,
-    onResetReportState: () -> Unit,
     onToggleBookmark: () -> Unit,
     onToggleLike: () -> Unit,
     onReportClick: () -> Unit = {}
@@ -591,8 +584,7 @@ private fun TVShowDetailContent(
         Spacer(modifier = Modifier.height(8.dp))
         TVDownloadSection(
             uiState = uiState,
-            onStartDownload = onStartDownload,
-            seriesSlug = series.slug
+            onStartDownload = onStartDownload
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -602,15 +594,6 @@ private fun TVShowDetailContent(
             error = uiState.commentError,
             onPost = onPostComment,
             onReset = onResetCommentState
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-        TVReportSection(
-            isPosting = uiState.isReportPosting,
-            posted = uiState.reportPosted,
-            error = uiState.reportError,
-            onPost = onPostReport,
-            onReset = onResetReportState
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -852,8 +835,7 @@ private fun MoreSeasonCard(
 @Composable
 private fun TVDownloadSection(
     uiState: TVShowDetailUiState,
-    onStartDownload: (slug: String, linkId: Int) -> Unit,
-    seriesSlug: String
+    onStartDownload: (linkUrl: String) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -1002,122 +984,4 @@ private fun TVCommentFormSection(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TVReportSection(
-    isPosting: Boolean,
-    posted: Boolean,
-    error: String?,
-    onPost: (issue: String, details: String) -> Unit,
-    onReset: () -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    var selectedIssue by remember { mutableStateOf("") }
-    var details by remember { mutableStateOf("") }
-
-    val issueOptions = listOf("Broken Link", "Wrong Info", "Duplicate", "Spam", "Other")
-
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        SectionTitle("Report Issue")
-
-        if (posted) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1B5E20))
-            ) {
-                Text(
-                    text = "Report submitted successfully!",
-                    color = Color.White,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-            LaunchedEffect(posted) {
-                if (posted) {
-                    delay(2000)
-                    onReset()
-                }
-            }
-        }
-
-        if (error != null) {
-            Text(
-                text = error,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-        }
-
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
-        ) {
-            OutlinedTextField(
-                value = selectedIssue,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Issue Type") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-                colors = TextFieldDefaults.colors(
-                    unfocusedContainerColor = Color.DarkGray.copy(alpha = 0.3f),
-                    focusedContainerColor = Color.DarkGray.copy(alpha = 0.3f)
-                )
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                issueOptions.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option) },
-                        onClick = {
-                            selectedIssue = option
-                            expanded = false
-                        }
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = details,
-            onValueChange = { details = it },
-            label = { Text("Details (optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 2,
-            maxLines = 4,
-            colors = TextFieldDefaults.colors(
-                unfocusedContainerColor = Color.DarkGray.copy(alpha = 0.3f),
-                focusedContainerColor = Color.DarkGray.copy(alpha = 0.3f)
-            )
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Button(
-            onClick = {
-                if (selectedIssue.isNotBlank()) {
-                    onPost(selectedIssue, details)
-                }
-            },
-            enabled = !isPosting && selectedIssue.isNotBlank(),
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5722))
-        ) {
-            if (isPosting) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
-            } else {
-                Icon(imageVector = Icons.Default.Flag, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Submit Report")
-            }
-        }
-    }
 }

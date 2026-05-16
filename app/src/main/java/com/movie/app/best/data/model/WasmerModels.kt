@@ -138,23 +138,6 @@ data class WasmerNotification(
     @SerializedName("is_active") val isActive: Boolean
 ) : Parcelable
 
-@Parcelize
-data class WasmerSettings(
-    @SerializedName("site_name") val siteName: String,
-    @SerializedName("maintenance_mode") val maintenanceMode: String,
-    @SerializedName("slider_mode") val sliderMode: String,
-    @SerializedName("slider_limit") val sliderLimit: String,
-    @SerializedName("enable_slider") val enableSlider: String,
-    @SerializedName("movie_sort_order") val movieSortOrder: String,
-    @SerializedName("stream_url_source") val streamUrlSource: String,
-    @SerializedName("ad_header") val adHeader: String,
-    @SerializedName("ad_footer") val adFooter: String,
-    @SerializedName("telegram") val telegram: String,
-    @SerializedName("discord") val discord: String,
-    @SerializedName("instagram") val instagram: String,
-    @SerializedName("footer_text") val footerText: String
-) : Parcelable
-
 data class WasmerApiResponse<T>(
     val status: String,
     val data: T?,
@@ -183,35 +166,6 @@ data class WasmerCategoryOffsetResult(
     val offset: Int,
     val limit: Int
 )
-
-data class WasmerPageResult(
-    val movies: List<WasmerMovie>,
-    val total: Int,
-    val page: Int,
-    @SerializedName("total_pages") val totalPages: Int,
-    @SerializedName("sort_order") val sortOrder: String,
-    val category: WasmerCategory?,
-    val search: String?
-)
-
-data class WasmerDownloadResult(
-    val movie: WasmerDownloadMovieInfo,
-    val link: WasmerDownloadLink,
-    @SerializedName("target_url") val targetUrl: String,
-    @SerializedName("target_url_encoded") val targetUrlEncoded: String,
-    @SerializedName("bypass_api") val bypassApi: String,
-    val alternatives: List<WasmerDownloadLink>,
-    val redirect: Boolean,
-    @SerializedName("redirect_url") val redirectUrl: String?
-)
-
-@Parcelize
-data class WasmerDownloadMovieInfo(
-    val id: Int,
-    val title: String,
-    @SerializedName("poster_url") val posterUrl: String,
-    @SerializedName("release_year") val releaseYear: String
-) : Parcelable
 
 data class WasmerSliderResult(
     val mode: String,

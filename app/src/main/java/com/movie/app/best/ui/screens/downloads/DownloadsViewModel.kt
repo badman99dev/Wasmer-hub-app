@@ -82,10 +82,10 @@ class DownloadsViewModel @Inject constructor(
         }
     }
 
-    fun resolveAndDownload(slug: String, linkId: Int, title: String) {
+    fun resolveAndDownload(linkUrl: String, title: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isResolving = true, resolveError = null, resolveSuccess = false) }
-            repository.resolveDownloadUrl(slug, linkId).collect { result ->
+            repository.resolveDownloadUrl(linkUrl).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {

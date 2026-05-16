@@ -10,11 +10,9 @@ import com.movie.app.best.data.debug.NetworkLogger
 import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.remote.BypassApiService
 import com.movie.app.best.data.remote.BypassRequest
-import com.movie.app.best.data.remote.MovieApiService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -47,7 +45,6 @@ data class DownloadProgress(
 
 @Singleton
 class DownloadRepository @Inject constructor(
-    private val apiService: MovieApiService,
     private val bypassApiService: BypassApiService,
     @ApplicationContext private val context: Context
 ) {
@@ -57,23 +54,11 @@ class DownloadRepository @Inject constructor(
 
     private val speedReadings = mutableMapOf<Long, MutableList<Pair<Long, Long>>>()
 
-    fun resolveDownloadUrl(slug: String, linkId: Int): Flow<Resource<String>> = flow {
+    fun resolveDownloadUrl(linkUrl: String): Flow<Resource<String>> = flow {
         emit(Resource.Loading())
         try {
-            NetworkLogger.logAction("RESOLVE", "slug=$slug linkId=$linkId")
-            val downloadResponse = apiService.getDownloadInfo(slug, linkId)
-            if (downloadResponse.status != "success" || downloadResponse.data == null) {
-                emit(Resource.Error(downloadResponse.message ?: "Failed to get download info"))
-                return@flow
-            }
-            val downloadData = downloadResponse.data
-            val targetUrl = downloadData.targetUrl
-            NetworkLogger.logAction("RESOLVE", "targetUrl=$targetUrl")
-            if (targetUrl.isEmpty()) {
-                emit(Resource.Error("No target URL found"))
-                return@flow
-            }
-            val bypassResponse = bypassApiService.bypassUrl(BypassRequest(targetUrl))
+            NetworkLogger.logAction("RESOLVE", "linkUrl=$linkUrl")
+            val bypassResponse = bypassApiService.bypassUrl(BypassRequest(linkUrl))
             if (!bypassResponse.success || bypassResponse.data.isEmpty()) {
                 emit(Resource.Error("Bypass API failed - no direct link returned"))
                 return@flow
@@ -111,7 +96,7 @@ class DownloadRepository @Inject constructor(
             setAllowedOverMetered(true)
             setAllowedOverRoaming(true)
             addRequestHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36")
-            addRequestHeader("Referer", "https://wasmer-jhns970ko-badals-projects-03fab3df.vercel.app/")
+            addRequestHeader("Referer", "https://wasmer-hub.vercel.app/")
             addRequestHeader("Accept", "*/*")
         }
 

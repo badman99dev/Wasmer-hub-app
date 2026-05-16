@@ -2,11 +2,7 @@ package com.movie.app.best.data.repository
 
 import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.model.WasmerApiResponse
-import com.movie.app.best.data.model.WasmerCategory
 import com.movie.app.best.data.model.WasmerContentDetailResponse
-import com.movie.app.best.data.model.WasmerDownloadResult
-import com.movie.app.best.data.model.WasmerMovie
-import com.movie.app.best.data.model.WasmerMovieDetails
 import com.movie.app.best.data.model.WasmerNotification
 import com.movie.app.best.data.model.WasmerCategoryOffsetResult
 import com.movie.app.best.data.model.WasmerOffsetResult
@@ -33,11 +29,6 @@ class MovieRepository @Inject constructor(
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Network error")
         }
-    }
-
-    fun getSettings(): Flow<Resource<Map<String, String>>> = flow {
-        emit(Resource.Loading())
-        emit(safeApiCall { apiService.getSettings() })
     }
 
     fun getNotification(): Flow<Resource<WasmerNotification?>> = flow {
@@ -75,24 +66,14 @@ class MovieRepository @Inject constructor(
         emit(safeApiCall { apiService.getCategoryMovies(slug, offset, limit) })
     }
 
-    fun postComment(movieId: Int, name: String, msg: String): Flow<Resource<Map<String, String>>> = flow {
+    fun postComment(authHeader: String, movieId: Int, msg: String): Flow<Resource<Map<String, String>>> = flow {
         emit(Resource.Loading())
-        emit(safeApiCall { apiService.postComment(movieId, name, msg) })
+        emit(safeApiCall { apiService.postComment(authHeader, movieId, msg) })
     }
 
-    fun postReport(movieId: Int, issue: String, details: String): Flow<Resource<Any?>> = flow {
+    fun postStreamRequest(slug: String): Flow<Resource<Any?>> = flow {
         emit(Resource.Loading())
-        emit(safeApiCall { apiService.postReport(movieId, issue, details) })
-    }
-
-    fun postStreamRequest(movieId: Int): Flow<Resource<Any?>> = flow {
-        emit(Resource.Loading())
-        emit(safeApiCall { apiService.postStreamRequest(movieId) })
-    }
-
-    fun postMovieRequest(imdbId: String, title: String, message: String): Flow<Resource<Any?>> = flow {
-        emit(Resource.Loading())
-        emit(safeApiCall { apiService.postMovieRequest(imdbId, title, message) })
+        emit(safeApiCall { apiService.postStreamRequest(slug) })
     }
 
     suspend fun submitContentModeration(authHeader: String, movieId: Int, reportType: String, reason: String): com.movie.app.best.data.remote.ContentModerationApiResponse {

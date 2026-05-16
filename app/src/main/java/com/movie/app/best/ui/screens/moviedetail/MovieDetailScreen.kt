@@ -33,13 +33,12 @@ fun MovieDetailScreen(
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String) -> Unit,
     onSeriesClick: (slug: String) -> Unit,
-    onDownloadClick: (slug: String, linkId: Int) -> Unit = { _, _ -> },
+    onDownloadClick: (linkUrl: String) -> Unit = { },
     viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // ── Permission handling ────────────────────────────────
     var hasStoragePermission by remember {
         mutableStateOf(
             if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q)
@@ -56,32 +55,32 @@ fun MovieDetailScreen(
             else true
         )
     }
-    var pendingDownload by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    var pendingDownload by remember { mutableStateOf<String?>(null) }
 
     val storageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasStoragePermission = granted
-        if (granted) pendingDownload?.let { viewModel.startDownload(it.first, it.second); pendingDownload = null }
+        if (granted) pendingDownload?.let { viewModel.startDownload(it); pendingDownload = null }
     }
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasNotifPermission = granted
-        pendingDownload?.let { viewModel.startDownload(it.first, it.second); pendingDownload = null }
+        pendingDownload?.let { viewModel.startDownload(it); pendingDownload = null }
     }
 
-    fun requestDownload(slug: String, linkId: Int) {
+    fun requestDownload(linkUrl: String) {
         when {
             Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q && !hasStoragePermission -> {
-                pendingDownload = slug to linkId
+                pendingDownload = linkUrl
                 storageLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
             }
             Build.VERSION.SDK_INT >= 33 && !hasNotifPermission -> {
-                pendingDownload = slug to linkId
+                pendingDownload = linkUrl
                 notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-            else -> viewModel.startDownload(slug, linkId)
+            else -> viewModel.startDownload(linkUrl)
         }
     }
 
@@ -106,12 +105,10 @@ fun MovieDetailScreen(
                     uiState            = uiState,
                     onBackClick        = onBackClick,
                     onPlayClick        = onPlayClick,
-                    onStartDownload    = { s, id -> requestDownload(s, id) },
+                    onStartDownload    = { linkUrl -> requestDownload(linkUrl) },
                     onPostComment      = viewModel::postComment,
-                    onPostReport       = viewModel::postReport,
                     onRequestStream    = viewModel::requestStream,
                     onResetCommentState = viewModel::resetCommentState,
-                    onResetReportState  = viewModel::resetReportState,
                     onSeriesClick      = onSeriesClick,
                     onToggleBookmark   = viewModel::toggleBookmark,
                     onToggleLike       = viewModel::toggleLike,
@@ -176,12 +173,10 @@ private fun MovieDetailContent(
     uiState: MovieDetailUiState,
     onBackClick: () -> Unit,
     onPlayClick: (String, String, String, String, String) -> Unit,
-    onStartDownload: (String, Int) -> Unit,
+    onStartDownload: (String) -> Unit,
     onPostComment: (String, String) -> Unit,
-    onPostReport: (String, String) -> Unit,
     onRequestStream: () -> Unit,
     onResetCommentState: () -> Unit,
-    onResetReportState: () -> Unit,
     onSeriesClick: (String) -> Unit,
     onToggleBookmark: () -> Unit,
     onToggleLike: () -> Unit,
@@ -274,7 +269,6 @@ private fun MovieDetailContent(
                 isDownloadLoading = uiState.isDownloadLoading,
                 downloadStarted   = uiState.downloadStarted,
                 downloadError     = uiState.downloadError,
-                movieSlug         = movie.slug,
                 onStartDownload   = onStartDownload
             )
 
@@ -296,16 +290,6 @@ private fun MovieDetailContent(
                 error             = uiState.commentError,
                 onPost            = onPostComment,
                 onReset           = onResetCommentState
-            )
-
-            // 12. Report
-            Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp))
-            ReportSection(
-                isPosting = uiState.isReportPosting,
-                posted    = uiState.reportPosted,
-                error     = uiState.reportError,
-                onPost    = onPostReport,
-                onReset   = onResetReportState
             )
 
             Spacer(Modifier.height(40.dp))
