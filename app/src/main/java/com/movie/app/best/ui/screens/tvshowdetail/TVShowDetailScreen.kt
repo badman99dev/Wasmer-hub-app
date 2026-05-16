@@ -983,5 +983,3 @@ private fun TVCommentFormSection(
         }
     }
 }
-
-}
