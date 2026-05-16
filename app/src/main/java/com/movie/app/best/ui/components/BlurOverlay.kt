@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,59 +24,73 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 
 @Composable
+fun BlurredContent(
+    shouldBlur: Boolean,
+    modifier: Modifier = Modifier,
+    blurRadius: Int = 40,
+    content: @Composable () -> Unit
+) {
+    if (!shouldBlur) {
+        content()
+        return
+    }
+    Box(modifier = modifier) {
+        Box(modifier = Modifier.blur(blurRadius.dp)) {
+            content()
+        }
+        BlurBadge(modifier = Modifier.align(Alignment.Center))
+    }
+}
+
+@Composable
 fun BlurOverlay(
     shouldBlur: Boolean,
     modifier: Modifier = Modifier,
-    blurRadius: Int = 20,
+    blurRadius: Int = 40,
     label: String = "18+"
 ) {
     if (!shouldBlur) return
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        BlurBadge()
+    }
+}
 
-    Box(
-        modifier = modifier
-            .blur(blurRadius.dp)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        Color.Black.copy(alpha = 0.3f),
-                        Color.Black.copy(alpha = 0.6f)
-                    )
-                )
-            ),
-        contentAlignment = Alignment.Center
+@Composable
+private fun BlurBadge(
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFE50914).copy(alpha = 0.2f)),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.VisibilityOff,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFFE50914).copy(alpha = 0.85f))
-                    .padding(horizontal = 10.dp, vertical = 3.dp)
-            ) {
-                Text(
-                    text = label,
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.5.sp
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.VisibilityOff,
+                contentDescription = null,
+                tint = Color(0xFFE50914).copy(alpha = 0.9f),
+                modifier = Modifier.size(26.dp)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFFE50914).copy(alpha = 0.85f))
+                .padding(horizontal = 10.dp, vertical = 3.dp)
+        ) {
+            Text(
+                text = "18+",
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.5.sp
+            )
         }
     }
 }

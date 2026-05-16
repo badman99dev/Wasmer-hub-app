@@ -19,7 +19,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.movie.app.best.data.model.WasmerMovieDetails
-import com.movie.app.best.ui.components.BlurOverlay
 import com.movie.app.best.ui.components.CelebrationOverlay
 import com.movie.app.best.ui.components.ErrorView
 import com.movie.app.best.ui.components.SkeletonDetailPage

@@ -54,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerCategory
 import com.movie.app.best.data.model.WasmerMovie
+import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.components.SkeletonPosterCard
 import com.movie.app.best.ui.components.AppHeader
 
@@ -248,14 +249,19 @@ fun WasmerMovieGridItem(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
     ) {
         Box {
-            AsyncImage(
-                model = movie.posterUrl,
-                contentDescription = movie.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(2 / 3f)
-            )
+            BlurredContent(
+                shouldBlur = movie.shouldBlurPoster,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                AsyncImage(
+                    model = movie.posterUrl,
+                    contentDescription = movie.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(2 / 3f)
+                )
+            }
 
             if (movie.qualityLabel.isNotBlank()) {
                 val bgColor = when {
@@ -315,10 +321,7 @@ fun WasmerMovieGridItem(
                 )
             }
 
-            com.movie.app.best.ui.components.BlurOverlay(
-                shouldBlur = movie.shouldBlurPoster,
-                modifier = Modifier.fillMaxSize()
-            )
+
 
             Box(
                 modifier = Modifier

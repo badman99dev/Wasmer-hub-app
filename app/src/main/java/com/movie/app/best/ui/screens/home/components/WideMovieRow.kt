@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerMovie
-import com.movie.app.best.ui.components.BlurOverlay
+import com.movie.app.best.ui.components.BlurredContent
 
 /**
  * Wide landscape (16:9) cards row — used for "Because You Watched" section.
@@ -76,12 +76,17 @@ fun WideMovieCard(
             .background(Color(0xFF1A1A1A))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
     ) {
-        AsyncImage(
-            model            = movie.posterUrl,
-            contentDescription = movie.title,
-            contentScale     = ContentScale.Crop,
-            modifier         = Modifier.fillMaxSize()
-        )
+        BlurredContent(
+            shouldBlur = movie.shouldBlurPoster,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            AsyncImage(
+                model            = movie.posterUrl,
+                contentDescription = movie.title,
+                contentScale     = ContentScale.Crop,
+                modifier         = Modifier.fillMaxSize()
+            )
+        }
 
         // Gradient for title legibility
         Box(
@@ -106,10 +111,7 @@ fun WideMovieCard(
             )
         }
 
-        BlurOverlay(
-            shouldBlur = movie.shouldBlurPoster,
-            modifier = Modifier.fillMaxSize()
-        )
+
 
         // Title at bottom
         Text(

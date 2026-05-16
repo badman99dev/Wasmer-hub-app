@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.ContentModeration
 import com.movie.app.best.data.model.WasmerMovieDetails
-import com.movie.app.best.ui.components.BlurOverlay
+import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.theme.WasmerAmber
 import com.movie.app.best.ui.theme.WasmerRed
 
@@ -47,14 +47,18 @@ fun DetailHeroSection(
             .height(580.dp)
     ) {
         // Backdrop / poster
-        AsyncImage(
-            model              = movie.backdropUrl.ifEmpty { movie.posterUrl },
-            contentDescription = movie.title,
-            contentScale       = ContentScale.Crop,
-            modifier           = Modifier.fillMaxSize()
-        )
+        BlurredContent(
+            shouldBlur = shouldBlur,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            AsyncImage(
+                model              = movie.backdropUrl.ifEmpty { movie.posterUrl },
+                contentDescription = movie.title,
+                contentScale       = ContentScale.Crop,
+                modifier           = Modifier.fillMaxSize()
+            )
+        }
 
-        // Gradient overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -71,11 +75,6 @@ fun DetailHeroSection(
                 )
         )
 
-        BlurOverlay(
-            shouldBlur = shouldBlur,
-            modifier = Modifier.fillMaxSize(),
-            blurRadius = 25
-        )
 
         // ── Top bar ───────────────────────────────────
         Row(

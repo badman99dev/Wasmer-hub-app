@@ -65,25 +65,30 @@ fun MovieCard(
                 .fillMaxWidth()
                 .aspectRatio(2f / 3f)
         ) {
-            SubcomposeAsyncImage(
-                model = movie.posterUrl.ifBlank { null },
-                contentDescription = movie.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(8.dp)),
-                loading = {
-                    Box(modifier = Modifier.fillMaxSize().aspectRatio(2f/3f).background(Color(0xFF1C1C1C)))
-                },
-                error = {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize().aspectRatio(2f/3f).background(Color(0xFF1C1C1C))
-                    ) {
-                        Icon(Icons.Default.BrokenImage, contentDescription = null, tint = Color(0xFF555555))
+            BlurredContent(
+                shouldBlur = movie.shouldBlurPoster,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                SubcomposeAsyncImage(
+                    model = movie.posterUrl.ifBlank { null },
+                    contentDescription = movie.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp)),
+                    loading = {
+                        Box(modifier = Modifier.fillMaxSize().aspectRatio(2f/3f).background(Color(0xFF1C1C1C)))
+                    },
+                    error = {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize().aspectRatio(2f/3f).background(Color(0xFF1C1C1C))
+                        ) {
+                            Icon(Icons.Default.BrokenImage, contentDescription = null, tint = Color(0xFF555555))
+                        }
                     }
-                }
-            )
+                )
+            }
 
             if (movie.qualityLabel.isNotBlank()) {
                 QualityBadge(
@@ -93,11 +98,6 @@ fun MovieCard(
                         .padding(5.dp)
                 )
             }
-
-            BlurOverlay(
-                shouldBlur = movie.shouldBlurPoster,
-                modifier = Modifier.fillMaxSize()
-            )
 
             Box(
                 modifier = Modifier
