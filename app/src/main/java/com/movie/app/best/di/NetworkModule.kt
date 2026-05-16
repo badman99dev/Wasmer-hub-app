@@ -111,7 +111,7 @@ object NetworkModule {
     @Named("bypass")
     fun provideBypassRetrofit(okHttpClient: OkHttpClient, gson: com.google.gson.Gson): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://wasmer-5v0k1b5sq-badals-projects-03fab3df.vercel.app/")
+            .baseUrl("https://wasmer-pz1hreiqo-badals-projects-03fab3df.vercel.app/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
