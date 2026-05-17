@@ -128,6 +128,7 @@ fun MovieDetailScreen(
             ) {
                 ReportDrawer(
                     movieId = uiState.movie?.id ?: 0,
+                    currentModeration = uiState.movie?.contentModeration,
                     onSubmit = { movieId, reportType, reason ->
                         viewModel.submitContentModeration(movieId, reportType, reason)
                     },
@@ -143,7 +144,7 @@ fun MovieDetailScreen(
                     .background(Color.Black.copy(alpha = 0.8f)),
                 contentAlignment = Alignment.Center
             ) {
-                ReportWaitingPopup()
+                ReportWaitingPopup(isObjection = uiState.isObjectionReport)
             }
         }
 
@@ -156,6 +157,8 @@ fun MovieDetailScreen(
             ) {
                 ReportResultModal(
                     moderation = uiState.reportModerationResult!!,
+                    previousModeration = uiState.previousModerationResult,
+                    isObjection = uiState.isObjectionReport,
                     onDismiss = viewModel::dismissReportResult
                 )
             }

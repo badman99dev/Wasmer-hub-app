@@ -252,20 +252,31 @@ class MovieDetailViewModel @Inject constructor(
     }
 
     fun submitContentModeration(movieId: Int, reportType: String, reason: String) {
+        val isObjection = reportType == "objection"
         viewModelScope.launch {
-            _uiState.update { it.copy(showReportDrawer = false, showReportWaiting = true) }
+            _uiState.update { it.copy(showReportDrawer = false, showReportWaiting = true, isObjectionReport = isObjection) }
             try {
                 val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
                 val tokenResult = user?.getIdToken(false)?.await()
                 val authHeader = "Bearer ${tokenResult?.token ?: ""}"
                 val response = repository.submitContentModeration(authHeader, movieId, reportType, reason)
                 val modResult = response.moderation
-                val hasAnyFlag = modResult?.poster == "sexual" || modResult?.screenshots == "sexual" || modResult?.storyline == "sexual"
+                val prevResult = response.previous_moderation
+
+                val anyChange = if (prevResult != null && modResult != null) {
+                    modResult.poster != prevResult.poster || modResult.screenshots != prevResult.screenshots || modResult.storyline != prevResult.storyline
+                } else {
+                    modResult?.poster == "sexual" || modResult?.screenshots == "sexual" || modResult?.storyline == "sexual"
+                }
+
+                val showCeleb = if (isObjection) anyChange else (modResult?.poster == "sexual" || modResult?.screenshots == "sexual" || modResult?.storyline == "sexual")
+
                 _uiState.update { state ->
                     state.copy(
                         showReportWaiting = false,
                         reportModerationResult = modResult,
-                        showCelebration = hasAnyFlag
+                        previousModerationResult = prevResult,
+                        showCelebration = showCeleb
                     )
                 }
                 if (modResult != null) {
@@ -323,7 +334,9 @@ data class MovieDetailUiState(
 
     val showReportDrawer: Boolean = false,
     val showReportWaiting: Boolean = false,
+    val isObjectionReport: Boolean = false,
     val moderationError: String? = null,
     val reportModerationResult: com.movie.app.best.data.model.ContentModerationResponse? = null,
+    val previousModerationResult: com.movie.app.best.data.model.ContentModerationResponse? = null,
     val showCelebration: Boolean = false
 )

@@ -78,7 +78,7 @@ interface MovieApiService {
 data class ContentModerationApiResponse(
     val verdict: String? = null,
     val moderation: ContentModerationResponse? = null,
-    val previous_moderation: Any? = null,
+    val previous_moderation: ContentModerationResponse? = null,
     val images_analyzed: Int = 0,
     val debug: List<String> = emptyList()
 )

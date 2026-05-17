@@ -41,13 +41,22 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ReportDrawer(
     movieId: Int,
+    currentModeration: com.movie.app.best.data.model.ContentModeration? = null,
     onSubmit: (movieId: Int, reportType: String, reason: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var selectedType by remember { mutableStateOf("") }
     var reason by remember { mutableStateOf("") }
 
-    val reportTypes = listOf("sexual" to "🚫 Sexual / Inappropriate", "extremely brutal" to "💀 Extremely Brutal / Gore")
+    val isCurrentlyFlagged = currentModeration?.hasAnyFlag == true
+
+    val reportTypes = if (isCurrentlyFlagged) {
+        listOf("sexual" to "🚫 Sexual / Inappropriate", "objection" to "✏️ Object to the moderation / Request an edit")
+    } else {
+        listOf("sexual" to "🚫 Sexual / Inappropriate")
+    }
+
+    val isObjection = selectedType == "objection"
 
     Box(
         modifier = Modifier
@@ -141,7 +150,12 @@ fun ReportDrawer(
             OutlinedTextField(
                 value = reason,
                 onValueChange = { reason = it },
-                label = { Text("Reason (optional)", color = Color.White.copy(alpha = 0.5f)) },
+                label = { 
+                    Text(
+                        if (isObjection) "Explain your objection (required)" else "Reason (optional)", 
+                        color = Color.White.copy(alpha = 0.5f)
+                    ) 
+                },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4,
@@ -166,11 +180,11 @@ fun ReportDrawer(
 
                 Button(
                     onClick = {
-                        if (selectedType.isNotEmpty()) {
+                        if (selectedType.isNotEmpty() && (!isObjection || reason.isNotBlank())) {
                             onSubmit(movieId, selectedType, reason)
                         }
                     },
-                    enabled = selectedType.isNotEmpty(),
+                    enabled = selectedType.isNotEmpty() && (!isObjection || reason.isNotBlank()),
                     modifier = Modifier.weight(1.5f).height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -180,7 +194,10 @@ fun ReportDrawer(
                 ) {
                     Icon(Icons.Default.Flag, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Submit Report", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(
+                        if (isObjection) "Submit Objection" else "Submit Report", 
+                        fontWeight = FontWeight.Bold, fontSize = 15.sp
+                    )
                 }
             }
         }
@@ -188,7 +205,7 @@ fun ReportDrawer(
 }
 
 @Composable
-fun ReportWaitingPopup() {
+fun ReportWaitingPopup(isObjection: Boolean = false) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -205,7 +222,7 @@ fun ReportWaitingPopup() {
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                text = "Report successfully received!",
+                text = if (isObjection) "Objection received!" else "Report successfully received!",
                 color = Color.White,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
@@ -213,7 +230,7 @@ fun ReportWaitingPopup() {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Wait a few seconds, our agent is checking your report. This may take up to 20 seconds to respond.",
+                text = if (isObjection) "Our AI is re-examining the content based on your objection. This may take up to 20 seconds." else "Wait a few seconds, our agent is checking your report. This may take up to 20 seconds to respond.",
                 color = Color.White.copy(alpha = 0.6f),
                 fontSize = 13.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -231,13 +248,36 @@ fun ReportWaitingPopup() {
 @Composable
 fun ReportResultModal(
     moderation: com.movie.app.best.data.model.ContentModerationResponse,
+    previousModeration: com.movie.app.best.data.model.ContentModerationResponse? = null,
+    isObjection: Boolean = false,
     onDismiss: () -> Unit
 ) {
-    val flaggedItems = mutableListOf<Pair<String, String>>()
-    if (moderation.poster == "sexual") flaggedItems.add("Poster" to "Poster flagged successfully")
-    if (moderation.storyline == "sexual") flaggedItems.add("Storyline" to "Storyline flagged successfully")
-    if (moderation.screenshots == "sexual") flaggedItems.add("Screenshots" to "Screenshots flagged successfully")
-    val hasAnyFlag = flaggedItems.isNotEmpty()
+    val prevCm = previousModeration
+    val hasPrevious = prevCm != null
+
+    val posterChanged = hasPrevious && moderation.poster != prevCm.poster
+    val screenshotsChanged = hasPrevious && moderation.screenshots != prevCm.screenshots
+    val storylineChanged = hasPrevious && moderation.storyline != prevCm.storyline
+    val anyChange = posterChanged || screenshotsChanged || storylineChanged
+
+    val newFlags = mutableListOf<Pair<String, String>>()
+    val removedFlags = mutableListOf<Pair<String, String>>()
+
+    if (hasPrevious) {
+        if (moderation.poster == "sexual" && prevCm.poster != "sexual") newFlags.add("Poster" to "Poster now flagged")
+        if (moderation.screenshots == "sexual" && prevCm.screenshots != "sexual") newFlags.add("Screenshots" to "Screenshots now flagged")
+        if (moderation.storyline == "sexual" && prevCm.storyline != "sexual") newFlags.add("Storyline" to "Storyline now flagged")
+        if (moderation.poster != "sexual" && prevCm.poster == "sexual") removedFlags.add("Poster" to "Poster unflagged ✓")
+        if (moderation.screenshots != "sexual" && prevCm.screenshots == "sexual") removedFlags.add("Screenshots" to "Screenshots unflagged ✓")
+        if (moderation.storyline != "sexual" && prevCm.storyline == "sexual") removedFlags.add("Storyline" to "Storyline unflagged ✓")
+    } else {
+        if (moderation.poster == "sexual") newFlags.add("Poster" to "Poster flagged successfully")
+        if (moderation.storyline == "sexual") newFlags.add("Storyline" to "Storyline flagged successfully")
+        if (moderation.screenshots == "sexual") newFlags.add("Screenshots" to "Screenshots flagged successfully")
+    }
+
+    val hasAnyFlag = newFlags.isNotEmpty()
+    val showCelebration = anyChange
 
     Box(
         modifier = Modifier
@@ -246,7 +286,14 @@ fun ReportResultModal(
             .padding(24.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            if (hasAnyFlag) {
+            if (isObjection && !anyChange && hasPrevious) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color(0xFF90A4AE),
+                    modifier = Modifier.size(40.dp)
+                )
+            } else if (hasAnyFlag) {
                 Icon(
                     imageVector = Icons.Default.Warning,
                     contentDescription = null,
@@ -265,7 +312,12 @@ fun ReportResultModal(
             Spacer(Modifier.height(12.dp))
 
             Text(
-                text = if (hasAnyFlag) "Content Reviewed" else "All Clear",
+                text = when {
+                    isObjection && anyChange -> "Moderation Updated"
+                    isObjection && !anyChange && hasPrevious -> "Verdict Unchanged"
+                    hasAnyFlag -> "Content Reviewed"
+                    else -> "All Clear"
+                },
                 color = Color.White,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
@@ -281,7 +333,7 @@ fun ReportResultModal(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            text = "AI Analysis",
+                            text = if (isObjection) "AI Re-examination" else "AI Analysis",
                             color = Color.White.copy(alpha = 0.5f),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
@@ -298,7 +350,7 @@ fun ReportResultModal(
                 Spacer(Modifier.height(12.dp))
             }
 
-            flaggedItems.forEach { (label, message) ->
+            newFlags.forEach { (label, message) ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -306,7 +358,7 @@ fun ReportResultModal(
                         .padding(vertical = 3.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.CheckCircle,
+                        imageVector = Icons.Default.Warning,
                         contentDescription = null,
                         tint = Color(0xFFFF5252),
                         modifier = Modifier.size(16.dp)
@@ -321,13 +373,46 @@ fun ReportResultModal(
                 }
             }
 
-            if (hasAnyFlag) {
+            removedFlags.forEach { (label, message) ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 3.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = message,
+                        color = Color(0xFF81C784),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            if (hasAnyFlag || removedFlags.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = "Thank you for contributing to making our platform safe.",
-                    color = Color(0xFF4CAF50),
+                    text = when {
+                        isObjection && anyChange -> "Moderation has been updated based on re-examination."
+                        isObjection && !anyChange -> "AI re-examined the content — original verdict stands."
+                        hasAnyFlag -> "Thank you for contributing to making our platform safe."
+                        else -> "No inappropriate content detected. Content is safe."
+                    },
+                    color = when {
+                        isObjection && anyChange -> Color(0xFF4CAF50)
+                        isObjection -> Color.White.copy(alpha = 0.6f)
+                        hasAnyFlag -> Color(0xFF4CAF50)
+                        else -> Color.White.copy(alpha = 0.6f)
+                    },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -335,7 +420,7 @@ fun ReportResultModal(
             } else {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "No inappropriate content detected. Content is safe.",
+                    text = if (isObjection) "AI re-examined the content — original verdict stands." else "No inappropriate content detected. Content is safe.",
                     color = Color.White.copy(alpha = 0.6f),
                     fontSize = 13.sp,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center

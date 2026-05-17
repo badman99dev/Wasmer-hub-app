@@ -142,6 +142,7 @@ fun TVShowDetailScreen(
             ) {
                 ReportDrawer(
                     movieId = uiState.series?.id ?: 0,
+                    currentModeration = uiState.series?.contentModeration,
                     onSubmit = { movieId, reportType, reason ->
                         viewModel.submitContentModeration(movieId, reportType, reason)
                     },
@@ -157,7 +158,7 @@ fun TVShowDetailScreen(
                     .background(Color.Black.copy(alpha = 0.8f)),
                 contentAlignment = Alignment.Center
             ) {
-                ReportWaitingPopup()
+                ReportWaitingPopup(isObjection = uiState.isObjectionReport)
             }
         }
 
@@ -170,6 +171,8 @@ fun TVShowDetailScreen(
             ) {
                 ReportResultModal(
                     moderation = uiState.reportModerationResult!!,
+                    previousModeration = uiState.previousModerationResult,
+                    isObjection = uiState.isObjectionReport,
                     onDismiss = viewModel::dismissReportResult
                 )
             }
