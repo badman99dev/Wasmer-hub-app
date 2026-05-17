@@ -15,10 +15,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -36,6 +37,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +63,7 @@ import com.movie.app.best.ui.components.AppHeader
 import com.movie.app.best.ui.components.ErrorView
 import com.movie.app.best.ui.components.MovieCard
 import com.movie.app.best.ui.components.SkeletonCategoryCard
+import com.movie.app.best.ui.screens.home.components.movieGridItems
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -250,6 +253,20 @@ fun CategoryPageScreen(
         viewModel.loadMovies(categorySlug)
     }
 
+    val listState = rememberLazyListState()
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val totalItems = listState.layoutInfo.totalItemsCount
+            lastVisible >= totalItems - 6 && uiState.canLoadMore && !uiState.isLoading
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) viewModel.loadNextPage()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -279,20 +296,9 @@ fun CategoryPageScreen(
             )
         )
 
-        val gridState = rememberLazyGridState()
-
-    LaunchedEffect(gridState, uiState.movies.size) {
-        val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-        val totalItems = gridState.layoutInfo.totalItemsCount
-        if (lastVisibleIndex >= totalItems - 6 && uiState.canLoadMore && !uiState.isLoading) {
-            viewModel.loadNextPage()
-        }
-    }
-
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp),
+                .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             when {
@@ -313,31 +319,32 @@ fun CategoryPageScreen(
                     )
                 }
                 else -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        state = gridState,
-                        contentPadding = PaddingValues(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(uiState.movies, key = { it.slug }) { movie ->
-                            MovieCard(
-                                movie = movie,
-                                onClick = { slug ->
-                                    onContentClick(slug, movie.isSeries)
-                                }
-                            )
-                        }
-                    }
-
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            color = Color.Red,
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(16.dp)
+                        movieGridItems(
+                            movies = uiState.movies,
+                            onMovieClick = onContentClick
                         )
+
+                        item { Spacer(modifier = Modifier.height(80.dp)) }
+
+                        if (uiState.isLoading) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.height(32.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
