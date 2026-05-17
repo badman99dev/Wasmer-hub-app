@@ -73,6 +73,12 @@ interface MovieApiService {
         @Query("offset") offset: Int = 0,
         @Query("limit") limit: Int = 45
     ): WasmerApiResponse<WasmerOffsetResult>
+
+    @GET("trending")
+    suspend fun getTrending(
+        @Query("offset") offset: Int = 0,
+        @Query("limit") limit: Int = 45
+    ): WasmerApiResponse<WasmerOffsetResult>
 }
 
 data class ContentModerationApiResponse(

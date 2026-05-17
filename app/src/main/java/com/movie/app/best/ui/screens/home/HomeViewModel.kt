@@ -34,7 +34,37 @@ class HomeViewModel @Inject constructor(
     fun loadAllContent() {
         loadSlider()
         loadAllTab()
+        loadTrending()
         loadNotification()
+    }
+
+    fun loadTrending() {
+        viewModelScope.launch {
+            repository.getTrending(offset = 0, limit = 20).collect { result ->
+                when (result) {
+                    is Resource.Loading -> {
+                        _uiState.update { it.copy(isTrendingLoading = true) }
+                    }
+                    is Resource.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                trendingMovies = result.data?.items ?: emptyList(),
+                                isTrendingLoading = false,
+                                trendingError = null
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isTrendingLoading = false,
+                                trendingError = result.error
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fun loadSlider() {
@@ -169,6 +199,10 @@ data class HomeUiState(
     val sliderMovies: List<WasmerMovie> = emptyList(),
     val isSliderLoading: Boolean = false,
     val sliderError: String? = null,
+
+    val trendingMovies: List<WasmerMovie> = emptyList(),
+    val isTrendingLoading: Boolean = false,
+    val trendingError: String? = null,
 
     val allTabMovies: List<WasmerMovie> = emptyList(),
     val isAllTabLoading: Boolean = false,

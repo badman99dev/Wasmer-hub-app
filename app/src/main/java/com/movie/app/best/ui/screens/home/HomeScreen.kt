@@ -39,7 +39,7 @@ fun HomeScreen(
     val listState = rememberLazyListState()
 
     val allMovies = uiState.allTabMovies
-    val trending    = remember(allMovies) { allMovies.sortedBy { it.rank }.take(12) }
+    val trending    = uiState.trendingMovies
     val newReleases = remember(allMovies) { allMovies.sortedByDescending { it.id }.take(12) }
     val series      = remember(allMovies) { allMovies.filter { it.isSeries }.take(12) }
     val forYou      = remember(allMovies) { allMovies.shuffled().take(12) }
@@ -87,7 +87,8 @@ fun HomeScreen(
                             title        = "Trending Now 🔥",
                             movies       = trending,
                             cardSize     = CardSize.NORMAL,
-                            onMovieClick = onContentClick
+                            onMovieClick = onContentClick,
+                            onSeeAllClick = { navController.navigate(com.movie.app.best.ui.navigation.Screen.Trending.route) }
                         )
                     }
                 }

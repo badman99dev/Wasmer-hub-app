@@ -42,7 +42,7 @@ class TrendingViewModel @Inject constructor(
     fun loadPopular() {
         viewModelScope.launch {
             _uiState.update { it.copy(isPopularLoading = true) }
-            repository.getLatestUploads(offset = 0, limit = PAGE_LIMIT).collect { result ->
+            repository.getTrending(offset = 0, limit = PAGE_LIMIT).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
@@ -80,7 +80,7 @@ class TrendingViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isPopularLoadingMore = true) }
-            repository.getLatestUploads(offset = nextOffset, limit = PAGE_LIMIT).collect { result ->
+            repository.getTrending(offset = nextOffset, limit = PAGE_LIMIT).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {

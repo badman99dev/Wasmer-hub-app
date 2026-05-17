@@ -62,6 +62,11 @@ class MovieRepository @Inject constructor(
         emit(safeApiCall { apiService.getWatchableContent(offset, limit) })
     }
 
+    fun getTrending(offset: Int = 0, limit: Int = 45): Flow<Resource<WasmerOffsetResult>> = flow {
+        emit(Resource.Loading())
+        emit(safeApiCall { apiService.getTrending(offset, limit) })
+    }
+
     fun getCategoryMovies(slug: String, offset: Int = 0, limit: Int = 45): Flow<Resource<WasmerCategoryOffsetResult>> = flow {
         emit(Resource.Loading())
         emit(safeApiCall { apiService.getCategoryMovies(slug, offset, limit) })
