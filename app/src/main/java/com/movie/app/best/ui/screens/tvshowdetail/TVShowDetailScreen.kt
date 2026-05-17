@@ -574,7 +574,7 @@ private fun TVShowDetailContent(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(uiState.moreSeasons, key = { it.seasonLabel }) { season ->
+                items(uiState.moreSeasons, key = { it.id }) { season ->
                     MoreSeasonCard(season = season)
                 }
             }
