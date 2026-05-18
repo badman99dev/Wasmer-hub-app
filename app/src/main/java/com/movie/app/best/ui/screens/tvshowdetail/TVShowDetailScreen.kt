@@ -93,6 +93,8 @@ fun TVShowDetailScreen(
     slug: String,
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String) -> Unit,
+    onMovieClick: (String) -> Unit = {},
+    onSeriesClick: (String) -> Unit = {},
     viewModel: TVShowDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -126,7 +128,10 @@ fun TVShowDetailScreen(
                     onToggleBookmark = viewModel::toggleBookmark,
                     onToggleLike = viewModel::toggleLike,
                     onReportClick = viewModel::openReportDrawer,
-                    onContentClick = { _, _ -> }
+                    onContentClick = { slug, isSeries ->
+                        if (isSeries) onSeriesClick(slug)
+                        else onMovieClick(slug)
+                    }
                 )
             }
         }
@@ -585,6 +590,17 @@ private fun TVShowDetailContent(
             }
         }
 
+        if (series.imdbId.startsWith("tt")) {
+            if (uiState.isSimilarLoading) {
+                com.movie.app.best.ui.screens.moviedetail.components.FindingSimilarSection()
+            } else if (uiState.similarMovies.isNotEmpty()) {
+                com.movie.app.best.ui.screens.moviedetail.components.MoreLikeThisSection(
+                    movies = uiState.similarMovies,
+                    onMovieClick = onContentClick
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         TVDownloadSection(
             uiState = uiState,
@@ -599,17 +615,6 @@ private fun TVShowDetailContent(
             onPost = onPostComment,
             onReset = onResetCommentState
         )
-
-        if (series.imdbId.startsWith("tt")) {
-            if (uiState.isSimilarLoading) {
-                com.movie.app.best.ui.screens.moviedetail.components.FindingSimilarSection()
-            } else if (uiState.similarMovies.isNotEmpty()) {
-                com.movie.app.best.ui.screens.moviedetail.components.MoreLikeThisSection(
-                    movies = uiState.similarMovies,
-                    onMovieClick = onContentClick
-                )
-            }
-        }
 
         Spacer(modifier = Modifier.height(24.dp))
     }

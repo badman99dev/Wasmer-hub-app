@@ -32,6 +32,7 @@ fun MovieDetailScreen(
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String) -> Unit,
     onSeriesClick: (slug: String) -> Unit,
+    onMovieClick: (slug: String) -> Unit = {},
     onDownloadClick: (linkUrl: String) -> Unit = { },
     viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
@@ -114,7 +115,7 @@ fun MovieDetailScreen(
                     onReportClick      = viewModel::openReportDrawer,
                     onContentClick     = { slug, isSeries ->
                         if (isSeries) onSeriesClick(slug)
-                        else onPlayClick("", "", "", "", "")
+                        else onMovieClick(slug)
                     }
                 )
             }
@@ -256,22 +257,9 @@ private fun MovieDetailContent(
                 }
             )
 
-            Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
-
-            if (movie.imdbId.startsWith("tt")) {
-                if (uiState.isSimilarLoading) {
-                    FindingSimilarSection()
-                } else if (uiState.similarMovies.isNotEmpty()) {
-                    MoreLikeThisSection(
-                        movies       = uiState.similarMovies,
-                        onMovieClick = onContentClick
-                    )
-                }
-            }
-
             Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp))
 
-            // 9. Download links
+            // 8. Download links
             DownloadSection(
                 downloadLinks     = uiState.downloadLinks,
                 isDownloadLoading = uiState.isDownloadLoading,
@@ -280,13 +268,26 @@ private fun MovieDetailContent(
                 onStartDownload   = onStartDownload
             )
 
-            // 10. Screenshots
+            // 9. Screenshots
             if (uiState.screenshots.isNotEmpty()) {
                 Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp))
                 ScreenshotsSection(
                     screenshots = uiState.screenshots,
                     shouldBlur = movie.contentModeration?.isScreenshotsSexual == true
                 )
+            }
+
+            // 10. More Like This (after screenshots)
+            if (movie.imdbId.startsWith("tt")) {
+                Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
+                if (uiState.isSimilarLoading) {
+                    FindingSimilarSection()
+                } else if (uiState.similarMovies.isNotEmpty()) {
+                    MoreLikeThisSection(
+                        movies       = uiState.similarMovies,
+                        onMovieClick = onContentClick
+                    )
+                }
             }
 
             // 11. Comments

@@ -185,6 +185,11 @@ fun AppNavigation(
                         popUpTo(Screen.MovieDetail.route) { inclusive = true }
                     }
                 },
+                onMovieClick = { movieSlug ->
+                    navController.navigate(Screen.MovieDetail.createRoute(movieSlug)) {
+                        popUpTo(Screen.MovieDetail.route) { inclusive = true }
+                    }
+                },
                 onDownloadClick = { }
             )
         }
@@ -199,6 +204,14 @@ fun AppNavigation(
                 onBackClick = { navController.popBackStack() },
                 onPlayClick = { playerUrl, streamUrl, title, youtubeId, movieId ->
                     navController.navigate(Screen.VideoPlayer.createRoute(playerUrl, streamUrl, title, youtubeId, movieId))
+                },
+                onMovieClick = { movieSlug ->
+                    navController.navigate(Screen.MovieDetail.createRoute(movieSlug))
+                },
+                onSeriesClick = { seriesSlug ->
+                    navController.navigate(Screen.SeriesDetail.createRoute(seriesSlug)) {
+                        popUpTo(Screen.SeriesDetail.route) { inclusive = true }
+                    }
                 }
             )
         }
