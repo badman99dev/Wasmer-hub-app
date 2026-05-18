@@ -125,7 +125,8 @@ fun TVShowDetailScreen(
                     onResetCommentState = viewModel::resetCommentState,
                     onToggleBookmark = viewModel::toggleBookmark,
                     onToggleLike = viewModel::toggleLike,
-                    onReportClick = viewModel::openReportDrawer
+                    onReportClick = viewModel::openReportDrawer,
+                    onContentClick = { _, _ -> }
                 )
             }
         }
@@ -192,7 +193,8 @@ private fun TVShowDetailContent(
     onResetCommentState: () -> Unit,
     onToggleBookmark: () -> Unit,
     onToggleLike: () -> Unit,
-    onReportClick: () -> Unit = {}
+    onReportClick: () -> Unit = {},
+    onContentClick: (String, Boolean) -> Unit = { _, _ -> }
 ) {
     val seasonKeys = uiState.episodesBySeason.keys.sorted()
     var selectedSeason by remember { mutableStateOf(seasonKeys.firstOrNull() ?: 1) }
@@ -597,6 +599,17 @@ private fun TVShowDetailContent(
             onPost = onPostComment,
             onReset = onResetCommentState
         )
+
+        if (series.imdbId.startsWith("tt")) {
+            if (uiState.isSimilarLoading) {
+                com.movie.app.best.ui.screens.moviedetail.components.FindingSimilarSection()
+            } else if (uiState.similarMovies.isNotEmpty()) {
+                com.movie.app.best.ui.screens.moviedetail.components.MoreLikeThisSection(
+                    movies = uiState.similarMovies,
+                    onMovieClick = onContentClick
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
     }

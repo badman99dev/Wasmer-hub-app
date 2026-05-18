@@ -68,6 +68,7 @@ class TVShowDetailViewModel @Inject constructor(
                             }
                             addToFirebaseHistory()
                             checkBookmarkAndLikeStatus()
+                            loadSimilarMovies(data.movie.imdbId)
                         } else {
                             _uiState.update { it.copy(isLoading = false, error = "No data") }
                         }
@@ -288,6 +289,35 @@ class TVShowDetailViewModel @Inject constructor(
     fun dismissCelebration() {
         _uiState.update { it.copy(showCelebration = false) }
     }
+
+    private fun loadSimilarMovies(imdbId: String) {
+        if (!imdbId.startsWith("tt")) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSimilarLoading = true) }
+            repository.getSimilar(imdbId).collect { result ->
+                when (result) {
+                    is Resource.Loading -> {}
+                    is Resource.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                similarMovies = result.data?.items ?: emptyList(),
+                                isSimilarLoading = false,
+                                similarError = null
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isSimilarLoading = false,
+                                similarError = result.error
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 data class TVShowDetailUiState(
@@ -301,6 +331,10 @@ data class TVShowDetailUiState(
     val comments: List<WasmerComment> = emptyList(),
     val screenshots: List<String> = emptyList(),
     val moreSeasons: List<WasmerSeason> = emptyList(),
+
+    val similarMovies: List<com.movie.app.best.data.model.WasmerMovie> = emptyList(),
+    val isSimilarLoading: Boolean = false,
+    val similarError: String? = null,
 
     val isCommentPosting: Boolean = false,
     val commentPosted: Boolean = false,

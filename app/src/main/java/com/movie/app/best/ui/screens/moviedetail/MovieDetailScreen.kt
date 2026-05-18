@@ -111,7 +111,11 @@ fun MovieDetailScreen(
                     onSeriesClick      = onSeriesClick,
                     onToggleBookmark   = viewModel::toggleBookmark,
                     onToggleLike       = viewModel::toggleLike,
-                    onReportClick      = viewModel::openReportDrawer
+                    onReportClick      = viewModel::openReportDrawer,
+                    onContentClick     = { slug, isSeries ->
+                        if (isSeries) onSeriesClick(slug)
+                        else onPlayClick("", "", "", "", "")
+                    }
                 )
             }
         }
@@ -182,7 +186,8 @@ private fun MovieDetailContent(
     onSeriesClick: (String) -> Unit,
     onToggleBookmark: () -> Unit,
     onToggleLike: () -> Unit,
-    onReportClick: () -> Unit = {}
+    onReportClick: () -> Unit = {},
+    onContentClick: (String, Boolean) -> Unit = { _, _ -> }
 ) {
     Column(
         modifier = Modifier
@@ -253,15 +258,16 @@ private fun MovieDetailContent(
 
             Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
 
-            // 8. More Like This
-            val similar = uiState.allMovies.shuffled().take(10)
-            MoreLikeThisSection(
-                movies       = similar,
-                onMovieClick = { s, isSeries ->
-                    if (isSeries) onSeriesClick(s)
-                    else onPlayClick("", "", "", "", "")  // navigate via caller
+            if (movie.imdbId.startsWith("tt")) {
+                if (uiState.isSimilarLoading) {
+                    FindingSimilarSection()
+                } else if (uiState.similarMovies.isNotEmpty()) {
+                    MoreLikeThisSection(
+                        movies       = uiState.similarMovies,
+                        onMovieClick = onContentClick
+                    )
                 }
-            )
+            }
 
             Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp))
 

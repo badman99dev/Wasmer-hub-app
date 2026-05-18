@@ -67,6 +67,7 @@ class MovieDetailViewModel @Inject constructor(
                         if (detailData?.movie != null) {
                             addToFirebaseHistory()
                             checkBookmarkAndLikeStatus()
+                            loadSimilarMovies(detailData.movie.imdbId)
                         }
                     }
                     is Resource.Error -> {
@@ -306,6 +307,35 @@ class MovieDetailViewModel @Inject constructor(
     fun dismissCelebration() {
         _uiState.update { it.copy(showCelebration = false) }
     }
+
+    private fun loadSimilarMovies(imdbId: String) {
+        if (!imdbId.startsWith("tt")) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSimilarLoading = true) }
+            repository.getSimilar(imdbId).collect { result ->
+                when (result) {
+                    is Resource.Loading -> {}
+                    is Resource.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                similarMovies = result.data?.items ?: emptyList(),
+                                isSimilarLoading = false,
+                                similarError = null
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isSimilarLoading = false,
+                                similarError = result.error
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 data class MovieDetailUiState(
@@ -318,6 +348,10 @@ data class MovieDetailUiState(
     val screenshots: List<String> = emptyList(),
     val categories: List<com.movie.app.best.data.model.WasmerCategorySimple> = emptyList(),
     val allMovies: List<com.movie.app.best.data.model.WasmerMovie> = emptyList(),
+
+    val similarMovies: List<com.movie.app.best.data.model.WasmerMovie> = emptyList(),
+    val isSimilarLoading: Boolean = false,
+    val similarError: String? = null,
 
     val isCommentPosting: Boolean = false,
     val commentPosted: Boolean = false,

@@ -67,6 +67,20 @@ class MovieRepository @Inject constructor(
         emit(safeApiCall { apiService.getTrending(offset, limit) })
     }
 
+    fun getMyFeed(offset: Int = 0, limit: Int = 45): Flow<Resource<WasmerOffsetResult>> = flow {
+        emit(Resource.Loading())
+        emit(safeApiCall { apiService.getMyFeed(offset, limit) })
+    }
+
+    suspend fun recreateMyFeed() {
+        try { apiService.recreateMyFeed() } catch (_: Exception) {}
+    }
+
+    fun getSimilar(imdbId: String): Flow<Resource<WasmerOffsetResult>> = flow {
+        emit(Resource.Loading())
+        emit(safeApiCall { apiService.getSimilar(imdbId) })
+    }
+
     fun getCategoryMovies(slug: String, offset: Int = 0, limit: Int = 45): Flow<Resource<WasmerCategoryOffsetResult>> = flow {
         emit(Resource.Loading())
         emit(safeApiCall { apiService.getCategoryMovies(slug, offset, limit) })

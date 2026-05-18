@@ -40,9 +40,9 @@ fun HomeScreen(
 
     val allMovies = uiState.allTabMovies
     val trending    = uiState.trendingMovies
+    val myFeed      = uiState.myFeedMovies
     val newReleases = remember(allMovies) { allMovies.sortedByDescending { it.id }.take(12) }
     val series      = remember(allMovies) { allMovies.filter { it.isSeries }.take(12) }
-    val forYou      = remember(allMovies) { allMovies.shuffled().take(12) }
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -115,12 +115,14 @@ fun HomeScreen(
                     }
                 }
 
-                if (forYou.isNotEmpty()) {
+                if (myFeed.isNotEmpty()) {
                     item {
-                        WideMovieRowSection(
-                            title        = "Because You Watched",
-                            movies       = forYou,
-                            onMovieClick = onContentClick
+                        MovieRowSection(
+                            title        = "Because You Watched Similar",
+                            movies       = myFeed,
+                            cardSize     = CardSize.NORMAL,
+                            onMovieClick = onContentClick,
+                            onSeeAllClick = { navController.navigate(com.movie.app.best.ui.navigation.Screen.MyFeed.route) }
                         )
                     }
                 }

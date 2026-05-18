@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -20,10 +22,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerMovie
+import com.movie.app.best.ui.components.BlurredContent
 
-/**
- * "More Like This" horizontal row — shown at the bottom of detail page.
- */
+@Composable
+fun FindingSimilarSection(modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(
+                color = Color.Red,
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = "Finding similar content...",
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
 @Composable
 fun MoreLikeThisSection(
     movies: List<WasmerMovie>,
@@ -73,12 +93,26 @@ private fun SimilarMovieCard(
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color(0xFF1A1A1A))
         ) {
-            AsyncImage(
-                model            = movie.posterUrl,
-                contentDescription = movie.title,
-                contentScale     = ContentScale.Crop,
-                modifier         = Modifier.fillMaxSize()
-            )
+            if (movie.shouldBlurPoster) {
+                BlurredContent(
+                    isSexual = true,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    AsyncImage(
+                        model            = movie.posterUrl,
+                        contentDescription = movie.title,
+                        contentScale     = ContentScale.Crop,
+                        modifier         = Modifier.fillMaxSize()
+                    )
+                }
+            } else {
+                AsyncImage(
+                    model            = movie.posterUrl,
+                    contentDescription = movie.title,
+                    contentScale     = ContentScale.Crop,
+                    modifier         = Modifier.fillMaxSize()
+                )
+            }
         }
         Spacer(Modifier.height(4.dp))
         Text(

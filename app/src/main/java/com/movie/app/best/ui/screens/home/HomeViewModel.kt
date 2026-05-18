@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 @HiltViewModel
@@ -35,6 +36,7 @@ class HomeViewModel @Inject constructor(
         loadSlider()
         loadAllTab()
         loadTrending()
+        loadMyFeed()
         loadNotification()
     }
 
@@ -64,6 +66,39 @@ class HomeViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    fun loadMyFeed() {
+        viewModelScope.launch {
+            repository.getMyFeed(offset = 0, limit = 20).collect { result ->
+                when (result) {
+                    is Resource.Loading -> {
+                        _uiState.update { it.copy(isMyFeedLoading = true) }
+                    }
+                    is Resource.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                myFeedMovies = result.data?.items ?: emptyList(),
+                                isMyFeedLoading = false,
+                                myFeedError = null
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isMyFeedLoading = false,
+                                myFeedError = result.error
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        viewModelScope.launch {
+            delay(3000)
+            repository.recreateMyFeed()
         }
     }
 
@@ -203,6 +238,10 @@ data class HomeUiState(
     val trendingMovies: List<WasmerMovie> = emptyList(),
     val isTrendingLoading: Boolean = false,
     val trendingError: String? = null,
+
+    val myFeedMovies: List<WasmerMovie> = emptyList(),
+    val isMyFeedLoading: Boolean = false,
+    val myFeedError: String? = null,
 
     val allTabMovies: List<WasmerMovie> = emptyList(),
     val isAllTabLoading: Boolean = false,
