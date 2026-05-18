@@ -95,7 +95,7 @@ private fun SimilarMovieCard(
         ) {
             if (movie.shouldBlurPoster) {
                 BlurredContent(
-                    isSexual = true,
+                    shouldBlur = true,
                     modifier = Modifier.fillMaxSize()
                 ) {
                     AsyncImage(
