@@ -160,6 +160,7 @@ class FirebaseRepository @Inject constructor(
                         title = m["title"] as? String ?: "",
                         posterUrl = m["posterUrl"] as? String ?: "",
                         isSeries = m["isSeries"] as? Boolean ?: false,
+                        imdbId = m["imdbId"] as? String ?: "",
                         watchedAt = (m["watchedAt"] as? Number)?.toLong() ?: 0,
                         progressMs = (m["progressMs"] as? Number)?.toLong() ?: 0,
                         durationMs = (m["durationMs"] as? Number)?.toLong() ?: 0,

@@ -219,7 +219,8 @@ class TVShowDetailViewModel @Inject constructor(
                     slug = series.slug,
                     title = series.title,
                     posterUrl = series.posterUrl,
-                    isSeries = true
+                    isSeries = true,
+                    imdbId = series.imdbId
                 )
             )
         }

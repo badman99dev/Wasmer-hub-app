@@ -237,7 +237,8 @@ class MovieDetailViewModel @Inject constructor(
                     slug = movie.slug,
                     title = movie.title,
                     posterUrl = movie.posterUrl,
-                    isSeries = movie.isSeries
+                    isSeries = movie.isSeries,
+                    imdbId = movie.imdbId
                 )
             )
         }
