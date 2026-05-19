@@ -194,11 +194,12 @@ fun QualityBadge(label: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun StreamBadge(modifier: Modifier = Modifier) {
-    val bgColor = Color(0xFF4CAF50).copy(alpha = 0.25f)
-    val borderColor = Color(0xFF4CAF50).copy(alpha = 0.4f)
+    val bgColor = Color(0xFFFFD700).copy(alpha = 0.25f)
+    val borderColor = Color(0xFFFFD700).copy(alpha = 0.4f)
 
     Box(
         modifier = modifier
+            .size(21.dp)
             .clip(RoundedCornerShape(50))
             .background(
                 Brush.linearGradient(
@@ -215,15 +216,14 @@ fun StreamBadge(modifier: Modifier = Modifier) {
                     colors = listOf(borderColor, Color.White.copy(alpha = 0.18f), borderColor)
                 ),
                 shape = RoundedCornerShape(50)
-            )
-            .padding(horizontal = 5.dp, vertical = 3.dp),
+            ),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Default.PlayArrow,
             contentDescription = null,
-            tint = Color(0xFF4CAF50),
-            modifier = Modifier.size(10.dp)
+            tint = Color(0xFFFFD700).copy(alpha = 0.9f),
+            modifier = Modifier.size(11.dp)
         )
     }
 }
