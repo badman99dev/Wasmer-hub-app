@@ -225,20 +225,20 @@ private fun HeroSlide(
                     MetaDot()
                 }
                 if (movie.qualityLabel.isNotBlank()) {
-                    Text(
-                        movie.qualityLabel,
-                        color = when {
-                            movie.qualityLabel.contains("4K", ignoreCase = true) -> Color(0xFFFFD700)
-                            movie.qualityLabel.contains("UHD", ignoreCase = true) -> Color(0xFF00E5FF)
-                            else -> Color(0xFF4FC3F7)
-                        },
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Spacer(Modifier.width(4.dp))
+                    QualityBadge(label = movie.qualityLabel)
+                }
+                if (movie.hasStream) {
+                    Spacer(Modifier.width(4.dp))
+                    StreamBadge()
                 }
                 if (movie.isSeries) {
-                    MetaDot()
-                    Text("Series", color = Color(0xFFB388FF), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.width(4.dp))
+                    SeriesBadge()
+                }
+                if (movie.contentModeration?.hasAnyFlag == true) {
+                    Spacer(Modifier.width(4.dp))
+                    AgeBadge()
                 }
             }
 
@@ -285,50 +285,25 @@ private fun HeroSlide(
         }
 
         // Top-right badge
-        if (movie.qualityLabel.isNotBlank()) {
-            val qLabel = if (movie.isSeries) "SERIES" else movie.qualityLabel
-            val bgColor = when {
-                qLabel.contains("4K", ignoreCase = true) -> Color(0xFFFFD700).copy(alpha = 0.25f)
-                qLabel.contains("UHD", ignoreCase = true) -> Color(0xFF00E5FF).copy(alpha = 0.2f)
-                qLabel.contains("HD", ignoreCase = true) -> Color(0xFF4FC3F7).copy(alpha = 0.15f)
-                qLabel == "SERIES" -> Color(0xFF7C4DFF).copy(alpha = 0.2f)
-                else -> Color.White.copy(alpha = 0.15f)
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (movie.qualityLabel.isNotBlank()) {
+                    QualityBadge(label = movie.qualityLabel)
+                }
+                if (movie.hasStream) {
+                    StreamBadge()
+                }
             }
-            val textColor = when {
-                qLabel.contains("4K", ignoreCase = true) -> Color(0xFFFFD700)
-                qLabel.contains("UHD", ignoreCase = true) -> Color(0xFF00E5FF)
-                qLabel.contains("HD", ignoreCase = true) -> Color(0xFF4FC3F7)
-                qLabel == "SERIES" -> Color(0xFFB388FF)
-                else -> Color.White
+            if (movie.isSeries) {
+                SeriesBadge()
             }
-            val borderColor = textColor.copy(alpha = 0.3f)
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(14.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(bgColor, Color.White.copy(alpha = 0.08f), bgColor)
-                        )
-                    )
-                    .border(
-                        width = 0.5.dp,
-                        brush = Brush.linearGradient(
-                            colors = listOf(borderColor, Color.White.copy(alpha = 0.1f), borderColor)
-                        ),
-                        shape = RoundedCornerShape(50)
-                    )
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
-            ) {
-                Text(
-                    text = qLabel,
-                    color = textColor,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.5.sp
-                )
+            if (movie.contentModeration?.hasAnyFlag == true) {
+                AgeBadge()
             }
         }
     }

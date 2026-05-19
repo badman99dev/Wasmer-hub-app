@@ -71,6 +71,10 @@ import com.movie.app.best.data.model.WasmerMovie
 import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.components.SkeletonPosterCard
+import com.movie.app.best.ui.screens.home.components.QualityBadge
+import com.movie.app.best.ui.screens.home.components.StreamBadge
+import com.movie.app.best.ui.screens.home.components.SeriesBadge
+import com.movie.app.best.ui.screens.home.components.AgeBadge
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -340,33 +344,25 @@ fun WasmerSearchItem(
                 )
             }
 
-            if (movie.qualityLabel.isNotBlank()) {
-                val bgColor = when {
-                    movie.qualityLabel.contains("4K", ignoreCase = true) -> Color(0xFFFFD700).copy(alpha = 0.25f)
-                    movie.qualityLabel.contains("UHD", ignoreCase = true) -> Color(0xFF00E5FF).copy(alpha = 0.2f)
-                    movie.qualityLabel.contains("HD", ignoreCase = true) -> Color(0xFF4FC3F7).copy(alpha = 0.15f)
-                    movie.qualityLabel.contains("CAM", ignoreCase = true) -> Color(0xFFFF5252).copy(alpha = 0.2f)
-                    else -> Color.White.copy(alpha = 0.15f)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(5.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (movie.qualityLabel.isNotBlank()) {
+                        QualityBadge(label = movie.qualityLabel)
+                    }
+                    if (movie.hasStream) {
+                        StreamBadge()
+                    }
                 }
-                val textColor = when {
-                    movie.qualityLabel.contains("4K", ignoreCase = true) -> Color(0xFFFFD700)
-                    movie.qualityLabel.contains("UHD", ignoreCase = true) -> Color(0xFF00E5FF)
-                    movie.qualityLabel.contains("HD", ignoreCase = true) -> Color(0xFF4FC3F7)
-                    movie.qualityLabel.contains("CAM", ignoreCase = true) -> Color(0xFFFF5252)
-                    else -> Color.White
+                if (movie.isSeries) {
+                    SeriesBadge()
                 }
-                val borderColor = textColor.copy(alpha = 0.3f)
-
-                Box(
-                    modifier = Modifier
-                        .padding(4.dp)
-                        .align(Alignment.TopStart)
-                        .clip(RoundedCornerShape(50))
-                        .background(Brush.linearGradient(colors = listOf(bgColor, Color.White.copy(alpha = 0.08f), bgColor)))
-                        .border(0.5.dp, Brush.linearGradient(colors = listOf(borderColor, Color.White.copy(alpha = 0.1f), borderColor)), RoundedCornerShape(50))
-                        .padding(horizontal = 7.dp, vertical = 3.dp)
-                ) {
-                    Text(movie.qualityLabel, color = textColor, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.5.sp)
+                if (movie.contentModeration?.hasAnyFlag == true) {
+                    AgeBadge()
                 }
             }
 
@@ -382,23 +378,7 @@ fun WasmerSearchItem(
                 )
             }
 
-            if (movie.isSeries) {
-                Card(
-                    modifier = Modifier
-                        .padding(4.dp)
-                        .align(Alignment.TopEnd),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF6200EA)),
-                    shape = RoundedCornerShape(2.dp)
-                ) {
-                    Text(
-                        text = "Series",
-                        color = Color.White,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                    )
-                }
-            }
+
 
 
 

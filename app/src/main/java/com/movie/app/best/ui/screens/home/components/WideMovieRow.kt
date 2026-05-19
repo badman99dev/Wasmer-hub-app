@@ -26,6 +26,9 @@ import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerMovie
 import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.components.BlurredContent
+import com.movie.app.best.ui.screens.home.components.StreamBadge
+import com.movie.app.best.ui.screens.home.components.SeriesBadge
+import com.movie.app.best.ui.screens.home.components.AgeBadge
 
 /**
  * Wide landscape (16:9) cards row — used for "Because You Watched" section.
@@ -103,13 +106,26 @@ fun WideMovieCard(
         )
 
         // Quality badge
-        if (movie.qualityLabel.isNotBlank()) {
-            QualityBadge(
-                label    = movie.qualityLabel,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(5.dp)
-            )
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(5.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (movie.qualityLabel.isNotBlank()) {
+                    QualityBadge(label = movie.qualityLabel)
+                }
+                if (movie.hasStream) {
+                    StreamBadge()
+                }
+            }
+            if (movie.isSeries) {
+                SeriesBadge()
+            }
+            if (movie.contentModeration?.hasAnyFlag == true) {
+                AgeBadge()
+            }
         }
 
 
