@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerMovie
+import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.components.SkeletonPosterCard
 
@@ -326,7 +327,7 @@ fun WasmerSearchItem(
     ) {
         Box {
             BlurredContent(
-                shouldBlur = movie.shouldBlurPoster,
+                shouldBlur = ModerationSettings.effectiveShouldBlur(movie),
                 modifier = Modifier.fillMaxSize()
             ) {
                 AsyncImage(

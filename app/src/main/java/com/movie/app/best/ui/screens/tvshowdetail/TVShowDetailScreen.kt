@@ -80,6 +80,7 @@ import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.components.CelebrationOverlay
 import com.movie.app.best.ui.components.SkeletonDetailPage
 import com.movie.app.best.ui.components.ErrorView
+import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.components.StorylineWarningBadge
 import com.movie.app.best.ui.screens.moviedetail.components.DetailActionButtons
 import com.movie.app.best.ui.screens.moviedetail.components.ReportDrawer
@@ -201,9 +202,47 @@ private fun TVShowDetailContent(
     onReportClick: () -> Unit = {},
     onContentClick: (String, Boolean) -> Unit = { _, _ -> }
 ) {
-    val seasonKeys = uiState.episodesBySeason.keys.sorted()
-    var selectedSeason by remember { mutableStateOf(seasonKeys.firstOrNull() ?: 1) }
-    val shouldBlurPoster = series.contentModeration?.isPosterSexual == true
+    val context = LocalContext.current
+    val isContentHidden = ModerationSettings.shouldHideDetail(context, series.contentModeration)
+    val shouldBlurPoster = ModerationSettings.shouldBlurDetail(context, series.contentModeration)
+
+    if (isContentHidden) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            com.movie.app.best.ui.screens.moviedetail.components.DetailHeroSection(
+                movie = series,
+                onBackClick = onBackClick,
+                onReportClick = onReportClick
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(Modifier.height(32.dp))
+                Text(
+                    text = "⚠️",
+                    fontSize = 40.sp,
+                    color = Color.White
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "Content is hidden due to the app's moderation filter",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(Modifier.height(40.dp))
+            }
+        }
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -445,7 +484,7 @@ private fun TVShowDetailContent(
                 color = Color.White.copy(alpha = 0.7f),
                 modifier = Modifier.padding(16.dp)
             )
-            if (series.contentModeration?.isStorylineSexual == true) {
+            if (ModerationSettings.shouldBlurStoryline(context, series.contentModeration)) {
                 StorylineWarningBadge(isSexual = true, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
             }
         }
@@ -532,7 +571,7 @@ private fun TVShowDetailContent(
         }
 
         if (uiState.screenshots.isNotEmpty()) {
-            val shouldBlurScreenshots = series.contentModeration?.isScreenshotsSexual == true
+            val shouldBlurScreenshots = ModerationSettings.shouldBlurScreenshots(context, series.contentModeration)
             SectionTitle("Screenshots")
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),

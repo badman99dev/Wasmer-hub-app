@@ -26,10 +26,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.screens.home.components.movieGridItems
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +43,8 @@ fun MyFeedScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val context = LocalContext.current
+    val filteredMovies = remember(uiState.movies, context) { ModerationSettings.filterMovies(context, uiState.movies) }
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -114,7 +118,7 @@ fun MyFeedScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         movieGridItems(
-                            movies = uiState.movies,
+                            movies = filteredMovies,
                             onMovieClick = onContentClick
                         )
 

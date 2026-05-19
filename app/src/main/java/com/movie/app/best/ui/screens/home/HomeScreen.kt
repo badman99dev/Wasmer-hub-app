@@ -18,12 +18,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.movie.app.best.ui.components.AppHeader
 import com.movie.app.best.ui.components.SkeletonHeroSlide
 import com.movie.app.best.ui.components.SkeletonMovieGrid
+import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.screens.home.components.*
 
 @Composable
@@ -37,10 +39,11 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val context = LocalContext.current
 
-    val allMovies = uiState.allTabMovies
-    val trending    = uiState.trendingMovies
-    val myFeed      = uiState.myFeedMovies
+    val allMovies = remember(uiState.allTabMovies, context) { ModerationSettings.filterMovies(context, uiState.allTabMovies) }
+    val trending    = remember(uiState.trendingMovies, context) { ModerationSettings.filterMovies(context, uiState.trendingMovies) }
+    val myFeed      = remember(uiState.myFeedMovies, context) { ModerationSettings.filterMovies(context, uiState.myFeedMovies) }
     val newReleases = remember(allMovies) { allMovies.sortedByDescending { it.id }.take(12) }
     val series      = remember(allMovies) { allMovies.filter { it.isSeries }.take(12) }
 

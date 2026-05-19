@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WasmerMovie
+import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.theme.WasmerGreen
 import com.movie.app.best.ui.theme.WasmerRed
@@ -106,7 +107,7 @@ fun MoviePosterCard(
         ) {
             // Poster image
             BlurredContent(
-                shouldBlur = movie.shouldBlurPoster,
+                shouldBlur = ModerationSettings.effectiveShouldBlur(movie),
                 modifier = Modifier.fillMaxSize()
             ) {
                 AsyncImage(

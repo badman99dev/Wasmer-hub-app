@@ -17,8 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.movie.app.best.data.model.WasmerMovieDetails
+import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.components.CelebrationOverlay
 import com.movie.app.best.ui.components.ErrorView
 import com.movie.app.best.ui.components.SkeletonDetailPage
@@ -190,6 +192,46 @@ private fun MovieDetailContent(
     onReportClick: () -> Unit = {},
     onContentClick: (String, Boolean) -> Unit = { _, _ -> }
 ) {
+    val context = LocalContext.current
+    val isContentHidden = ModerationSettings.shouldHideDetail(context, movie.contentModeration)
+
+    if (isContentHidden) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            DetailHeroSection(
+                movie       = movie,
+                onBackClick = onBackClick,
+                onReportClick = onReportClick
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(Modifier.height(32.dp))
+                Text(
+                    text = "⚠️",
+                    fontSize = 40.sp,
+                    color = Color.White
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "Content is hidden due to the app's moderation filter",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(Modifier.height(40.dp))
+            }
+        }
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -231,7 +273,7 @@ private fun MovieDetailContent(
             // 4. Description
             if (movie.description.isNotEmpty()) {
                 ExpandableDescription(text = movie.description)
-                if (movie.contentModeration?.isStorylineSexual == true) {
+                if (ModerationSettings.shouldBlurStoryline(context, movie.contentModeration)) {
                     StorylineWarningBadge(isSexual = true, modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
                 }
             }
@@ -273,7 +315,7 @@ private fun MovieDetailContent(
                 Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp))
                 ScreenshotsSection(
                     screenshots = uiState.screenshots,
-                    shouldBlur = movie.contentModeration?.isScreenshotsSexual == true
+                    shouldBlur = ModerationSettings.shouldBlurScreenshots(context, movie.contentModeration)
                 )
             }
 

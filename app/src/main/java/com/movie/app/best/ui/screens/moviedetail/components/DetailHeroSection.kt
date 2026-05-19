@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.ContentModeration
 import com.movie.app.best.data.model.WasmerMovieDetails
+import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.theme.WasmerAmber
 import com.movie.app.best.ui.theme.WasmerRed
@@ -39,7 +41,8 @@ fun DetailHeroSection(
     onShareClick: () -> Unit = {},
     onReportClick: () -> Unit = {}
 ) {
-    val shouldBlur = movie.contentModeration?.isPosterSexual == true
+    val context = LocalContext.current
+    val shouldBlur = ModerationSettings.shouldBlurDetail(context, movie.contentModeration)
 
     Box(
         modifier = Modifier

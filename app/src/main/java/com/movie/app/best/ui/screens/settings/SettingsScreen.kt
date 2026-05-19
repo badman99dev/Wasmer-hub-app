@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.movie.app.best.data.debug.NetworkLogger
 import com.movie.app.best.data.repository.LibraryRepository
+import com.movie.app.best.data.settings.ModerationSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -79,6 +80,8 @@ fun SettingsScreen(
     onBackClick: () -> Unit = {}
 ) {
     var debugEnabled by remember { mutableStateOf(NetworkLogger.isEnabled()) }
+    var moderationEnabled by remember { mutableStateOf(ModerationSettings.isEnabled(context)) }
+    var moderationMode by remember { mutableStateOf(ModerationSettings.getMode(context)) }
     var showLogs by remember { mutableStateOf(false) }
     var logs by remember { mutableStateOf("") }
     var isUploading by remember { mutableStateOf(false) }
@@ -238,6 +241,70 @@ fun SettingsScreen(
                 PlayerOptionChip("Ask", selectedPlayer == 0) { selectedPlayer = 0; libraryRepo.setDefaultPlayer(0) }
                 PlayerOptionChip("P1 Native", selectedPlayer == 1) { selectedPlayer = 1; libraryRepo.setDefaultPlayer(1) }
                 PlayerOptionChip("P2 Web", selectedPlayer == 2) { selectedPlayer = 2; libraryRepo.setDefaultPlayer(2) }
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 3.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.04f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayCircle,
+                        contentDescription = null,
+                        tint = Color(0xFFE50914),
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
+                        Text(
+                            text = "Content Moderation Filter",
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            text = if (!moderationEnabled) "Off — show all content" else if (moderationMode == ModerationSettings.MODE_BLUR) "Blur sexual/inappropriate content" else "Hide sexual/inappropriate content",
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 12.sp
+                        )
+                    }
+                    Switch(
+                        checked = moderationEnabled,
+                        onCheckedChange = {
+                            moderationEnabled = it
+                            ModerationSettings.setEnabled(context, it)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = Color(0xFFE50914),
+                            checkedThumbColor = Color.White
+                        )
+                    )
+                }
+            }
+
+            if (moderationEnabled) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    PlayerOptionChip("Blur", moderationMode == ModerationSettings.MODE_BLUR) {
+                        moderationMode = ModerationSettings.MODE_BLUR
+                        ModerationSettings.setMode(context, ModerationSettings.MODE_BLUR)
+                    }
+                    PlayerOptionChip("Hide", moderationMode == ModerationSettings.MODE_HIDE) {
+                        moderationMode = ModerationSettings.MODE_HIDE
+                        ModerationSettings.setMode(context, ModerationSettings.MODE_HIDE)
+                    }
+                }
             }
 
             SettingsSectionTitle("Developer")
