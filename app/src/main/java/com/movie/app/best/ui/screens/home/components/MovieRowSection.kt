@@ -150,19 +150,8 @@ fun MoviePosterCard(
                 if (movie.contentModeration?.hasAnyFlag == true) {
                     AgeBadge()
                 }
-            }
-
-            // Series indicator
-            if (movie.isSeries) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(5.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Color(0xFF6200EA).copy(alpha = 0.85f))
-                        .padding(horizontal = 5.dp, vertical = 2.dp)
-                ) {
-                    Text("S", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                if (movie.isSeries) {
+                    SeriesBadge()
                 }
             }
 
@@ -286,6 +275,38 @@ fun AgeBadge(modifier: Modifier = Modifier) {
         Text(
             text = "18+",
             color = Color(0xFFFF1744),
+            fontSize = 9.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.5.sp
+        )
+    }
+}
+
+@Composable
+fun SeriesBadge(modifier: Modifier = Modifier) {
+    val bgColor = Color(0xFF7C4DFF).copy(alpha = 0.25f)
+    val borderColor = Color(0xFF7C4DFF).copy(alpha = 0.4f)
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(bgColor, Color.White.copy(alpha = 0.14f), bgColor)
+                )
+            )
+            .border(
+                width = 0.5.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(borderColor, Color.White.copy(alpha = 0.18f), borderColor)
+                ),
+                shape = RoundedCornerShape(50)
+            )
+            .padding(horizontal = 7.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = "Series",
+            color = Color(0xFF7C4DFF),
             fontSize = 9.sp,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.5.sp
