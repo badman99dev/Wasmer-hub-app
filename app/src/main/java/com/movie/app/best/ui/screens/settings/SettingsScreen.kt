@@ -80,8 +80,6 @@ fun SettingsScreen(
     onBackClick: () -> Unit = {}
 ) {
     var debugEnabled by remember { mutableStateOf(NetworkLogger.isEnabled()) }
-    var moderationEnabled by remember { mutableStateOf(ModerationSettings.isEnabled(context)) }
-    var moderationMode by remember { mutableStateOf(ModerationSettings.getMode(context)) }
     var showLogs by remember { mutableStateOf(false) }
     var logs by remember { mutableStateOf("") }
     var isUploading by remember { mutableStateOf(false) }
@@ -89,6 +87,8 @@ fun SettingsScreen(
     var uploadError by remember { mutableStateOf("") }
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+    var moderationEnabled by remember { mutableStateOf(ModerationSettings.isEnabled(context)) }
+    var moderationMode by remember { mutableStateOf(ModerationSettings.getMode(context)) }
 
     LaunchedEffect(debugEnabled) {
         NetworkLogger.setEnabled(debugEnabled)

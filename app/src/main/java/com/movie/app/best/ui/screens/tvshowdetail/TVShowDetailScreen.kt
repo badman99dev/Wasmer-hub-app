@@ -205,6 +205,8 @@ private fun TVShowDetailContent(
     val context = LocalContext.current
     val isContentHidden = ModerationSettings.shouldHideDetail(context, series.contentModeration)
     val shouldBlurPoster = ModerationSettings.shouldBlurDetail(context, series.contentModeration)
+    val seasonKeys = uiState.episodesBySeason.keys.sorted()
+    var selectedSeason by remember { mutableStateOf(seasonKeys.firstOrNull() ?: 1) }
 
     if (isContentHidden) {
         Column(
