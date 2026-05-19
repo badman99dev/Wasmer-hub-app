@@ -15,9 +15,15 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -94,13 +100,23 @@ fun MovieCard(
                 )
             }
 
-            if (movie.qualityLabel.isNotBlank()) {
-                QualityBadge(
-                    label = movie.qualityLabel,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(5.dp)
-                )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(5.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (movie.qualityLabel.isNotBlank()) {
+                        QualityBadge(label = movie.qualityLabel)
+                    }
+                    if (movie.hasStream) {
+                        StreamBadge()
+                    }
+                }
+                if (movie.contentModeration?.hasAnyFlag == true) {
+                    AgeBadge()
+                }
             }
 
             Box(
@@ -169,6 +185,78 @@ fun QualityBadge(label: String, modifier: Modifier = Modifier) {
         Text(
             text = label,
             color = textColor,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.5.sp
+        )
+    }
+}
+
+@Composable
+fun StreamBadge(modifier: Modifier = Modifier) {
+    val bgColor = Color(0xFF4CAF50).copy(alpha = 0.25f)
+    val borderColor = Color(0xFF4CAF50).copy(alpha = 0.4f)
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        bgColor,
+                        Color.White.copy(alpha = 0.14f),
+                        bgColor
+                    )
+                )
+            )
+            .border(
+                width = 0.5.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(borderColor, Color.White.copy(alpha = 0.18f), borderColor)
+                ),
+                shape = RoundedCornerShape(50)
+            )
+            .padding(horizontal = 5.dp, vertical = 3.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.PlayArrow,
+            contentDescription = null,
+            tint = Color(0xFF4CAF50),
+            modifier = Modifier.size(10.dp)
+        )
+    }
+}
+
+@Composable
+fun AgeBadge(modifier: Modifier = Modifier) {
+    val bgColor = Color(0xFFFF1744).copy(alpha = 0.25f)
+    val borderColor = Color(0xFFFF1744).copy(alpha = 0.4f)
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        bgColor,
+                        Color.White.copy(alpha = 0.14f),
+                        bgColor
+                    )
+                )
+            )
+            .border(
+                width = 0.5.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(borderColor, Color.White.copy(alpha = 0.18f), borderColor)
+                ),
+                shape = RoundedCornerShape(50)
+            )
+            .padding(horizontal = 7.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = "18+",
+            color = Color(0xFFFF1744),
             fontSize = 9.sp,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 0.5.sp
