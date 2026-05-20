@@ -131,16 +131,36 @@ class MovieDetailViewModel @Inject constructor(
     fun requestStream() {
         val slug = _uiState.value.movie?.slug ?: return
         viewModelScope.launch {
-            repository.postStreamRequest(slug).collect { result ->
-                when (result) {
-                    is Resource.Loading -> {}
-                    is Resource.Success -> {
-                        _uiState.update { it.copy(streamRequested = true) }
-                    }
-                    is Resource.Error -> {}
+            _uiState.update { it.copy(isStreamRequesting = true) }
+            try {
+                val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                val tokenResult = user?.getIdToken(false)?.await()
+                val authHeader = "Bearer ${tokenResult?.token ?: ""}"
+                val response = repository.submitStreamRequest(authHeader, slug)
+                _uiState.update {
+                    it.copy(
+                        isStreamRequesting = false,
+                        streamRequested = !response.already_requested && !response.has_stream,
+                        streamRequestResult = response,
+                        showStreamRequestResult = true
+                    )
+                }
+                if (response.already_requested) {
+                    _uiState.update { it.copy(streamRequested = true) }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isStreamRequesting = false,
+                        streamRequestError = e.message
+                    )
                 }
             }
         }
+    }
+
+    fun dismissStreamRequestResult() {
+        _uiState.update { it.copy(showStreamRequestResult = false) }
     }
 
     fun startDownload(linkUrl: String) {
@@ -396,6 +416,10 @@ data class MovieDetailUiState(
     val commentError: String? = null,
 
     val streamRequested: Boolean = false,
+    val isStreamRequesting: Boolean = false,
+    val streamRequestResult: com.movie.app.best.data.remote.StreamRequestApiResponse? = null,
+    val showStreamRequestResult: Boolean = false,
+    val streamRequestError: String? = null,
 
     val downloadUrl: String = "",
     val isDownloadLoading: Boolean = false,

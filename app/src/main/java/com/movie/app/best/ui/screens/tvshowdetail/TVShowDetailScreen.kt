@@ -188,6 +188,32 @@ fun TVShowDetailScreen(
                 )
             }
         }
+
+        if (uiState.isStreamRequesting) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.8f)),
+                contentAlignment = Alignment.Center
+            ) {
+                StreamRequestWaitingPopup()
+            }
+        }
+
+        if (uiState.showStreamRequestResult && uiState.streamRequestResult != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.85f)),
+                contentAlignment = Alignment.Center
+            ) {
+                StreamRequestResultModal(
+                    result = uiState.streamRequestResult!!,
+                    isModerator = uiState.isModerator,
+                    onDismiss = viewModel::dismissStreamRequestResult
+                )
+            }
+        }
     }
 }
 

@@ -96,9 +96,9 @@ class MovieRepository @Inject constructor(
         emit(safeApiCall { apiService.postComment(authHeader, movieId, msg) })
     }
 
-    fun postStreamRequest(slug: String): Flow<Resource<Any?>> = flow {
-        emit(Resource.Loading())
-        emit(safeApiCall { apiService.postStreamRequest(slug) })
+    suspend fun submitStreamRequest(authHeader: String, slug: String): com.movie.app.best.data.remote.StreamRequestApiResponse {
+        val response = apiService.postStreamRequest(authHeader, mapOf("slug" to slug))
+        return response.data ?: com.movie.app.best.data.remote.StreamRequestApiResponse()
     }
 
     suspend fun submitContentModeration(authHeader: String, movieId: Int, reportType: String, reason: String): com.movie.app.best.data.remote.ContentModerationApiResponse {

@@ -51,10 +51,10 @@ interface MovieApiService {
     ): WasmerApiResponse<Map<String, String>>
 
     @POST("stream-request")
-    @FormUrlEncoded
     suspend fun postStreamRequest(
-        @Field("slug") slug: String
-    ): WasmerApiResponse<Any?>
+        @Header("Authorization") authHeader: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any>
+    ): WasmerApiResponse<StreamRequestApiResponse>
 
     @POST("content-moderation")
     suspend fun postContentModeration(
@@ -103,4 +103,16 @@ data class ContentModerationApiResponse(
     val previous_moderation: ContentModerationResponse? = null,
     val images_analyzed: Int = 0,
     val debug: List<String> = emptyList()
+)
+
+data class StreamRequestApiResponse(
+    val already_requested: Boolean = false,
+    val movie_id: Int = 0,
+    val slug: String = "",
+    val request_count: Int = 0,
+    val has_stream: Boolean = false,
+    val tier: String = "normal_user",
+    val skynet: Map<String, @JvmSuppressWildcards Any>? = null,
+    val skynet_debug: List<String> = emptyList(),
+    val fallback: Boolean = false
 )

@@ -1,5 +1,7 @@
 package com.movie.app.best.ui.screens.moviedetail.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -8,11 +10,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.movie.app.best.ui.theme.WasmerRed
+import com.movie.app.best.data.remote.StreamRequestApiResponse
 
 @Composable
 fun DetailActionButtons(
@@ -20,12 +24,12 @@ fun DetailActionButtons(
     streamRequested: Boolean,
     isInMyList: Boolean,
     isLiked: Boolean,
+    modifier: Modifier = Modifier,
     onPlayClick: () -> Unit,
     onDownloadClick: () -> Unit,
     onMyListClick: () -> Unit,
     onLikeClick: () -> Unit,
-    onRequestStream: () -> Unit,
-    modifier: Modifier = Modifier
+    onRequestStream: () -> Unit
 ) {
     Row(
         modifier = modifier
@@ -36,14 +40,14 @@ fun DetailActionButtons(
     ) {
         if (hasStream) {
             Button(
-                onClick  = onPlayClick,
+                onClick = onPlayClick,
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
-                shape    = RoundedCornerShape(8.dp),
-                colors   = ButtonDefaults.buttonColors(
-                    containerColor = WasmerRed,
-                    contentColor   = Color.White
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFE50914),
+                    contentColor = Color.White
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
@@ -52,42 +56,73 @@ fun DetailActionButtons(
                 Text("Play Now", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         } else {
-            OutlinedButton(
-                onClick  = { if (!streamRequested) onRequestStream() },
+            val capsuleBg = if (streamRequested) {
+                Brush.linearGradient(colors = listOf(Color(0xFF1B5E20).copy(alpha = 0.5f), Color(0xFF2E7D32).copy(alpha = 0.3f)))
+            } else {
+                Brush.linearGradient(colors = listOf(Color(0xFFE50914), Color(0xFFB71C1C)))
+            }
+            val borderBrush = if (streamRequested) {
+                Brush.linearGradient(colors = listOf(Color(0xFF4CAF50).copy(alpha = 0.6f), Color(0xFF81C784).copy(alpha = 0.3f)))
+            } else {
+                Brush.linearGradient(colors = listOf(Color(0xFFFF5252), Color(0xFFFFD700), Color(0xFFFF5252)))
+            }
+
+            Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp),
-                shape    = RoundedCornerShape(8.dp),
-                enabled  = !streamRequested,
-                colors   = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(capsuleBg)
+                    .then(
+                        if (!streamRequested) Modifier.border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(24.dp))
+                        else Modifier.border(BorderStroke(0.5.dp, borderBrush), RoundedCornerShape(24.dp))
+                    )
+                    .then(if (!streamRequested) Modifier else Modifier)
+                    .clickable(enabled = !streamRequested) { onRequestStream() },
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.SmartDisplay, null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = if (streamRequested) "Requested ✓" else "Request Stream",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (streamRequested) {
+                        Icon(
+                            Icons.Default.CheckCircle, null,
+                            modifier = Modifier.size(18.dp),
+                            tint = Color(0xFF81C784)
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.SmartDisplay, null,
+                            modifier = Modifier.size(20.dp),
+                            tint = Color.White
+                        )
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = if (streamRequested) "Requested ✓" else "Request Stream",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = if (streamRequested) Color(0xFFA5D6A7) else Color.White
+                    )
+                }
             }
         }
 
         ActionIconButton(
-            icon    = Icons.Default.Download,
-            label   = "Download",
+            icon = Icons.Default.Download,
+            label = "Download",
             onClick = onDownloadClick
         )
 
         ActionIconButton(
-            icon    = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-            label   = if (isLiked) "Liked" else "Like",
-            tint    = if (isLiked) Color(0xFFFF1744) else Color.White,
+            icon = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+            label = if (isLiked) "Liked" else "Like",
+            tint = if (isLiked) Color(0xFFFF1744) else Color.White,
             onClick = onLikeClick
         )
 
         ActionIconButton(
-            icon    = if (isInMyList) Icons.Default.BookmarkAdded else Icons.Default.BookmarkAdd,
-            label   = if (isInMyList) "Saved" else "My List",
-            tint    = if (isInMyList) WasmerRed else Color.White,
+            icon = if (isInMyList) Icons.Default.BookmarkAdded else Icons.Default.BookmarkAdd,
+            label = if (isInMyList) "Saved" else "My List",
+            tint = if (isInMyList) Color(0xFFE50914) else Color.White,
             onClick = onMyListClick
         )
     }
@@ -105,16 +140,229 @@ private fun ActionIconButton(
         modifier = Modifier.width(60.dp)
     ) {
         IconButton(
-            onClick  = onClick,
+            onClick = onClick,
             modifier = Modifier.size(44.dp)
         ) {
             Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(26.dp))
         }
         Text(
-            text     = label,
-            color    = tint.copy(alpha = 0.75f),
+            text = label,
+            color = tint.copy(alpha = 0.75f),
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium
         )
     }
 }
+
+@Composable
+fun StreamRequestWaitingPopup() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF1A1A1A).copy(alpha = 0.95f), RoundedCornerShape(20.dp))
+            .padding(28.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.SmartDisplay,
+                contentDescription = null,
+                tint = Color(0xFFE50914),
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = "Submitting request...",
+                color = Color.White,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Please wait a moment...",
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 13.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 18.sp
+            )
+            Spacer(Modifier.height(16.dp))
+            CircularProgressIndicator(
+                color = Color(0xFFE50914),
+                modifier = Modifier.size(32.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun StreamRequestResultModal(
+    result: StreamRequestApiResponse,
+    isModerator: Boolean = false,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF1A1A1A).copy(alpha = 0.97f), RoundedCornerShape(20.dp))
+            .padding(24.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (result.already_requested) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color(0xFFFF9800),
+                    modifier = Modifier.size(40.dp)
+                )
+            } else if (result.has_stream) {
+                Icon(
+                    imageVector = Icons.Default.PlayCircle,
+                    contentDescription = null,
+                    tint = Color(0xFF4CAF50),
+                    modifier = Modifier.size(40.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color(0xFF4CAF50),
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                text = when {
+                    result.already_requested -> "Already Requested"
+                    result.has_stream -> "Stream Available!"
+                    else -> "Request Submitted!"
+                },
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = when {
+                    result.already_requested -> "You have already submitted a stream request for this content."
+                    result.has_stream -> "This content already has a stream available. Hit Play Now!"
+                    result.tier == "vip_user" && result.skynet?.get("triggered") == true -> "VIP request submitted! Processing has been triggered. 🚀"
+                    result.tier == "vip_user" -> "VIP request submitted! Processing trigger failed — vote registered."
+                    result.tier == "moderator" && result.skynet?.get("triggered") == true -> "Moderator request submitted! Force processing triggered. 🛡️"
+                    result.tier == "moderator" -> "Moderator request submitted! Force trigger encountered an issue."
+                    else -> "Stream request submitted! We will notify you when ready."
+                },
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 14.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 19.sp
+            )
+
+            if (!result.already_requested && !result.has_stream) {
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.HowToVote, null, modifier = Modifier.size(16.dp), tint = Color(0xFFFF9800))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "${result.request_count} requests so far",
+                        color = Color(0xFFFF9800),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            if (isModerator && result.skynet != null) {
+                Spacer(Modifier.height(16.dp))
+                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    text = "Skynet Response",
+                    color = Color(0xFF7C4DFF),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Spacer(Modifier.height(6.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0D0D0D))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        val httpCode = result.skynet["http_code"]
+                        val triggered = result.skynet["triggered"]
+                        val error = result.skynet["error"]
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Triggered:", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
+                            Text(
+                                if (triggered == true) "✅ Yes" else "❌ No",
+                                color = if (triggered == true) Color(0xFF4CAF50) else Color(0xFFFF5252),
+                                fontSize = 11.sp, fontWeight = FontWeight.Bold
+                            )
+                        }
+                        if (httpCode != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("HTTP:", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
+                                Text("$httpCode", color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp)
+                            }
+                        }
+                        if (error != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text("Error: $error", color = Color(0xFFFF8A80), fontSize = 11.sp)
+                        }
+
+                        val response = result.skynet["response"]
+                        if (response is Map<*, *>) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = com.google.gson.Gson().toJson(response),
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontSize = 10.sp,
+                                lineHeight = 14.sp,
+                                maxLines = 10
+                            )
+                        }
+                    }
+                }
+
+                if (result.skynet_debug.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    result.skynet_debug.forEach { dbg ->
+                        Text(
+                            text = "→ $dbg",
+                            color = Color.White.copy(alpha = 0.4f),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth().height(46.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE50914))
+            ) {
+                Text("Done", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        }
+    }
+}
+
+private fun Modifier.clickable(enabled: Boolean, onClick: () -> Unit): Modifier =
+    this.then(
+        if (enabled) androidx.compose.foundation.clickable { onClick() }
+        else this
+    )
