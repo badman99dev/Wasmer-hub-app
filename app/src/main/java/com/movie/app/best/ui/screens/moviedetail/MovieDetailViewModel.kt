@@ -337,8 +337,6 @@ class MovieDetailViewModel @Inject constructor(
             _uiState.update { it.copy(movie = it.movie?.copy(contentModeration = newCm)) }
         }
     }
-        }
-    }
 
     fun dismissReportResult() {
         _uiState.update { it.copy(reportModerationResult = null) }
