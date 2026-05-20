@@ -17,6 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -64,13 +68,19 @@ fun ProfileScreen(
     onSettingsClick: () -> Unit,
     onNotificationClick: () -> Unit = {},
     onBookmarksClick: () -> Unit = {},
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel(),
+    firebaseRepository: com.movie.app.best.data.repository.FirebaseRepository = hiltViewModel<com.movie.app.best.ui.screens.profile.ProfileFirebaseViewModel>().firebaseRepository
 ) {
     val authState by authViewModel.uiState.collectAsState()
+    var userTier by remember { mutableStateOf("normal_user") }
 
     LaunchedEffect(Unit) {
         authViewModel.refreshAuthState()
         authViewModel.autoCheckVerification()
+        try {
+            val profile = firebaseRepository.getOrCreateUserProfile()
+            if (profile != null) userTier = profile.tier
+        } catch (_: Exception) {}
     }
 
     Column(
@@ -114,6 +124,7 @@ fun ProfileScreen(
             val user = authState.user!!
             LoggedInView(
                 user = user,
+                userTier = userTier,
                 needsVerification = authState.needsVerification,
                 isLoggingOut = authState.isLoggingOut,
                 onLogoutClick = { authViewModel.logout() },
@@ -130,6 +141,7 @@ fun ProfileScreen(
 @Composable
 private fun LoggedInView(
     user: WasmerUser,
+    userTier: String,
     needsVerification: Boolean,
     isLoggingOut: Boolean,
     onLogoutClick: () -> Unit,
@@ -240,19 +252,12 @@ private fun LoggedInView(
                             .height(32.dp)
                             .background(Color.White.copy(alpha = 0.08f))
                     )
-                    ProfileStat(value = user.role.replaceFirstChar { it.uppercase() }, label = "Role")
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(32.dp)
-                            .background(Color.White.copy(alpha = 0.08f))
-                    )
-                    val tierDisplay = when (user.tier) {
+                    val roleDisplay = when (userTier) {
                         "vip_user" -> "VIP 💎"
-                        "moderator" -> "Mod 🛡️"
+                        "moderator" -> "Moderator 🛡️"
                         else -> "User"
                     }
-                    ProfileStat(value = tierDisplay, label = "Tier")
+                    ProfileStat(value = roleDisplay, label = "Role")
                 }
             }
         }
