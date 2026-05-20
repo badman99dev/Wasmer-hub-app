@@ -2,6 +2,8 @@ package com.movie.app.best.ui.screens.moviedetail.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -73,11 +75,11 @@ fun DetailActionButtons(
                     .height(48.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(capsuleBg)
-                    .then(
-                        if (!streamRequested) Modifier.border(BorderStroke(1.dp, borderBrush), RoundedCornerShape(24.dp))
-                        else Modifier.border(BorderStroke(0.5.dp, borderBrush), RoundedCornerShape(24.dp))
+                    .border(
+                        width = if (!streamRequested) 1.dp else 0.5.dp,
+                        brush = borderBrush,
+                        shape = RoundedCornerShape(24.dp)
                     )
-                    .then(if (!streamRequested) Modifier else Modifier)
                     .clickable(enabled = !streamRequested) { onRequestStream() },
                 contentAlignment = Alignment.Center
             ) {
@@ -361,8 +363,3 @@ fun StreamRequestResultModal(
     }
 }
 
-private fun Modifier.clickable(enabled: Boolean, onClick: () -> Unit): Modifier =
-    this.then(
-        if (enabled) androidx.compose.foundation.clickable { onClick() }
-        else this
-    )

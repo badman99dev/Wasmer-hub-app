@@ -84,6 +84,8 @@ import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.components.StorylineWarningBadge
 import com.movie.app.best.ui.screens.moviedetail.components.DetailActionButtons
 import com.movie.app.best.ui.screens.moviedetail.components.ReportDrawer
+import com.movie.app.best.ui.screens.moviedetail.components.StreamRequestWaitingPopup
+import com.movie.app.best.ui.screens.moviedetail.components.StreamRequestResultModal
 import com.movie.app.best.ui.screens.moviedetail.components.ReportWaitingPopup
 import com.movie.app.best.ui.screens.moviedetail.components.ReportResultModal
 import kotlinx.coroutines.delay
