@@ -41,21 +41,24 @@ fun DetailActionButtons(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (hasStream) {
-            Button(
-                onClick = onPlayClick,
+            val playBg = Brush.linearGradient(colors = listOf(Color(0xFFE50914), Color(0xFFB71C1C)))
+            val playBorder = Brush.linearGradient(colors = listOf(Color(0xFFFF5252), Color(0xFFFFD700), Color(0xFFFF5252)))
+
+            Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFE50914),
-                    contentColor = Color.White
-                ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(playBg)
+                    .border(width = 1.dp, brush = playBorder, shape = RoundedCornerShape(24.dp))
+                    .clickable { onPlayClick() },
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Play Now", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(22.dp), tint = Color.White)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Play Now", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                }
             }
         } else {
             val capsuleBg = if (streamRequested) {
