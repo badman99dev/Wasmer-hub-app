@@ -247,7 +247,12 @@ private fun LoggedInView(
                             .height(32.dp)
                             .background(Color.White.copy(alpha = 0.08f))
                     )
-                    ProfileStat(value = user.createdAt.take(4).ifBlank { "—" }, label = "Since")
+                    val tierDisplay = when (user.tier) {
+                        "vip_user" -> "VIP 💎"
+                        "moderator" -> "Mod 🛡️"
+                        else -> "User"
+                    }
+                    ProfileStat(value = tierDisplay, label = "Tier")
                 }
             }
         }

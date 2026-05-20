@@ -42,11 +42,24 @@ import androidx.compose.ui.unit.sp
 fun ReportDrawer(
     movieId: Int,
     currentModeration: com.movie.app.best.data.model.ContentModeration? = null,
+    isModerator: Boolean = false,
     onSubmit: (movieId: Int, reportType: String, reason: String) -> Unit,
+    onModeratorVerdict: (movieId: Int, poster: String, screenshots: String, storyline: String, reasoning: String) -> Unit = { _, _, _, _, _ -> },
     onDismiss: () -> Unit
 ) {
     var selectedType by remember { mutableStateOf("") }
     var reason by remember { mutableStateOf("") }
+    var showCustomFlag by remember { mutableStateOf(false) }
+
+    if (showCustomFlag && isModerator) {
+        CustomFlagModal(
+            movieId = movieId,
+            currentModeration = currentModeration,
+            onSubmit = onModeratorVerdict,
+            onDismiss = { showCustomFlag = false }
+        )
+        return
+    }
 
     val isCurrentlyFlagged = currentModeration?.hasAnyFlag == true
 
@@ -104,6 +117,50 @@ fun ReportDrawer(
             )
 
             Spacer(Modifier.height(16.dp))
+
+            if (isModerator) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .clickable { showCustomFlag = true },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF7C4DFF).copy(alpha = 0.15f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Flag,
+                            contentDescription = null,
+                            tint = Color(0xFF7C4DFF),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Add/Edit Custom Flag (mod)",
+                                color = Color(0xFFB388FF),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Directly set moderation flags without AI",
+                                color = Color.White.copy(alpha = 0.4f),
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                Spacer(Modifier.height(12.dp))
+            }
 
             reportTypes.forEach { (type, label) ->
                 val isSelected = selectedType == type
@@ -199,6 +256,206 @@ fun ReportDrawer(
                         fontWeight = FontWeight.Bold, fontSize = 15.sp
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun CustomFlagModal(
+    movieId: Int,
+    currentModeration: com.movie.app.best.data.model.ContentModeration? = null,
+    onSubmit: (movieId: Int, poster: String, screenshots: String, storyline: String, reasoning: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var flagPoster by remember { mutableStateOf(currentModeration?.poster == "sexual") }
+    var flagScreenshots by remember { mutableStateOf(currentModeration?.screenshots == "sexual") }
+    var flagStoryline by remember { mutableStateOf(currentModeration?.storyline == "sexual") }
+    var reasoning by remember { mutableStateOf("Moderated by moderator") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF1A1A1A), RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Color.White.copy(alpha = 0.3f))
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Flag,
+                    contentDescription = null,
+                    tint = Color(0xFF7C4DFF),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = "Custom Flag (Mod)",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            Text(
+                text = "Set moderation flags directly — no AI check",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 13.sp
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            FlagToggle(
+                label = "Flag poster as sexual",
+                isOn = flagPoster,
+                onToggle = { flagPoster = it }
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            FlagToggle(
+                label = "Flag screenshots as sexual",
+                isOn = flagScreenshots,
+                onToggle = { flagScreenshots = it }
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            FlagToggle(
+                label = "Flag storyline as sexual",
+                isOn = flagStoryline,
+                onToggle = { flagStoryline = it }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = reasoning,
+                onValueChange = { reasoning = it },
+                label = { Text("Reasoning", color = Color.White.copy(alpha = 0.5f)) },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+                maxLines = 4,
+                shape = RoundedCornerShape(12.dp),
+                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White)
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = "💡 If you add a reason, AI can modify your decision",
+                color = Color(0xFFFF9800).copy(alpha = 0.7f),
+                fontSize = 12.sp
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A))
+                ) {
+                    Text("Cancel", color = Color.White.copy(alpha = 0.7f), fontWeight = FontWeight.Medium)
+                }
+
+                Button(
+                    onClick = {
+                        onSubmit(
+                            movieId,
+                            if (flagPoster) "sexual" else "safe",
+                            if (flagScreenshots) "sexual" else "safe",
+                            if (flagStoryline) "sexual" else "none",
+                            reasoning
+                        )
+                    },
+                    modifier = Modifier.weight(1.5f).height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C4DFF))
+                ) {
+                    Icon(Icons.Default.Flag, null, modifier = Modifier.size(18.dp), tint = Color.White)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Save Flag", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FlagToggle(
+    label: String,
+    isOn: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle(!isOn) },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isOn) Color(0xFFFF1744).copy(alpha = 0.15f) else Color(0xFF2A2A2A)
+        ),
+        border = if (isOn) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF1744).copy(alpha = 0.6f)) else null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Flag,
+                    contentDescription = null,
+                    tint = if (isOn) Color(0xFFFF1744) else Color.White.copy(alpha = 0.3f),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = label,
+                    color = if (isOn) Color(0xFFFF8A80) else Color.White.copy(alpha = 0.6f),
+                    fontSize = 14.sp,
+                    fontWeight = if (isOn) FontWeight.SemiBold else FontWeight.Normal
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .width(44.dp)
+                    .height(24.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isOn) Color(0xFFFF1744) else Color(0xFF444444))
+                    .clickable { onToggle(!isOn) },
+                contentAlignment = if (isOn) Alignment.CenterEnd else Alignment.CenterStart
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(2.dp)
+                        .size(20.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color.White)
+                )
             }
         }
     }

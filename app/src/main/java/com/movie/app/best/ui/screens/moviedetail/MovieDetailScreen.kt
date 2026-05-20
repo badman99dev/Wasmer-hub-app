@@ -137,8 +137,12 @@ fun MovieDetailScreen(
                 ReportDrawer(
                     movieId = uiState.movie?.id ?: 0,
                     currentModeration = uiState.movie?.contentModeration,
+                    isModerator = uiState.isModerator,
                     onSubmit = { movieId, reportType, reason ->
                         viewModel.submitContentModeration(movieId, reportType, reason)
+                    },
+                    onModeratorVerdict = { movieId, poster, screenshots, storyline, reasoning ->
+                        viewModel.submitModeratorVerdict(movieId, poster, screenshots, storyline, reasoning)
                     },
                     onDismiss = viewModel::closeReportDrawer
                 )

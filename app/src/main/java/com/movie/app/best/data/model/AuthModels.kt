@@ -11,7 +11,8 @@ data class WasmerUser(
     @SerializedName("is_verified") val isVerified: Int,
     @SerializedName("created_at") val createdAt: String,
     @SerializedName("first_name") val firstName: String? = null,
-    @SerializedName("last_name") val lastName: String? = null
+    @SerializedName("last_name") val lastName: String? = null,
+    val tier: String = "normal_user"
 )
 
 data class AuthResponse(

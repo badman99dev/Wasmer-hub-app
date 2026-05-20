@@ -41,6 +41,13 @@ class TVShowDetailViewModel @Inject constructor(
     init {
         MyListRefreshState.markStale()
         loadSeriesDetails()
+        viewModelScope.launch {
+            try {
+                val profile = firebaseRepository.getOrCreateUserProfile()
+                val isMod = profile?.tier == "moderator"
+                _uiState.update { it.copy(isModerator = isMod) }
+            } catch (_: Exception) {}
+        }
     }
 
     fun loadSeriesDetails() {
@@ -244,33 +251,7 @@ class TVShowDetailViewModel @Inject constructor(
                 val tokenResult = user?.getIdToken(false)?.await()
                 val authHeader = "Bearer ${tokenResult?.token ?: ""}"
                 val response = repository.submitContentModeration(authHeader, movieId, reportType, reason)
-                val modResult = response.moderation
-                val prevResult = response.previous_moderation
-
-                val anyChange = if (prevResult != null && modResult != null) {
-                    modResult.poster != prevResult.poster || modResult.screenshots != prevResult.screenshots || modResult.storyline != prevResult.storyline
-                } else {
-                    modResult?.poster == "sexual" || modResult?.screenshots == "sexual" || modResult?.storyline == "sexual"
-                }
-
-                val showCeleb = if (isObjection) anyChange else (modResult?.poster == "sexual" || modResult?.screenshots == "sexual" || modResult?.storyline == "sexual")
-
-                _uiState.update { state ->
-                    state.copy(
-                        showReportWaiting = false,
-                        reportModerationResult = modResult,
-                        previousModerationResult = prevResult,
-                        showCelebration = showCeleb
-                    )
-                }
-                if (modResult != null) {
-                    val newCm = com.movie.app.best.data.model.ContentModeration(
-                        poster = modResult.poster,
-                        screenshots = modResult.screenshots,
-                        storyline = modResult.storyline
-                    )
-                    _uiState.update { it.copy(series = it.series?.copy(contentModeration = newCm)) }
-                }
+                handleModerationResponse(response, isObjection)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -279,6 +260,60 @@ class TVShowDetailViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    fun submitModeratorVerdict(movieId: Int, poster: String, screenshots: String, storyline: String, reasoning: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(showReportDrawer = false) }
+            try {
+                val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                val tokenResult = user?.getIdToken(false)?.await()
+                val authHeader = "Bearer ${tokenResult?.token ?: ""}"
+                val verdict = mapOf<String, @JvmSuppressWildcards Any>(
+                    "poster" to poster,
+                    "screenshots" to screenshots,
+                    "storyline" to storyline,
+                    "confidence" to "high",
+                    "reasoning" to reasoning
+                )
+                val response = repository.submitModeratorVerdict(authHeader, movieId, "manual", reasoning, verdict)
+                handleModerationResponse(response, false)
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(moderationError = e.message)
+                }
+            }
+        }
+    }
+
+    private suspend fun handleModerationResponse(response: com.movie.app.best.data.remote.ContentModerationApiResponse, isObjection: Boolean) {
+        val modResult = response.moderation
+        val prevResult = response.previous_moderation
+
+        val anyChange = if (prevResult != null && modResult != null) {
+            modResult.poster != prevResult.poster || modResult.screenshots != prevResult.screenshots || modResult.storyline != prevResult.storyline
+        } else {
+            modResult?.poster == "sexual" || modResult?.screenshots == "sexual" || modResult?.storyline == "sexual"
+        }
+
+        val showCeleb = if (isObjection) anyChange else (modResult?.poster == "sexual" || modResult?.screenshots == "sexual" || modResult?.storyline == "sexual")
+
+        _uiState.update { state ->
+            state.copy(
+                showReportWaiting = false,
+                reportModerationResult = modResult,
+                previousModerationResult = prevResult,
+                showCelebration = showCeleb
+            )
+        }
+        if (modResult != null) {
+            val newCm = com.movie.app.best.data.model.ContentModeration(
+                poster = modResult.poster,
+                screenshots = modResult.screenshots,
+                storyline = modResult.storyline
+            )
+            _uiState.update { it.copy(series = it.series?.copy(contentModeration = newCm)) }
         }
     }
 
@@ -353,6 +388,7 @@ data class TVShowDetailUiState(
     val showReportDrawer: Boolean = false,
     val showReportWaiting: Boolean = false,
     val isObjectionReport: Boolean = false,
+    val isModerator: Boolean = false,
     val moderationError: String? = null,
     val reportModerationResult: com.movie.app.best.data.model.ContentModerationResponse? = null,
     val previousModerationResult: com.movie.app.best.data.model.ContentModerationResponse? = null,

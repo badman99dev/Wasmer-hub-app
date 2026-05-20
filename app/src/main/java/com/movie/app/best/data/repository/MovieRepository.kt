@@ -109,4 +109,14 @@ class MovieRepository @Inject constructor(
         ))
         return response.data ?: com.movie.app.best.data.remote.ContentModerationApiResponse()
     }
+
+    suspend fun submitModeratorVerdict(authHeader: String, movieId: Int, reportType: String, reason: String, verdict: Map<String, @JvmSuppressWildcards Any>): com.movie.app.best.data.remote.ContentModerationApiResponse {
+        val response = apiService.postContentModeration(authHeader, mapOf(
+            "movie_id" to movieId,
+            "report_type" to reportType,
+            "reason" to reason,
+            "verdict" to verdict
+        ))
+        return response.data ?: com.movie.app.best.data.remote.ContentModerationApiResponse()
+    }
 }
