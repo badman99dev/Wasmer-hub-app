@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -53,7 +54,7 @@ fun ScreenshotViewer(
     shouldBlur: Boolean = false,
     onDismiss: () -> Unit
 ) {
-    val pagerState = rememberPagerState(pageCount = { screenshots.size }, initialPage = initialIndexCoerce(initialIndex, screenshots.size))
+    val pagerState = rememberPagerState(pageCount = { screenshots.size }, initialPage = initialPageCoerce(initialIndex, screenshots.size))
     val scope = rememberCoroutineScope()
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
