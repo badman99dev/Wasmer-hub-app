@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -335,22 +336,29 @@ fun SkeletonCategoryCard(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeletonDetailPage() {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
             .verticalScroll(rememberScrollState())
     ) {
-        SkeletonHeroPoster()
-        Spacer(modifier = Modifier.height(22.dp))
-        SkeletonActionButtons()
-        Spacer(modifier = Modifier.height(18.dp))
-        SkeletonTagChips()
-        Spacer(modifier = Modifier.height(16.dp))
-        SkeletonDescriptionLines()
-        Spacer(modifier = Modifier.height(28.dp))
-        SkeletonCastCrewSection()
-        Spacer(modifier = Modifier.height(32.dp))
+        Column {
+            SkeletonHeroPoster()
+        }
+        Column(
+            modifier = Modifier
+                .offset(y = 112.dp)
+                .padding(start = 96.dp)
+        ) {
+            SkeletonActionButtons()
+            Spacer(modifier = Modifier.height(18.dp))
+            SkeletonTagChips()
+            Spacer(modifier = Modifier.height(16.dp))
+            SkeletonDescriptionLines()
+            Spacer(modifier = Modifier.height(28.dp))
+            SkeletonCastCrewSection()
+            Spacer(modifier = Modifier.height(32.dp))
+        }
     }
 }
 
