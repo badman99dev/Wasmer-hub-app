@@ -342,8 +342,6 @@ fun SkeletonDetailPage() {
             .verticalScroll(rememberScrollState())
     ) {
         SkeletonHeroPoster()
-        Spacer(modifier = Modifier.height(16.dp))
-        SkeletonMovieTitleSection()
         Spacer(modifier = Modifier.height(22.dp))
         SkeletonActionButtons()
         Spacer(modifier = Modifier.height(18.dp))
@@ -384,43 +382,6 @@ private fun SkeletonHeroPoster() {
                     .height(36.dp),
                 shape = RoundedCornerShape(10.dp)
             )
-        }
-    }
-}
-
-@Composable
-private fun SkeletonMovieTitleSection() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        SkeletonBox(
-            modifier = Modifier
-                .fillMaxWidth(0.88f)
-                .height(30.dp),
-            shape = RoundedCornerShape(6.dp)
-        )
-        SkeletonBox(
-            modifier = Modifier
-                .fillMaxWidth(0.62f)
-                .height(30.dp),
-            shape = RoundedCornerShape(6.dp)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SkeletonLine(width = 40.dp, height = 13.dp)
-            SkeletonBox(
-                modifier = Modifier
-                    .width(54.dp)
-                    .height(13.dp),
-                shape = RoundedCornerShape(4.dp)
-            )
-            SkeletonLine(width = 62.dp, height = 13.dp)
         }
     }
 }
