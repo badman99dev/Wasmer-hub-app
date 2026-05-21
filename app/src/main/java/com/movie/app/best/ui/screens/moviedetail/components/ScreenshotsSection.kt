@@ -19,7 +19,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.activity.compose.BackHandler
 import coil.compose.AsyncImage
 import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.components.ScreenshotViewer
@@ -34,9 +33,6 @@ fun ScreenshotsSection(
     var viewerIndex by remember { mutableIntStateOf(0) }
 
     if (viewerOpen) {
-        BackHandler(enabled = true) {
-            viewerOpen = false
-        }
         ScreenshotViewer(
             screenshots = screenshots,
             initialIndex = viewerIndex,

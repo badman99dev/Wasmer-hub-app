@@ -53,7 +53,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -614,7 +613,6 @@ private fun TVShowDetailContent(
             var screenshotViewerIndex by remember { mutableIntStateOf(0) }
 
             if (screenshotViewerOpen) {
-                BackHandler(enabled = true) { screenshotViewerOpen = false }
                 ScreenshotViewer(
                     screenshots = uiState.screenshots,
                     initialIndex = screenshotViewerIndex,
