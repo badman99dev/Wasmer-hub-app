@@ -336,29 +336,22 @@ fun SkeletonCategoryCard(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeletonDetailPage() {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
             .verticalScroll(rememberScrollState())
     ) {
-        Column {
-            SkeletonHeroPoster()
-        }
-        Column(
-            modifier = Modifier
-                .offset(y = 112.dp)
-                .padding(start = 96.dp)
-        ) {
-            SkeletonActionButtons()
-            Spacer(modifier = Modifier.height(18.dp))
-            SkeletonTagChips()
-            Spacer(modifier = Modifier.height(16.dp))
-            SkeletonDescriptionLines()
-            Spacer(modifier = Modifier.height(28.dp))
-            SkeletonCastCrewSection()
-            Spacer(modifier = Modifier.height(32.dp))
-        }
+        SkeletonHeroPoster()
+        Spacer(modifier = Modifier.height(22.dp))
+        SkeletonActionButtons()
+        Spacer(modifier = Modifier.height(18.dp))
+        SkeletonTagChips()
+        Spacer(modifier = Modifier.height(16.dp))
+        SkeletonDescriptionLines()
+        Spacer(modifier = Modifier.height(28.dp))
+        SkeletonCastCrewSection()
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
