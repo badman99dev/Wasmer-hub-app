@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,9 +53,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -78,6 +81,7 @@ import com.movie.app.best.data.model.WasmerSeason
 import com.movie.app.best.data.model.WasmerMovieDetails
 import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.components.CelebrationOverlay
+import com.movie.app.best.ui.components.ScreenshotViewer
 import com.movie.app.best.ui.components.SkeletonDetailPage
 import com.movie.app.best.ui.components.ErrorView
 import com.movie.app.best.data.settings.ModerationSettings
@@ -606,15 +610,33 @@ private fun TVShowDetailContent(
 
         if (uiState.screenshots.isNotEmpty()) {
             val shouldBlurScreenshots = ModerationSettings.shouldBlurScreenshots(context, series.contentModeration)
+            var screenshotViewerOpen by remember { mutableStateOf(false) }
+            var screenshotViewerIndex by remember { mutableIntStateOf(0) }
+
+            if (screenshotViewerOpen) {
+                BackHandler(enabled = true) { screenshotViewerOpen = false }
+                ScreenshotViewer(
+                    screenshots = uiState.screenshots,
+                    initialIndex = screenshotViewerIndex,
+                    shouldBlur = shouldBlurScreenshots,
+                    onDismiss = { screenshotViewerOpen = false }
+                )
+            }
+
             SectionTitle("Screenshots")
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(uiState.screenshots) { url ->
+                itemsIndexed(uiState.screenshots) { index, url ->
                     Card(
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.width(240.dp)
+                        modifier = Modifier
+                            .width(240.dp)
+                            .clickable {
+                                screenshotViewerIndex = index
+                                screenshotViewerOpen = true
+                            }
                     ) {
                         Box {
                             BlurredContent(
