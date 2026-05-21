@@ -23,8 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.movie.app.best.ui.components.AppHeader
-import com.movie.app.best.ui.components.SkeletonHeroSlide
-import com.movie.app.best.ui.components.SkeletonMovieGrid
+import com.movie.app.best.ui.components.SkeletonHomeContent
 import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.screens.home.components.*
 
@@ -69,7 +68,7 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             if (uiState.isSliderLoading && uiState.sliderMovies.isEmpty()) {
-                item { SkeletonHeroSlide() }
+                item { SkeletonHomeContent() }
             } else {
                 item {
                     HeroCarousel(
@@ -82,7 +81,7 @@ fun HomeScreen(
             }
 
             if (uiState.isAllTabLoading && allMovies.isEmpty()) {
-                item { SkeletonMovieGrid(rows = 3) }
+                item { SkeletonHomeContent() }
             } else {
                 if (trending.isNotEmpty()) {
                     item {
@@ -102,7 +101,8 @@ fun HomeScreen(
                             title        = "New Releases",
                             movies       = newReleases,
                             cardSize     = CardSize.LARGE,
-                            onMovieClick = onContentClick
+                            onMovieClick = onContentClick,
+                            onSeeAllClick = { navController.navigate(com.movie.app.best.ui.navigation.Screen.LatestUploads.route) }
                         )
                     }
                 }

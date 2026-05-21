@@ -139,7 +139,7 @@ fun MoviePosterCard(
                     .padding(5.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (movie.qualityLabel.isNotBlank()) {
                         QualityBadge(label = movie.qualityLabel)
                     }
@@ -174,49 +174,51 @@ fun MoviePosterCard(
 }
 
 @Composable
-fun QualityBadge(label: String, modifier: Modifier = Modifier) {
-    val bgColor = when {
-        label.contains("4K", ignoreCase = true) -> Color(0xFFD4A017).copy(alpha = 0.35f)
-        label.contains("UHD", ignoreCase = true) -> Color(0xFFD4A017).copy(alpha = 0.3f)
-        label.contains("HD", ignoreCase = true) -> Color(0xFF4FC3F7).copy(alpha = 0.2f)
-        label.contains("CAM", ignoreCase = true) -> Color(0xFFFF5252).copy(alpha = 0.25f)
-        else -> Color.White.copy(alpha = 0.18f)
-    }
-    val textColor = when {
-        label.contains("4K", ignoreCase = true) -> Color(0xFFFFD700)
-        label.contains("UHD", ignoreCase = true) -> Color(0xFFF0C040)
-        label.contains("HD", ignoreCase = true) -> Color(0xFF4FC3F7)
-        label.contains("CAM", ignoreCase = true) -> Color(0xFFFF5252)
-        else -> Color.White
-    }
-    val borderColor = textColor.copy(alpha = 0.4f)
+ fun QualityBadge(label: String, modifier: Modifier = Modifier) {
+     val bgColor = when {
+         label.contains("4K", ignoreCase = true) -> Color(0xFFD4A017).copy(alpha = 0.35f)
+         label.contains("UHD", ignoreCase = true) -> Color(0xFFD4A017).copy(alpha = 0.3f)
+         label.contains("HD", ignoreCase = true) -> Color(0xFF4FC3F7).copy(alpha = 0.2f)
+         label.contains("CAM", ignoreCase = true) -> Color(0xFFFF5252).copy(alpha = 0.25f)
+         else -> Color.White.copy(alpha = 0.18f)
+     }
+     val textColor = when {
+         label.contains("4K", ignoreCase = true) -> Color(0xFFFFD700)
+         label.contains("UHD", ignoreCase = true) -> Color(0xFFF0C040)
+         label.contains("HD", ignoreCase = true) -> Color(0xFF4FC3F7)
+         label.contains("CAM", ignoreCase = true) -> Color(0xFFFF5252)
+         else -> Color.White
+     }
+     val borderColor = textColor.copy(alpha = 0.4f)
 
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(bgColor, Color.White.copy(alpha = 0.14f), bgColor)
-                )
-            )
-            .border(
-                width = 0.5.dp,
-                brush = Brush.linearGradient(
-                    colors = listOf(borderColor, Color.White.copy(alpha = 0.18f), borderColor)
-                ),
-                shape = RoundedCornerShape(50)
-            )
-            .padding(horizontal = 7.dp, vertical = 3.dp)
-    ) {
-        Text(
-            text = label,
-            color = textColor,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 0.5.sp
-        )
-    }
-}
+     Box(
+         modifier = modifier
+             .height(21.dp)
+             .clip(RoundedCornerShape(50))
+             .background(
+                 Brush.linearGradient(
+                     colors = listOf(bgColor, Color.White.copy(alpha = 0.14f), bgColor)
+                 )
+             )
+             .border(
+                 width = 0.5.dp,
+                 brush = Brush.linearGradient(
+                     colors = listOf(borderColor, Color.White.copy(alpha = 0.18f), borderColor)
+                 ),
+                 shape = RoundedCornerShape(50)
+             )
+             .padding(horizontal = 7.dp, vertical = 3.dp),
+         contentAlignment = Alignment.Center
+     ) {
+         Text(
+             text = label,
+             color = textColor,
+             fontSize = 9.sp,
+             fontWeight = FontWeight.ExtraBold,
+             letterSpacing = 0.5.sp
+         )
+     }
+ }
 
 @Composable
 fun StreamBadge(modifier: Modifier = Modifier) {

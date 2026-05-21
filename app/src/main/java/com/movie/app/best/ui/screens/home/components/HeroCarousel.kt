@@ -1,7 +1,6 @@
 package com.movie.app.best.ui.screens.home.components
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,10 +41,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.seconds
 
-/**
- * Full-screen hero carousel with auto-scroll, parallax effect, and pager dots.
- * Uses slider movies from the API.
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HeroCarousel(
@@ -244,42 +239,48 @@ private fun HeroSlide(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Buttons row
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth(0.85f)
             ) {
-                // Play button
-                Button(
-                    onClick = { onPlayClick(movie.slug, movie.isSeries) },
+                val watchBg = Brush.linearGradient(colors = listOf(Color(0xFFE50914), Color(0xFFB71C1C)))
+                val watchBorder = Brush.linearGradient(colors = listOf(Color(0xFFFF5252), Color(0xFFFFD700), Color(0xFFFF5252)))
+
+                Box(
                     modifier = Modifier
                         .weight(1.3f)
-                        .height(46.dp),
-                    shape = RoundedCornerShape(6.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = WasmerRed,
-                        contentColor = Color.White
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                        .height(46.dp)
+                        .clip(RoundedCornerShape(23.dp))
+                        .background(watchBg)
+                        .border(width = 1.dp, brush = watchBorder, shape = RoundedCornerShape(23.dp))
+                        .clickable { onPlayClick(movie.slug, movie.isSeries) },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Play", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(22.dp), tint = Color.White)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Watch Now", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                    }
                 }
 
-                // Info button
-                OutlinedButton(
-                    onClick = { onInfoClick(movie.slug, movie.isSeries) },
+                val infoBg = Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.06f)))
+                val infoBorder = Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.5f), Color(0xFFFFD700).copy(alpha = 0.3f), Color.White.copy(alpha = 0.5f)))
+
+                Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(46.dp),
-                    shape = RoundedCornerShape(6.dp),
-                    border = BorderStroke(1.5.dp, Color.White.copy(alpha = 0.8f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                        .height(46.dp)
+                        .clip(RoundedCornerShape(23.dp))
+                        .background(infoBg)
+                        .border(width = 1.dp, brush = infoBorder, shape = RoundedCornerShape(23.dp))
+                        .clickable { onInfoClick(movie.slug, movie.isSeries) },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Info, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(5.dp))
-                    Text("Info", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, null, modifier = Modifier.size(18.dp), tint = Color.White)
+                        Spacer(Modifier.width(5.dp))
+                        Text("More Info", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.White)
+                    }
                 }
             }
         }
@@ -291,7 +292,7 @@ private fun HeroSlide(
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (movie.qualityLabel.isNotBlank()) {
                     QualityBadge(label = movie.qualityLabel)
                 }

@@ -57,7 +57,7 @@ fun DetailActionButtons(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(22.dp), tint = Color.White)
                     Spacer(Modifier.width(6.dp))
-                    Text("Play Now", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                    Text("Watch Now", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
                 }
             }
         } else {

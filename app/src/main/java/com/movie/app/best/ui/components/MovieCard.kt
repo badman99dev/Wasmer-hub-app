@@ -106,7 +106,7 @@ fun MovieCard(
                     .padding(5.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (movie.qualityLabel.isNotBlank()) {
                         QualityBadge(label = movie.qualityLabel)
                     }
@@ -166,6 +166,7 @@ fun QualityBadge(label: String, modifier: Modifier = Modifier) {
 
     Box(
         modifier = modifier
+            .height(21.dp)
             .clip(RoundedCornerShape(50))
             .background(
                 Brush.linearGradient(
@@ -183,7 +184,8 @@ fun QualityBadge(label: String, modifier: Modifier = Modifier) {
                 ),
                 shape = RoundedCornerShape(50)
             )
-            .padding(horizontal = 7.dp, vertical = 3.dp)
+            .padding(horizontal = 7.dp, vertical = 3.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,

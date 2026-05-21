@@ -32,6 +32,7 @@ import com.movie.app.best.ui.screens.player.VideoPlayerScreen
 import com.movie.app.best.ui.screens.movies.MoviesScreen
 import com.movie.app.best.ui.screens.settings.SettingsScreen
 import com.movie.app.best.ui.screens.trending.TrendingScreen
+import com.movie.app.best.ui.screens.latestupload.LatestUploadScreen
 import com.movie.app.best.ui.screens.myfeed.MyFeedScreen
 import com.movie.app.best.ui.screens.auth.LoginScreen
 import com.movie.app.best.ui.screens.profile.ProfileScreen
@@ -41,6 +42,7 @@ sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Movies : Screen("movies")
     object Trending : Screen("trending")
+    object LatestUploads : Screen("latest-uploads")
     object MyFeed : Screen("my-feed")
     object Categories : Screen("categories")
     object CategoryPage : Screen("category/{categorySlug}/{categoryName}") {
@@ -299,6 +301,13 @@ fun AppNavigation(
             TrendingScreen(
                 onContentClick = { slug, isSeries -> navigateToContent(slug, isSeries) },
                 navController = navController
+            )
+        }
+
+        composable(Screen.LatestUploads.route) {
+            LatestUploadScreen(
+                onBackClick = { navController.popBackStack() },
+                onContentClick = { slug, isSeries -> navigateToContent(slug, isSeries) }
             )
         }
 

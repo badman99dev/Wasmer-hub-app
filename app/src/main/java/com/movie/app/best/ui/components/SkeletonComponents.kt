@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -18,12 +19,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.platform.LocalConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -103,57 +111,210 @@ fun SkeletonPosterCard(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun SkeletonHeroSlide() {
-    Box(modifier = Modifier.fillMaxWidth().height(560.dp)) {
-        SkeletonBox(modifier = Modifier.fillMaxSize(), shape = RoundedCornerShape(0.dp))
+fun SkeletonHomeContent() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        SkeletonHeroBanner()
+        Spacer(modifier = Modifier.height(28.dp))
+        SkeletonHomePosterRow(cardWidth = 155.dp, cardHeight = 220.dp)
+        Spacer(modifier = Modifier.height(28.dp))
+        SkeletonHomePosterRow(cardWidth = 165.dp, cardHeight = 245.dp)
+        Spacer(modifier = Modifier.height(28.dp))
+        SkeletonHomePosterRow(cardWidth = 155.dp, cardHeight = 220.dp)
+        Spacer(modifier = Modifier.height(28.dp))
+        SkeletonHomePosterRow(cardWidth = 155.dp, cardHeight = 220.dp)
+        Spacer(modifier = Modifier.height(28.dp))
+        SkeletonHomeGridSection()
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun SkeletonHeroBanner() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(520.dp)
+    ) {
+        SkeletonBox(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(0.dp)
+        )
         Column(
             modifier = Modifier
-                .align(androidx.compose.ui.Alignment.BottomStart)
-                .padding(20.dp)
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 24.dp, start = 16.dp, end = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            SkeletonLine(width = 210.dp, height = 26.dp)
-            Spacer(modifier = Modifier.height(10.dp))
-            SkeletonLine(width = 150.dp, height = 14.dp)
-            Spacer(modifier = Modifier.height(18.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SkeletonBox(modifier = Modifier.width(130.dp).height(46.dp), shape = RoundedCornerShape(23.dp))
-                SkeletonBox(modifier = Modifier.width(110.dp).height(46.dp), shape = RoundedCornerShape(23.dp))
+            SkeletonBox(
+                modifier = Modifier
+                    .fillMaxWidth(0.80f)
+                    .height(26.dp),
+                shape = RoundedCornerShape(6.dp)
+            )
+            SkeletonBox(
+                modifier = Modifier
+                    .fillMaxWidth(0.60f)
+                    .height(26.dp),
+                shape = RoundedCornerShape(6.dp)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SkeletonLine(width = 44.dp, height = 14.dp)
+                SkeletonLine(width = 44.dp, height = 14.dp)
+                SkeletonBox(
+                    modifier = Modifier
+                        .width(68.dp)
+                        .height(26.dp),
+                    shape = RoundedCornerShape(50)
+                )
+                SkeletonCircle(size = 28.dp)
             }
-        }
-    }
-}
-
-@Composable
-fun SkeletonMovieRow(count: Int = 6) {
-    Column {
-        SkeletonLine(width = 90.dp, height = 18.dp)
-        Spacer(modifier = Modifier.height(10.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
-            repeat(count) {
-                SkeletonPosterCard(modifier = Modifier.width(120.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun SkeletonMovieGrid(rows: Int = 3) {
-    Column(
-        modifier = Modifier.padding(horizontal = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        SkeletonLine(width = 90.dp, height = 18.dp)
-        Spacer(modifier = Modifier.height(4.dp))
-        repeat(rows) {
+            Spacer(modifier = Modifier.height(2.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                repeat(3) {
-                    SkeletonPosterCard(modifier = Modifier.weight(1f))
+                SkeletonBox(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                SkeletonBox(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(10.dp)
+                )
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(10) {
+                    SkeletonBox(
+                        modifier = Modifier.size(6.dp),
+                        shape = CircleShape
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonHomeSectionHeader() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SkeletonLine(width = 160.dp, height = 18.dp)
+        SkeletonLine(width = 60.dp, height = 14.dp)
+    }
+}
+
+@Composable
+private fun SkeletonHomePoster(cardWidth: Dp, cardHeight: Dp) {
+    Box(
+        modifier = Modifier
+            .width(cardWidth)
+            .wrapContentHeight()
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Box(
+                modifier = Modifier
+                    .width(cardWidth)
+                    .height(cardHeight)
+            ) {
+                SkeletonBox(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                SkeletonBox(
+                    modifier = Modifier
+                        .padding(7.dp)
+                        .width(56.dp)
+                        .height(22.dp)
+                        .align(Alignment.TopStart),
+                    shape = RoundedCornerShape(50)
+                )
+                SkeletonCircle(size = 28.dp)
+            }
+            SkeletonLine(width = cardWidth * 0.85f, height = 12.dp)
+            SkeletonLine(width = cardWidth * 0.65f, height = 12.dp)
+        }
+    }
+}
+
+@Composable
+private fun SkeletonHomePosterRow(cardWidth: Dp, cardHeight: Dp) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SkeletonHomeSectionHeader()
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(5) {
+                SkeletonHomePoster(cardWidth = cardWidth, cardHeight = cardHeight)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonHomeGridSection() {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SkeletonHomeSectionHeader()
+        val cardWidth = (LocalConfiguration.current.screenWidthDp.dp - 48.dp) / 3
+        val cardHeight = cardWidth * 1.5f
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            repeat(2) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    repeat(3) {
+                        Box(
+                            modifier = Modifier
+                                .width(cardWidth)
+                                .wrapContentHeight()
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(cardWidth)
+                                        .height(cardHeight)
+                                ) {
+                                    SkeletonBox(
+                                        modifier = Modifier.fillMaxSize(),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    SkeletonBox(
+                                        modifier = Modifier
+                                            .padding(5.dp)
+                                            .width(44.dp)
+                                            .height(18.dp)
+                                            .align(Alignment.TopStart),
+                                        shape = RoundedCornerShape(50)
+                                    )
+                                }
+                                SkeletonLine(width = cardWidth * 0.9f, height = 11.dp)
+                                SkeletonLine(width = cardWidth * 0.7f, height = 11.dp)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -174,28 +335,179 @@ fun SkeletonCategoryCard(modifier: Modifier = Modifier) {
 
 @Composable
 fun SkeletonDetailPage() {
-    Column {
-        SkeletonHeroSlide()
-        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            Spacer(modifier = Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                repeat(3) {
-                    SkeletonBox(modifier = Modifier.width(55.dp).height(24.dp), shape = RoundedCornerShape(12.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .verticalScroll(rememberScrollState())
+    ) {
+        SkeletonHeroPoster()
+        Spacer(modifier = Modifier.height(16.dp))
+        SkeletonMovieTitleSection()
+        Spacer(modifier = Modifier.height(22.dp))
+        SkeletonActionButtons()
+        Spacer(modifier = Modifier.height(18.dp))
+        SkeletonTagChips()
+        Spacer(modifier = Modifier.height(16.dp))
+        SkeletonDescriptionLines()
+        Spacer(modifier = Modifier.height(28.dp))
+        SkeletonCastCrewSection()
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun SkeletonHeroPoster() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(2f / 3f)
+    ) {
+        SkeletonBox(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(0.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .align(Alignment.TopStart),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SkeletonCircle(size = 42.dp)
+            SkeletonCircle(size = 42.dp)
+            SkeletonBox(
+                modifier = Modifier
+                    .width(72.dp)
+                    .height(36.dp),
+                shape = RoundedCornerShape(10.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SkeletonMovieTitleSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        SkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth(0.88f)
+                .height(30.dp),
+            shape = RoundedCornerShape(6.dp)
+        )
+        SkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth(0.62f)
+                .height(30.dp),
+            shape = RoundedCornerShape(6.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SkeletonLine(width = 40.dp, height = 13.dp)
+            SkeletonBox(
+                modifier = Modifier
+                    .width(54.dp)
+                    .height(13.dp),
+                shape = RoundedCornerShape(4.dp)
+            )
+            SkeletonLine(width = 62.dp, height = 13.dp)
+        }
+    }
+}
+
+@Composable
+private fun SkeletonActionButtons() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        SkeletonBox(
+            modifier = Modifier
+                .width(158.dp)
+                .height(50.dp),
+            shape = RoundedCornerShape(50)
+        )
+        repeat(3) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                SkeletonCircle(size = 28.dp)
+                SkeletonLine(width = 46.dp, height = 11.dp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonTagChips() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        listOf(62.dp, 70.dp, 70.dp, 66.dp).forEach { chipWidth ->
+            SkeletonBox(
+                modifier = Modifier
+                    .width(chipWidth)
+                    .height(30.dp),
+                shape = RoundedCornerShape(50)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SkeletonDescriptionLines() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        SkeletonLine(width = 340.dp, height = 13.dp)
+        SkeletonLine(width = 320.dp, height = 13.dp)
+        SkeletonLine(width = 200.dp, height = 13.dp)
+        Spacer(modifier = Modifier.height(4.dp))
+        SkeletonLine(width = 90.dp, height = 13.dp)
+    }
+}
+
+@Composable
+private fun SkeletonCastCrewSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        SkeletonLine(width = 110.dp, height = 18.dp)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            repeat(4) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    SkeletonCircle(size = 64.dp)
+                    SkeletonLine(width = 56.dp, height = 11.dp)
+                    SkeletonLine(width = 44.dp, height = 10.dp)
                 }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            repeat(3) {
-                SkeletonLine(width = (220..290).random().dp, height = 13.dp)
-                Spacer(modifier = Modifier.height(7.dp))
-            }
-            Spacer(modifier = Modifier.height(18.dp))
-            SkeletonLine(width = 70.dp, height = 17.dp)
-            Spacer(modifier = Modifier.height(7.dp))
-            SkeletonLine(width = 210.dp, height = 13.dp)
-            Spacer(modifier = Modifier.height(22.dp))
-            repeat(2) {
-                SkeletonBox(modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(12.dp))
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
@@ -212,16 +524,16 @@ fun SkeletonLibraryPage() {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically
         ) {
             SkeletonLine(width = 100.dp, height = 28.dp)
             Spacer(modifier = Modifier.weight(1f))
             SkeletonCircle(size = 28.dp)
         }
-        SkeletonMovieRow(count = 6)
+        SkeletonHomePosterRow(cardWidth = 155.dp, cardHeight = 220.dp)
         Spacer(modifier = Modifier.height(20.dp))
-        SkeletonMovieRow(count = 6)
+        SkeletonHomePosterRow(cardWidth = 155.dp, cardHeight = 220.dp)
         Spacer(modifier = Modifier.height(20.dp))
-        SkeletonMovieRow(count = 6)
+        SkeletonHomePosterRow(cardWidth = 155.dp, cardHeight = 220.dp)
     }
 }

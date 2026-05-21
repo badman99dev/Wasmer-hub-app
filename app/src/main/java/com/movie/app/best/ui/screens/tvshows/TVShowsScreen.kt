@@ -199,7 +199,7 @@ fun TVShowGridItem(
                     .padding(5.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (movie.qualityLabel.isNotBlank()) {
                         QualityBadge(label = movie.qualityLabel)
                     }
