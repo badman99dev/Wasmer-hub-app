@@ -9,13 +9,20 @@ import androidx.compose.runtime.setValue
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
-import com.movie.app.best.ui.screens.player.extensions.listenEvents
 import com.movie.app.best.ui.screens.player.extensions.switchTrack
 
 @Composable
 fun rememberTracksState(player: Player, trackType: @C.TrackType Int): TracksState {
     val state = remember { TracksState(player, trackType) }
-    LaunchedEffect(player) { state.observe() }
+    LaunchedEffect(player) {
+        state.updateTracks()
+        val listener = object : Player.Listener {
+            override fun onTracksChanged(tracks: Tracks) {
+                state.updateTracks()
+            }
+        }
+        player.addListener(listener)
+    }
     return state
 }
 
@@ -25,14 +32,7 @@ class TracksState(private val player: Player, private val trackType: @C.TrackTyp
 
     fun switchTrack(index: Int) { player.switchTrack(trackType, index) }
 
-    suspend fun observe() {
-        updateTracks()
-        player.listenEvents().collect { events ->
-            if (events.contains(Player.EVENT_TRACKS_CHANGED)) updateTracks()
-        }
-    }
-
-    private fun updateTracks() {
+    fun updateTracks() {
         tracks = player.currentTracks.groups.filter { it.type == trackType && it.isSupported }
     }
 }

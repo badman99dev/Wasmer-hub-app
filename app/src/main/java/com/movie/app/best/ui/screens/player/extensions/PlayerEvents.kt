@@ -1,35 +1,21 @@
 package com.movie.app.best.ui.screens.player.extensions
 
 import androidx.media3.common.Player
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
-fun Player.listenEvents(): Flow<Player.Events> = callbackFlow {
-    val p = this@listenEvents
-    val listener = object : Player.Listener {
-        override fun onPlaybackStateChanged(playbackState: Int) {
-            trySend(p.currentEvents)
+suspend fun Player.awaitEvent(check: (Player) -> Boolean) {
+    suspendCancellableCoroutine<Unit> { cont ->
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) { if (check(this@awaitEvent)) cont.resume(Unit) }
+            override fun onIsPlayingChanged(isPlaying: Boolean) { if (check(this@awaitEvent)) cont.resume(Unit) }
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) { if (check(this@awaitEvent)) cont.resume(Unit) }
+            override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) { if (check(this@awaitEvent)) cont.resume(Unit) }
+            override fun onPositionDiscontinuity(reason: Int) { if (check(this@awaitEvent)) cont.resume(Unit) }
+            override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) { if (check(this@awaitEvent)) cont.resume(Unit) }
+            override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) { if (check(this@awaitEvent)) cont.resume(Unit) }
         }
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-            trySend(p.currentEvents)
-        }
-        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-            trySend(p.currentEvents)
-        }
-        override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
-            trySend(p.currentEvents)
-        }
-        override fun onPositionDiscontinuity(reason: Int) {
-            trySend(p.currentEvents)
-        }
-        override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
-            trySend(p.currentEvents)
-        }
-        override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
-            trySend(p.currentEvents)
-        }
+        addListener(listener)
+        cont.invokeOnCancellation { removeListener(listener) }
     }
-    addListener(listener)
-    awaitClose { removeListener(listener) }
 }

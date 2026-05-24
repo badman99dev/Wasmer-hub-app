@@ -6,26 +6,32 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import com.movie.app.best.ui.screens.player.extensions.listenEvents
-import kotlinx.coroutines.launch
 
 @Composable
 fun rememberPlaybackParametersState(player: Player): PlaybackParametersState {
-    val scope = rememberCoroutineScope()
-    val state = remember { PlaybackParametersState(player, scope) }
-    LaunchedEffect(player) { state.observe() }
+    val state = remember { PlaybackParametersState(player) }
+    LaunchedEffect(player) {
+        state.speed = player.playbackParameters.speed
+        state.skipSilenceEnabled = (player as? ExoPlayer)?.skipSilenceEnabled ?: false
+
+        val listener = object : Player.Listener {
+            override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
+                state.speed = playbackParameters.speed
+            }
+        }
+        player.addListener(listener)
+    }
     return state
 }
 
-class PlaybackParametersState(private val player: Player, private val scope: kotlinx.coroutines.CoroutineScope) {
+class PlaybackParametersState(private val player: Player) {
     var speed: Float by mutableFloatStateOf(1f)
-        private set
+        internal set
     var skipSilenceEnabled: Boolean by mutableStateOf(false)
-        private set
+        internal set
 
     fun setPlaybackSpeed(speed: Float) { player.setPlaybackSpeed(speed) }
 
@@ -33,14 +39,4 @@ class PlaybackParametersState(private val player: Player, private val scope: kot
         if (player is ExoPlayer) player.skipSilenceEnabled = enabled
         skipSilenceEnabled = enabled
     }
-
-    suspend fun observe() {
-        updateSpeed()
-        skipSilenceEnabled = (player as? ExoPlayer)?.skipSilenceEnabled ?: false
-        player.listenEvents().collect { events ->
-            if (events.contains(Player.EVENT_PLAYBACK_PARAMETERS_CHANGED)) updateSpeed()
-        }
-    }
-
-    private fun updateSpeed() { speed = player.playbackParameters.speed }
 }

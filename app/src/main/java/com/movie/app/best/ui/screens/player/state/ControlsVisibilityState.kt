@@ -10,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.media3.common.Player
-import com.movie.app.best.ui.screens.player.extensions.listenEvents
 import com.movie.app.best.ui.screens.player.extensions.toggleSystemBars
 import kotlin.time.Duration
 import kotlinx.coroutines.CoroutineScope
@@ -23,7 +22,15 @@ fun rememberControlsVisibilityState(player: Player, hideAfter: Duration): Contro
     val activity = LocalActivity.current
     val coroutineScope = rememberCoroutineScope()
     val controlsVisibilityState = remember { ControlsVisibilityState(player, hideAfter, coroutineScope) }
-    LaunchedEffect(player) { controlsVisibilityState.observe() }
+    LaunchedEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) controlsVisibilityState.autoHideControls()
+            }
+        }
+        player.addListener(listener)
+        controlsVisibilityState.autoHideControls()
+    }
     LaunchedEffect(controlsVisibilityState.controlsVisible, controlsVisibilityState.controlsLocked) {
         if (controlsVisibilityState.controlsLocked) {
             activity?.toggleSystemBars(showBars = false)
@@ -73,15 +80,7 @@ class ControlsVisibilityState(
         showControls()
     }
 
-    suspend fun observe() {
-        player.listenEvents().collect { events ->
-            if (events.contains(Player.EVENT_IS_PLAYING_CHANGED)) {
-                if (player.isPlaying) autoHideControls()
-            }
-        }
-    }
-
-    private fun autoHideControls(duration: Duration = hideAfter) {
+    fun autoHideControls(duration: Duration = hideAfter) {
         autoHideControlsJob?.cancel()
         autoHideControlsJob = scope.launch {
             delay(duration)
