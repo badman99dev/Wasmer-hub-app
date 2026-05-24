@@ -57,6 +57,9 @@ import com.movie.app.best.ui.screens.player.extensions.noRippleClickable
 import com.movie.app.best.ui.screens.player.extensions.nameRes
 import com.movie.app.best.ui.screens.player.model.VideoContentScale
 import com.movie.app.best.ui.screens.player.state.MediaPresentationState
+import com.movie.app.best.ui.screens.player.state.durationFormatted
+import com.movie.app.best.ui.screens.player.state.positionFormatted
+import com.movie.app.best.ui.screens.player.state.pendingPositionFormatted
 
 @Composable
 fun ControlsBottomView(
