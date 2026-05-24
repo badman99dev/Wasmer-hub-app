@@ -9,7 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
-import androidx.media3.common.listen
+import com.movie.app.best.ui.screens.player.extensions.listenEvents
 import com.movie.app.best.ui.screens.player.extensions.switchTrack
 
 @Composable
@@ -27,7 +27,7 @@ class TracksState(private val player: Player, private val trackType: @C.TrackTyp
 
     suspend fun observe() {
         updateTracks()
-        player.listen { events ->
+        player.listenEvents().collect { events ->
             if (events.contains(Player.EVENT_TRACKS_CHANGED)) updateTracks()
         }
     }

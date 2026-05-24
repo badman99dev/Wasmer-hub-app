@@ -10,7 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.media3.common.Player
-import androidx.media3.common.listen
+import com.movie.app.best.ui.screens.player.extensions.listenEvents
 import com.movie.app.best.ui.screens.player.extensions.toggleSystemBars
 import kotlin.time.Duration
 import kotlinx.coroutines.CoroutineScope
@@ -74,7 +74,7 @@ class ControlsVisibilityState(
     }
 
     suspend fun observe() {
-        player.listen { events ->
+        player.listenEvents().collect { events ->
             if (events.contains(Player.EVENT_IS_PLAYING_CHANGED)) {
                 if (player.isPlaying) autoHideControls()
             }

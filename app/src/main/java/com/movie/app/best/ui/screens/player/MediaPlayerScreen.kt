@@ -294,7 +294,7 @@ fun MediaPlayerScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .displayCutoutPadding()
-                        .padding(systemBarsPadding.copy(top = 0.dp, bottom = 0.dp))
+                        .padding(start = systemBarsPadding.calculateLeftPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), end = systemBarsPadding.calculateRightPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), top = 0.dp, bottom = 0.dp)
                         .padding(24.dp),
                 ) {
                     AnimatedVisibility(

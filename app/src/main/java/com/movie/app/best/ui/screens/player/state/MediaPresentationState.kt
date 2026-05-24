@@ -9,8 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.media3.common.Player
-import androidx.media3.common.listen
 import com.movie.app.best.ui.screens.player.extensions.formatted
+import com.movie.app.best.ui.screens.player.extensions.listenEvents
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -27,13 +27,10 @@ fun rememberMediaPresentationState(player: Player): MediaPresentationState {
 class MediaPresentationState(private val player: Player) {
     var position: Long by mutableLongStateOf(0L)
         private set
-
     var duration: Long by mutableLongStateOf(0L)
         private set
-
     var isPlaying: Boolean by mutableStateOf(false)
         private set
-
     var isBuffering: Boolean by mutableStateOf(false)
         private set
 
@@ -45,12 +42,10 @@ class MediaPresentationState(private val player: Player) {
 
         coroutineScope {
             launch {
-                player.listen { events ->
-                    if (events.containsAny(
-                            Player.EVENT_MEDIA_ITEM_TRANSITION,
-                            Player.EVENT_TIMELINE_CHANGED,
-                            Player.EVENT_PLAYBACK_STATE_CHANGED,
-                        )
+                player.listenEvents().collect { events ->
+                    if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION) ||
+                        events.contains(Player.EVENT_TIMELINE_CHANGED) ||
+                        events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)
                     ) updateDuration()
 
                     if (events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED))

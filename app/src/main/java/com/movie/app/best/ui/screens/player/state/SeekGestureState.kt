@@ -11,17 +11,16 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import com.movie.app.best.ui.screens.player.extensions.formatted
-import com.movie.app.best.ui.screens.player.extensions.setIsScrubbingModeEnabled
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun rememberSeekGestureState(
     player: Player,
-    sensitivity: Float = 0.5f,
     enableSeekGesture: Boolean,
+    sensitivity: Float = 0.5f,
 ): SeekGestureState {
-    return remember { SeekGestureState(player, sensitivity, enableSeekGesture) }
+    return remember { SeekGestureState(player, enableSeekGesture, sensitivity) }
 }
 
 @Stable
@@ -45,7 +44,6 @@ class SeekGestureState(
         if (!isSeeking) {
             isSeeking = true
             seekStartPosition = player.currentPosition
-            player.setIsScrubbingModeEnabled(true)
         }
         seekAmount = (value - seekStartPosition!!).coerceIn(
             minimumValue = 0 - seekStartPosition!!,
@@ -64,7 +62,6 @@ class SeekGestureState(
         isSeeking = true
         seekStartX = offset.x
         seekStartPosition = player.currentPosition
-        player.setIsScrubbingModeEnabled(true)
     }
 
     fun onDrag(change: PointerInputChange, dragAmount: Float) {
@@ -84,7 +81,6 @@ class SeekGestureState(
     fun onDragEnd() { reset() }
 
     private fun reset() {
-        player.setIsScrubbingModeEnabled(false)
         isSeeking = false
         seekStartPosition = null
         seekAmount = null

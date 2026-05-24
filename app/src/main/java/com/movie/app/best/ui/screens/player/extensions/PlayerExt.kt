@@ -5,7 +5,6 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.ExoPlayer
 
 fun Player.switchTrack(trackType: @C.TrackType Int, trackIndex: Int) {
     if (trackIndex < 0) {
@@ -22,12 +21,5 @@ fun Player.switchTrack(trackType: @C.TrackType Int, trackIndex: Int) {
             .setTrackTypeDisabled(trackType, false)
             .setOverrideForType(trackSelectionOverride)
             .build()
-    }
-}
-
-@OptIn(UnstableApi::class)
-fun Player.setIsScrubbingModeEnabled(enabled: Boolean) {
-    if (this is ExoPlayer) {
-        this.isScrubbingModeEnabled = enabled
     }
 }

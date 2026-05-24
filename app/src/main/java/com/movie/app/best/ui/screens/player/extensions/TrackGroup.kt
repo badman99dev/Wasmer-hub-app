@@ -23,11 +23,7 @@ fun TrackGroup.getName(trackType: @C.TrackType Int, index: Int): String {
         @Suppress("DEPRECATION")
         if (language != null && language != "und") {
             append(" - ")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-                append(Locale.of(language).displayLanguage)
-            } else {
-                append(Locale(language).displayLanguage)
-            }
+            append(Locale(language).displayLanguage)
         }
     }
 }

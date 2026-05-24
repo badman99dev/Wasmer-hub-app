@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import com.movie.app.best.ui.screens.player.state.rememberPlaybackParametersState
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BoxScope.PlaybackSpeedSelectorView(
     modifier: Modifier = Modifier,

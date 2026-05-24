@@ -76,12 +76,13 @@ fun ControlsBottomView(
     onSeekEnd: () -> Unit,
 ) {
     val systemBarsPadding = WindowInsets.systemBars.union(WindowInsets.displayCutout).asPaddingValues()
+    val topPad = 0.dp
+    val bottomPad = if (systemBarsPadding.calculateBottomPadding() == 0.dp) 16.dp else systemBarsPadding.calculateBottomPadding()
     Column(
         modifier = modifier
-            .padding(systemBarsPadding.copy(top = 0.dp))
+            .padding(start = systemBarsPadding.calculateLeftPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), end = systemBarsPadding.calculateRightPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), top = topPad, bottom = bottomPad)
             .padding(horizontal = 8.dp)
-            .padding(top = 16.dp)
-            .padding(bottom = 16.dp.takeIf { systemBarsPadding.calculateBottomPadding() == 0.dp } ?: 0.dp),
+            .padding(top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(

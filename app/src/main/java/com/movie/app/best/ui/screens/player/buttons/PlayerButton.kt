@@ -3,13 +3,9 @@ package com.movie.app.best.ui.screens.player.buttons
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.ripple.RippleAlpha
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.LocalRippleConfiguration
-import androidx.compose.material3.RippleConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -56,13 +52,7 @@ fun PlayerButton(
         }
     }
 
-    CompositionLocalProvider(
-        LocalContentColor provides Color.White,
-        LocalRippleConfiguration provides RippleConfiguration(
-            color = Color.White,
-            rippleAlpha = RippleAlpha(pressedAlpha = 0.5f, focusedAlpha = 0.5f, draggedAlpha = 0.5f, hoveredAlpha = 0.5f),
-        ),
-    ) {
+    CompositionLocalProvider(LocalContentColor provides Color.White) {
         IconButton(
             onClick = {},
             enabled = isEnabled,
