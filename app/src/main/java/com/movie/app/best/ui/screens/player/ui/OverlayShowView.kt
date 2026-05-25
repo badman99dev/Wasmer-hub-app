@@ -30,8 +30,8 @@ fun BoxScope.OverlayShowView(
         onDismiss = onDismiss,
     )
 
-    SubtitleSelectorView(
-        show = overlayView == OverlayViewType.SUBTITLE_SELECTOR,
+    QualitySelectorView(
+        show = overlayView == OverlayViewType.QUALITY_SELECTOR,
         player = player,
         onDismiss = onDismiss,
     )

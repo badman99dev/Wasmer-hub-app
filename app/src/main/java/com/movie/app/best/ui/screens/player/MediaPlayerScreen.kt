@@ -232,9 +232,9 @@ fun MediaPlayerScreen(
                                         controlsVisibilityState.hideControls()
                                         overlayView = OverlayViewType.AUDIO_SELECTOR
                                     },
-                                    onSubtitleClick = {
+                                    onQualityClick = {
                                         controlsVisibilityState.hideControls()
-                                        overlayView = OverlayViewType.SUBTITLE_SELECTOR
+                                        overlayView = OverlayViewType.QUALITY_SELECTOR
                                     },
                                     onPlaybackSpeedClick = {
                                         controlsVisibilityState.hideControls()

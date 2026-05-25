@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.ClosedCaption
+import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +30,7 @@ fun ControlsTopView(
     modifier: Modifier = Modifier,
     title: String,
     onAudioClick: () -> Unit = {},
-    onSubtitleClick: () -> Unit = {},
+    onQualityClick: () -> Unit = {},
     onPlaybackSpeedClick: () -> Unit = {},
     onBackClick: () -> Unit,
 ) {
@@ -65,8 +65,8 @@ fun ControlsTopView(
             PlayerButton(onClick = onAudioClick) {
                 Icon(imageVector = Icons.Default.Audiotrack, contentDescription = null)
             }
-            PlayerButton(onClick = onSubtitleClick) {
-                Icon(imageVector = Icons.Default.ClosedCaption, contentDescription = null)
+            PlayerButton(onClick = onQualityClick) {
+                Icon(imageVector = Icons.Default.HighQuality, contentDescription = null)
             }
         }
     }
