@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FitScreen
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Headset
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.PictureInPicture
@@ -34,13 +35,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -49,11 +48,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import com.movie.app.best.ui.screens.player.buttons.PlayerButton
-import com.movie.app.best.ui.screens.player.extensions.noRippleClickable
 import com.movie.app.best.ui.screens.player.extensions.nameRes
 import com.movie.app.best.ui.screens.player.model.VideoContentScale
 import com.movie.app.best.ui.screens.player.state.MediaPresentationState
@@ -69,21 +66,22 @@ fun ControlsBottomView(
     controlsAlignment: Alignment.Horizontal,
     videoContentScale: VideoContentScale,
     isPipSupported: Boolean,
+    isRotationLocked: Boolean,
     onVideoContentScaleClick: () -> Unit,
     onVideoContentScaleLongClick: () -> Unit,
     onLockControlsClick: () -> Unit,
     onPictureInPictureClick: () -> Unit,
     onRotateClick: () -> Unit,
     onPlayInBackgroundClick: () -> Unit,
+    onFullscreenClick: () -> Unit,
     onSeek: (Long) -> Unit,
     onSeekEnd: () -> Unit,
 ) {
     val systemBarsPadding = WindowInsets.systemBars.union(WindowInsets.displayCutout).asPaddingValues()
-    val topPad = 0.dp
     val bottomPad = if (systemBarsPadding.calculateBottomPadding() == 0.dp) 16.dp else systemBarsPadding.calculateBottomPadding()
     Column(
         modifier = modifier
-            .padding(start = systemBarsPadding.calculateLeftPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), end = systemBarsPadding.calculateRightPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), top = topPad, bottom = bottomPad)
+            .padding(start = systemBarsPadding.calculateLeftPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), end = systemBarsPadding.calculateRightPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), top = 0.dp, bottom = bottomPad)
             .padding(horizontal = 8.dp)
             .padding(top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -113,18 +111,6 @@ fun ControlsBottomView(
                     color = Color.White,
                 )
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-            PlayerButton(
-                modifier = Modifier.size(30.dp),
-                onClick = onRotateClick,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ScreenRotation,
-                    contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                )
-            }
         }
 
         PlayerSeekbar(
@@ -135,12 +121,18 @@ fun ControlsBottomView(
         )
 
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp, alignment = controlsAlignment),
         ) {
             PlayerButton(onClick = onLockControlsClick) {
                 Icon(imageVector = Icons.Default.LockOpen, contentDescription = null)
+            }
+            PlayerButton(onClick = onRotateClick) {
+                Icon(
+                    imageVector = Icons.Default.ScreenRotation,
+                    contentDescription = null,
+                    tint = if (isRotationLocked) MaterialTheme.colorScheme.primary else Color.White,
+                )
             }
             PlayerButton(
                 onClick = onVideoContentScaleClick,
@@ -155,6 +147,12 @@ fun ControlsBottomView(
             }
             PlayerButton(onClick = onPlayInBackgroundClick) {
                 Icon(imageVector = Icons.Default.Headset, contentDescription = null)
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            PlayerButton(onClick = onFullscreenClick) {
+                Icon(imageVector = Icons.Default.Fullscreen, contentDescription = null)
             }
         }
     }

@@ -16,8 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import androidx.media3.common.Player
-import androidx.media3.common.Tracks
-import androidx.media3.exoplayer.ExoPlayer
 
 @Composable
 fun BoxScope.QualitySelectorView(
@@ -26,13 +24,8 @@ fun BoxScope.QualitySelectorView(
     player: Player,
     onDismiss: () -> Unit,
 ) {
-    var videoTracks by remember { mutableIntStateOf(0) }
-    var qualities by remember { mutableIntStateOf(0) }
-    var selectedHeight by remember { mutableIntStateOf(0) }
-
     LaunchedEffect(player.currentTracks) {
         val groups = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
-        videoTracks = groups.size
         val heights = mutableSetOf<Int>()
         for (group in groups) {
             for (i in 0 until group.length) {
@@ -40,7 +33,10 @@ fun BoxScope.QualitySelectorView(
                 if (fmt.height > 0) heights.add(fmt.height)
             }
         }
-        qualities = heights.size
+        if (heights.isNotEmpty() && isAutoMode(player)) {
+            val lowest = heights.min()
+            setQuality(player, lowest)
+        }
     }
 
     OverlayView(modifier = modifier, show = show, title = "Quality") {
@@ -88,15 +84,10 @@ private fun isAutoMode(player: Player): Boolean {
 }
 
 private fun isHeightSelected(player: Player, height: Int): Boolean {
-    val overrides = player.trackSelectionParameters.overrides
-    if (overrides.isEmpty()) return false
-    val groups = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
-    for (group in groups) {
-        val override = overrides.keys.find { it.type == C.TRACK_TYPE_VIDEO } ?: continue
-        val overrideHeight = group.getTrackFormat(0).height
-        if (overrideHeight == height) return true
-    }
-    return false
+    val params = player.trackSelectionParameters
+    val minHeight = params.minVideoHeight
+    val maxHeight = params.maxVideoHeight
+    return minHeight == height && maxHeight == height
 }
 
 private fun setAutoMode(player: Player) {

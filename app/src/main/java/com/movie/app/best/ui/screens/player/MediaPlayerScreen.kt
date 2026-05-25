@@ -94,6 +94,10 @@ fun MediaPlayerScreen(
     onPlayInBackgroundClick: () -> Unit,
     title: String = "",
 ) {
+    val context = LocalContext.current
+    val activity = context as? android.app.Activity
+    var isRotationLocked by remember { mutableStateOf(false) }
+
     val volumeState = rememberVolumeState(player = player)
     player ?: return
     val mediaPresentationState = rememberMediaPresentationState(player)
@@ -268,7 +272,23 @@ fun MediaPlayerScreen(
                                     isPipSupported = true,
                                     onSeek = seekGestureState::onSeek,
                                     onSeekEnd = seekGestureState::onSeekEnd,
-                                    onRotateClick = { },
+                                    isRotationLocked = isRotationLocked,
+                                    onRotateClick = {
+                                        isRotationLocked = !isRotationLocked
+                                        if (isRotationLocked) {
+                                            activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                                        } else {
+                                            activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+                                        }
+                                    },
+                                    onFullscreenClick = {
+                                        val isLandscape = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                                        if (isLandscape) {
+                                            activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                        } else {
+                                            activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                                        }
+                                    },
                                     onPlayInBackgroundClick = onPlayInBackgroundClick,
                                     onLockControlsClick = {
                                         controlsVisibilityState.showControls()
