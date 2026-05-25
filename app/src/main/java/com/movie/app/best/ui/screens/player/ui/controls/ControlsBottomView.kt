@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import com.movie.app.best.ui.screens.player.buttons.PlayerButton
 import com.movie.app.best.ui.screens.player.extensions.nameRes
+import com.movie.app.best.ui.screens.player.extensions.noRippleClickable
 import com.movie.app.best.ui.screens.player.model.VideoContentScale
 import com.movie.app.best.ui.screens.player.state.MediaPresentationState
 import com.movie.app.best.ui.screens.player.state.durationFormatted
