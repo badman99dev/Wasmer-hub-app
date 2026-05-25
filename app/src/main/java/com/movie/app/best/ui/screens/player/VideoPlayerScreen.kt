@@ -36,6 +36,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import com.movie.app.best.data.debug.DebugInterceptor
 import okhttp3.OkHttpClient
 
 @Composable
@@ -52,16 +53,25 @@ fun VideoPlayerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val effectiveUrl = remember(streamUrl, playerUrl) {
-        val s = streamUrl.trim()
-        val p = playerUrl.trim()
-        when {
-            s.isNotEmpty() && s.startsWith("http") -> s
-            p.isNotEmpty() && p.startsWith("http") -> p
-            s.isNotEmpty() -> s
-            p.isNotEmpty() -> p
+        val url = when {
+            playerUrl.trim().isNotEmpty() -> playerUrl.trim()
+            streamUrl.trim().isNotEmpty() -> streamUrl.trim()
             else -> ""
-        }
+        }.let { if (it.startsWith("/")) "file://$it" else it }
+            .let {
+                if (it.startsWith("file://")) {
+                    try { java.net.URLDecoder.decode(it, "UTF-8") } catch (_: Exception) { it }
+                } else it
+            }
+        url
     }
+
+    val isLocalFile = effectiveUrl.startsWith("file://") || effectiveUrl.startsWith("content://")
+    val isHls = !isLocalFile && (
+        effectiveUrl.contains(".m3u8", ignoreCase = true) ||
+        effectiveUrl.contains("sparkling-breeze", ignoreCase = true) ||
+        effectiveUrl.contains("/?id=", ignoreCase = true)
+    )
 
     val trackSelector = remember { DefaultTrackSelector(context) }
 
@@ -71,16 +81,21 @@ fun VideoPlayerScreen(
         val okHttpClient = OkHttpClient.Builder()
             .followRedirects(true)
             .followSslRedirects(true)
+            .addInterceptor(DebugInterceptor())
             .build()
 
         val okHttpFactory = OkHttpDataSource.Factory(okHttpClient)
-        val defaultFactory = DefaultDataSource.Factory(context, okHttpFactory)
+            .setUserAgent("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36")
+            .setDefaultRequestProperties(mapOf(
+                "Referer" to "https://wasmer-jhns970ko-badals-projects-03fab3df.vercel.app/",
+                "Accept" to "*/*"
+            ))
 
-        val mediaSourceFactory = if (effectiveUrl.contains(".m3u8", ignoreCase = true)) {
-            HlsMediaSource.Factory(defaultFactory)
-        } else {
-            DefaultMediaSourceFactory(defaultFactory)
-        }
+        val dataSourceFactory = DefaultDataSource.Factory(context, okHttpFactory)
+        val mediaSourceFactory = if (isHls)
+            HlsMediaSource.Factory(dataSourceFactory)
+        else
+            DefaultMediaSourceFactory(dataSourceFactory)
 
         ExoPlayer.Builder(context)
             .setTrackSelector(trackSelector)
@@ -88,10 +103,15 @@ fun VideoPlayerScreen(
             .setLoadControl(DefaultLoadControl.Builder().build())
             .build()
             .apply {
-                setMediaItem(MediaItem.fromUri(effectiveUrl))
-                prepare()
                 playWhenReady = true
             }
+    }
+
+    LaunchedEffect(effectiveUrl) {
+        if (effectiveUrl.isNotEmpty() && exoPlayer != null) {
+            exoPlayer.setMediaItem(MediaItem.fromUri(effectiveUrl))
+            exoPlayer.prepare()
+        }
     }
 
     var playerError by remember { mutableStateOf<String?>(null) }
