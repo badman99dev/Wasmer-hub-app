@@ -10,12 +10,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.TrackGroup
 
 @Composable
 fun BoxScope.QualitySelectorView(
@@ -24,6 +26,9 @@ fun BoxScope.QualitySelectorView(
     player: Player,
     onDismiss: () -> Unit,
 ) {
+    var selectedHeight by remember { mutableIntStateOf(0) }
+    var lowestQualityApplied by remember { mutableStateOf(false) }
+
     LaunchedEffect(player.currentTracks) {
         val groups = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
         val heights = mutableSetOf<Int>()
@@ -33,8 +38,10 @@ fun BoxScope.QualitySelectorView(
                 if (fmt.height > 0) heights.add(fmt.height)
             }
         }
-        if (heights.isNotEmpty() && isAutoMode(player)) {
+        if (heights.isNotEmpty() && !lowestQualityApplied) {
+            lowestQualityApplied = true
             val lowest = heights.min()
+            selectedHeight = lowest
             setQuality(player, lowest)
         }
     }
@@ -48,9 +55,10 @@ fun BoxScope.QualitySelectorView(
                 .selectableGroup(),
         ) {
             RadioButtonRow(
-                selected = isAutoMode(player),
+                selected = selectedHeight == 0,
                 text = "Auto",
                 onClick = {
+                    selectedHeight = 0
                     setAutoMode(player)
                     onDismiss()
                 },
@@ -58,36 +66,28 @@ fun BoxScope.QualitySelectorView(
 
             val groups = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
             val seenHeights = mutableSetOf<Int>()
+            val sortedHeights = mutableListOf<Int>()
             for (group in groups) {
                 for (i in 0 until group.length) {
                     val fmt = group.getTrackFormat(i)
                     if (fmt.height > 0 && seenHeights.add(fmt.height)) {
-                        val isSelected = isHeightSelected(player, fmt.height)
-                        RadioButtonRow(
-                            selected = isSelected,
-                            text = "${fmt.height}p",
-                            onClick = {
-                                setQuality(player, fmt.height)
-                                onDismiss()
-                            },
-                        )
+                        sortedHeights.add(fmt.height)
                     }
                 }
             }
+            sortedHeights.sortedDescending().forEach { height ->
+                RadioButtonRow(
+                    selected = selectedHeight == height,
+                    text = "${height}p",
+                    onClick = {
+                        selectedHeight = height
+                        setQuality(player, height)
+                        onDismiss()
+                    },
+                )
+            }
         }
     }
-}
-
-private fun isAutoMode(player: Player): Boolean {
-    return player.trackSelectionParameters.overrides.isEmpty() &&
-        !player.trackSelectionParameters.disabledTrackTypes.contains(C.TRACK_TYPE_VIDEO)
-}
-
-private fun isHeightSelected(player: Player, height: Int): Boolean {
-    val params = player.trackSelectionParameters
-    val minHeight = params.minVideoHeight
-    val maxHeight = params.maxVideoHeight
-    return minHeight == height && maxHeight == height
 }
 
 private fun setAutoMode(player: Player) {
