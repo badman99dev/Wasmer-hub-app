@@ -1,6 +1,8 @@
 package com.movie.app.best.ui.screens.library
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -144,6 +146,12 @@ class LibraryViewModel @Inject constructor(
     }
 
     private fun isOnline(context: Context): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+               caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
 
     private fun applyModerationFilterHistory(items: List<FirebaseHistoryItem>): List<FirebaseHistoryItem> {
         return items.filter { !ModerationSettings.shouldHide(context, it.contentModeration) }
