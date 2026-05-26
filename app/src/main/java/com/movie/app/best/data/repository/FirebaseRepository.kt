@@ -418,4 +418,42 @@ class FirebaseRepository @Inject constructor(
     }
 
     private fun isLocalLiked(slug: String): Boolean = getLocalLikes().any { it.slug == slug }
+
+    // ── Local File Progress Cache ────────────────────────────
+    // Separate from history — tracks offline/downloaded file progress by filePath+fileName
+    // Never touches Firebase
+
+    private val filePrefs = context.getSharedPreferences("local_file_progress", android.content.Context.MODE_PRIVATE)
+
+    data class FileProgressItem(
+        val filePath: String,
+        val fileName: String,
+        val progressMs: Long,
+        val durationMs: Long
+    )
+
+    fun saveLocalFileProgress(filePath: String, fileName: String, progressMs: Long, durationMs: Long) {
+        val list = getLocalFileProgressList().toMutableList()
+        val key = "$filePath::$fileName"
+        list.removeAll { "${it.filePath}::${it.fileName}" == key }
+        list.add(0, FileProgressItem(filePath, fileName, progressMs, durationMs))
+        filePrefs.edit().putString("progress", gson.toJson(list)).apply()
+    }
+
+    fun getLocalFileProgress(filePath: String, fileName: String): FileProgressItem? {
+        val key = "$filePath::$fileName"
+        return getLocalFileProgressList().find { "${it.filePath}::${it.fileName}" == key }
+    }
+
+    fun removeLocalFileProgress(filePath: String, fileName: String) {
+        val key = "$filePath::$fileName"
+        val list = getLocalFileProgressList().toMutableList()
+        list.removeAll { "${it.filePath}::${it.fileName}" == key }
+        filePrefs.edit().putString("progress", gson.toJson(list)).apply()
+    }
+
+    private fun getLocalFileProgressList(): List<FileProgressItem> {
+        val json = filePrefs.getString("progress", null) ?: return emptyList()
+        return try { gson.fromJson(json, Array<FileProgressItem>::class.java).toList() } catch (_: Exception) { emptyList() }
+    }
 }

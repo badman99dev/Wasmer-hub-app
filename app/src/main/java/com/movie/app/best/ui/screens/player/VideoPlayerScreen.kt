@@ -132,11 +132,16 @@ fun VideoPlayerScreen(
 
     val firebaseRepository = remember { com.movie.app.best.data.repository.FirebaseRepository(context) }
 
+    val isLocalFile = remember(effectiveUrl) { effectiveUrl.startsWith("file://") }
+
     var resumePos by remember { mutableStateOf(0L) }
     var hasResumed by remember { mutableStateOf(false) }
 
-    LaunchedEffect(slug) {
-        if (slug.isNotEmpty()) {
+    LaunchedEffect(slug, effectiveUrl) {
+        if (isLocalFile && effectiveUrl.isNotEmpty()) {
+            val fileProgress = firebaseRepository.getLocalFileProgress(effectiveUrl, title)
+            resumePos = fileProgress?.progressMs ?: 0L
+        } else if (slug.isNotEmpty()) {
             val local = firebaseRepository.getLocalProgress(slug)
             resumePos = local?.progressMs ?: 0L
         }
@@ -156,13 +161,19 @@ fun VideoPlayerScreen(
     }
 
     LaunchedEffect(exoPlayer) {
-        if (exoPlayer == null || slug.isEmpty()) return@LaunchedEffect
+        if (exoPlayer == null) return@LaunchedEffect
+        if (isLocalFile && effectiveUrl.isEmpty()) return@LaunchedEffect
+        if (!isLocalFile && slug.isEmpty()) return@LaunchedEffect
         while (true) {
             delay(10_000)
             val pos = exoPlayer.currentPosition
             val dur = exoPlayer.duration
             if (pos > 0 && dur > 0) {
-                firebaseRepository.updateProgressLocal(slug, pos, dur)
+                if (isLocalFile) {
+                    firebaseRepository.saveLocalFileProgress(effectiveUrl, title, pos, dur)
+                } else {
+                    firebaseRepository.updateProgressLocal(slug, pos, dur)
+                }
             }
         }
     }
@@ -226,13 +237,17 @@ fun VideoPlayerScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
             val pos = exoPlayer?.currentPosition ?: 0
             val dur = exoPlayer?.duration ?: 0
-            if (pos > 0 && dur > 0 && slug.isNotEmpty()) {
-                firebaseRepository.updateProgressLocal(slug, pos, dur)
-                val repo = firebaseRepository
-                val s = slug
-                Thread {
-                    try { runBlocking { repo.updateProgress(s, pos, dur) } } catch (_: Exception) {}
-                }.start()
+            if (pos > 0 && dur > 0) {
+                if (isLocalFile) {
+                    firebaseRepository.saveLocalFileProgress(effectiveUrl, title, pos, dur)
+                } else if (slug.isNotEmpty()) {
+                    firebaseRepository.updateProgressLocal(slug, pos, dur)
+                    val repo = firebaseRepository
+                    val s = slug
+                    Thread {
+                        try { runBlocking { repo.updateProgress(s, pos, dur) } } catch (_: Exception) {}
+                    }.start()
+                }
             }
             exoPlayer?.release()
             activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
