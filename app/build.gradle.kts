@@ -130,6 +130,11 @@ dependencies {
     implementation(libs.firebase.firestore)
 
     implementation(libs.lottie.compose)
+
+    // ACRA Crash Reporting
+    implementation(libs.acra.http)
+    implementation(libs.acra.toast)
+    implementation(libs.acra.dialog)
     
     // Testing
     testImplementation(libs.junit)
