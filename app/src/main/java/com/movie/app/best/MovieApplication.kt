@@ -16,8 +16,6 @@ class MovieApplication : Application() {
             buildConfigClass = BuildConfig::class.java
             reportFormat = StringFormat.KEY_VALUE_LIST
 
-            reportSenderFactoryClass = TempservSenderFactory::class.java
-
             toast {
                 text = "Crash report Tempserv pe bhej raha hoon... 📤"
                 length = android.widget.Toast.LENGTH_LONG
