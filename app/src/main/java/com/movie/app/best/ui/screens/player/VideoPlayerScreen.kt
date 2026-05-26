@@ -51,6 +51,7 @@ fun VideoPlayerScreen(
     viewModel: VideoPlayerViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val activity = context as? android.app.Activity
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val effectiveUrl = remember(streamUrl, playerUrl) {
