@@ -30,6 +30,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -105,11 +106,12 @@ fun VideoPlayerScreen(
             .setLoadControl(
                 DefaultLoadControl.Builder()
                     .setBufferDurationsMs(
-                        50000,
-                        50000,
+                        300000,
+                        300000,
                         DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
                         DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
                     )
+                    .setBackBuffer(300000, true)
                     .build()
             )
             .build()
@@ -144,10 +146,19 @@ fun VideoPlayerScreen(
                     if (heights.isNotEmpty()) {
                         lowestQualityApplied = true
                         val lowest = heights.min()
-                        exoPlayer!!.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
-                            .setMinVideoSize(0, lowest)
-                            .setMaxVideoSize(Int.MAX_VALUE, lowest)
-                            .build()
+                        for (group in tracks.groups) {
+                            if (group.type != C.TRACK_TYPE_VIDEO) continue
+                            for (i in 0 until group.length) {
+                                val fmt = group.getTrackFormat(i)
+                                if (fmt.height == lowest) {
+                                    exoPlayer!!.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
+                                        .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+                                        .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, listOf(i)))
+                                        .build()
+                                    break
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import androidx.media3.common.Player
-import androidx.media3.common.TrackGroup
+import androidx.media3.common.TrackSelectionOverride
 
 @Composable
 fun BoxScope.QualitySelectorView(
@@ -42,7 +42,7 @@ fun BoxScope.QualitySelectorView(
             lowestQualityApplied = true
             val lowest = heights.min()
             selectedHeight = lowest
-            setQuality(player, lowest)
+            setQualityByOverride(player, lowest)
         }
     }
 
@@ -81,7 +81,7 @@ fun BoxScope.QualitySelectorView(
                     text = "${height}p",
                     onClick = {
                         selectedHeight = height
-                        setQuality(player, height)
+                        setQualityByOverride(player, height)
                         onDismiss()
                     },
                 )
@@ -94,15 +94,22 @@ private fun setAutoMode(player: Player) {
     player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
         .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
         .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
-        .setMinVideoSize(0, 0)
-        .setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE)
         .build()
 }
 
-private fun setQuality(player: Player, height: Int) {
-    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-        .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
-        .setMinVideoSize(0, height)
-        .setMaxVideoSize(Int.MAX_VALUE, height)
-        .build()
+private fun setQualityByOverride(player: Player, height: Int) {
+    val videoGroups = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
+    for (group in videoGroups) {
+        for (i in 0 until group.length) {
+            val fmt = group.getTrackFormat(i)
+            if (fmt.height == height) {
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                    .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+                    .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, listOf(i)))
+                    .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
+                    .build()
+                return
+            }
+        }
+    }
 }
