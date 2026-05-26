@@ -77,9 +77,9 @@ class LibraryViewModel @Inject constructor(
             } else {
                 _uiState.update {
                     it.copy(
-                        history = repository.getHistory(),
-                        likedPlaylist = repository.getPlaylist("liked"),
-                        watchLaterPlaylist = repository.getPlaylist("watch_later"),
+                        history = repository.getHistory().map { h -> FirebaseHistoryItem(slug = h.slug, title = h.title, posterUrl = h.posterUrl, isSeries = h.isSeries, watchedAt = h.timestamp) },
+                        likedPlaylist = repository.getPlaylist("liked").map { p -> LikeItem(slug = p.slug, title = p.title, posterUrl = p.posterUrl, isSeries = p.isSeries) },
+                        watchLaterPlaylist = repository.getPlaylist("watch_later").map { p -> BookmarkItem(slug = p.slug, title = p.title, posterUrl = p.posterUrl, isSeries = p.isSeries) },
                         isOnline = isOnline(context),
                         isLoading = false,
                         isRefreshing = false

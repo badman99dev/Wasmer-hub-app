@@ -132,8 +132,6 @@ fun VideoPlayerScreen(
 
     val firebaseRepository = remember { com.movie.app.best.data.repository.FirebaseRepository(context) }
 
-    val isLocalFile = remember(effectiveUrl) { effectiveUrl.startsWith("file://") }
-
     var resumePos by remember { mutableStateOf(0L) }
     var hasResumed by remember { mutableStateOf(false) }
 
