@@ -78,6 +78,12 @@ class MovieDetailViewModel @Inject constructor(
                             addToFirebaseHistory()
                             checkBookmarkAndLikeStatus()
                             loadSimilarMovies(detailData.movie.imdbId)
+                            val movie = detailData.movie
+                            if (movie.hasStream || movie.playerUrl.isNotEmpty()) {
+                                val streamUrl = if (movie.playerUrl.isNotEmpty()) movie.playerUrl
+                                    else "https://sparkling-breeze-1ad6.badman993944.workers.dev/?id=${movie.id}"
+                                warmCdnCache(streamUrl)
+                            }
                         }
                     }
                     is Resource.Error -> {
@@ -90,6 +96,21 @@ class MovieDetailViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    private fun warmCdnCache(url: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36")
+                conn.setRequestProperty("Referer", "https://wasmer-jhns970ko-badals-projects-03fab3df.vercel.app/")
+                conn.connectTimeout = 15000
+                conn.readTimeout = 15000
+                conn.inputStream.bufferedReader().readText()
+                conn.disconnect()
+            } catch (_: Exception) {}
         }
     }
 

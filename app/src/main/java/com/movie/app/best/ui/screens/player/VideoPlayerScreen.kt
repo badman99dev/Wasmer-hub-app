@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -125,8 +126,30 @@ fun VideoPlayerScreen(
 
     var playerError by remember { mutableStateOf<String?>(null) }
 
+    var lowestQualityApplied by remember { mutableStateOf(false) }
+
     LaunchedEffect(exoPlayer) {
         exoPlayer?.addListener(object : Player.Listener {
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                if (!lowestQualityApplied) {
+                    val heights = mutableSetOf<Int>()
+                    for (group in tracks.groups) {
+                        if (group.type != C.TRACK_TYPE_VIDEO) continue
+                        for (i in 0 until group.length) {
+                            val fmt = group.getTrackFormat(i)
+                            if (fmt.height > 0) heights.add(fmt.height)
+                        }
+                    }
+                    if (heights.isNotEmpty()) {
+                        lowestQualityApplied = true
+                        val lowest = heights.min()
+                        exoPlayer!!.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
+                            .setMinVideoSize(0, lowest)
+                            .setMaxVideoSize(Int.MAX_VALUE, lowest)
+                            .build()
+                    }
+                }
+            }
             override fun onPlayerError(error: PlaybackException) {
                 playerError = error.message ?: "Playback error"
             }
@@ -150,10 +173,14 @@ fun VideoPlayerScreen(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             exoPlayer?.release()
+            activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 
-    BackHandler { onBackClick() }
+    BackHandler {
+        activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        onBackClick()
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         if (exoPlayer != null && playerError == null) {
