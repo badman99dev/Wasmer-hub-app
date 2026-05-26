@@ -5,69 +5,64 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import org.acra.config.CoreConfiguration
+import org.acra.data.CrashReportData
 import org.acra.sender.ReportSender
 import org.acra.sender.ReportSenderFactory
-import org.acra.data.CrashReportData
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 class TempservSender : ReportSender {
 
-    companion object {
-        private const val PASTE_SLUG = "2e1ty3"
-        private const val PASTE_TOKEN = "Obbg0"
-        private const val PASTE_URL = "https://tempserv.badman993944.workers.dev/paste/$PASTE_SLUG"
-        private const val WRITE_URL = "https://tempserv.badman993944.workers.dev/api/paste/$PASTE_SLUG"
-    }
-
     override fun send(context: Context, errorContent: CrashReportData) {
-        try {
-            val reportText = buildString {
-                appendLine("=== CRASH REPORT ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm:ss", java.util.Locale.US).format(java.util.Date())} ===")
-                appendLine()
-                errorContent.toMap().forEach { (k, v) ->
-                    appendLine("$k = $v")
-                }
-            }
+        val prefs = CrashPasteManager.getPrefs(context)
+        val slug = CrashPasteManager.getSlug(prefs)
+        val token = CrashPasteManager.getToken(prefs)
+        val pasteUrl = CrashPasteManager.getUrl(prefs)
 
-            val writeJson = org.json.JSONObject()
+        val reportText = buildString {
+            appendLine("=== CRASH REPORT ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm:ss", java.util.Locale.US).format(java.util.Date())} ===")
+            appendLine()
+            errorContent.toMap().forEach { (k, v) ->
+                appendLine("$k = $v")
+            }
+        }
+
+        try {
+            val slug = CrashPasteManager.getSlug(prefs) ?: return
+            val token = CrashPasteManager.getToken(prefs) ?: return
+
+            val writeJson = JSONObject()
             writeJson.put("text", reportText)
             writeJson.put("action", "clean&add")
 
-            val writeConn = java.net.URL(WRITE_URL)
-                .openConnection() as java.net.HttpURLConnection
-            writeConn.requestMethod = "POST"
-            writeConn.setRequestProperty("Content-Type", "application/json")
-            writeConn.setRequestProperty("X-Access-Token", PASTE_TOKEN)
-            writeConn.doOutput = true
-            writeConn.connectTimeout = 10000
-            writeConn.readTimeout = 10000
+            val conn = URL("https://tempserv.badman993944.workers.dev/api/paste/$slug")
+                .openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("X-Access-Token", token)
+            conn.doOutput = true
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            conn.outputStream.write(writeJson.toString().toByteArray())
+            conn.outputStream.flush()
+            conn.inputStream.bufferedReader().readText()
+            conn.disconnect()
 
-            writeConn.outputStream.write(writeJson.toString().toByteArray())
-            writeConn.outputStream.flush()
-            writeConn.inputStream.bufferedReader().readText()
-            writeConn.disconnect()
-
+            val url = CrashPasteManager.getUrl(prefs) ?: "https://tempserv.badman993944.workers.dev/paste/$slug"
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(ClipData.newPlainText("Crash URL", PASTE_URL))
+            clipboard.setPrimaryClip(ClipData.newPlainText("Crash URL", url))
 
             android.os.Handler(android.os.Looper.getMainLooper()).post {
-                Toast.makeText(context, "Crash report: $PASTE_URL", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Crash report: $url", Toast.LENGTH_LONG).show()
             }
-
         } catch (e: Exception) {
-            val reportText = buildString {
-                appendLine("=== CRASH REPORT (OFFLINE) ===")
-                appendLine("Error uploading: ${e.message}")
-                errorContent.toMap().forEach { (k, v) ->
-                    appendLine("$k = $v")
-                }
-            }
-            val prefs = context.getSharedPreferences("crash_reports", Context.MODE_PRIVATE)
             val pending = prefs.getStringSet("pending", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
             pending.add(reportText)
             prefs.edit().putStringSet("pending", pending).apply()
 
             android.os.Handler(android.os.Looper.getMainLooper()).post {
-                Toast.makeText(context, "Crash report saved offline", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Crash saved offline", Toast.LENGTH_LONG).show()
             }
         }
     }

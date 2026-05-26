@@ -12,6 +12,8 @@ class MovieApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        Thread { CrashPasteManager.ensurePasteExists(this) }.start()
+
         initAcra {
             buildConfigClass = BuildConfig::class.java
             reportFormat = StringFormat.KEY_VALUE_LIST
