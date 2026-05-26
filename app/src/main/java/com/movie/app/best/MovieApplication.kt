@@ -16,16 +16,18 @@ class MovieApplication : Application() {
             buildConfigClass = BuildConfig::class.java
             reportFormat = StringFormat.KEY_VALUE_LIST
 
+            reportSenderFactoryClass = TempservSenderFactory::class.java
+
             toast {
-                text = "Crash ho gaya! Report save hua device pe 📄"
+                text = "Crash report Tempserv pe bhej raha hoon... 📤"
                 length = android.widget.Toast.LENGTH_LONG
             }
 
             dialog {
                 title = "Crash Report"
-                text = "App crash ho gaya! Stack trace clipboard pe copy ho gaya.\n\nDeveloper ko bhej do."
+                text = "App crash ho gaya! Report Tempserv pe upload ho raha hai.\n\nLink copy karke developer ko bhej do."
                 commentPrompt = "Kya kar rahe the jab crash hua? (optional)"
-                positiveButtonText = "Copy & Close"
+                positiveButtonText = "OK"
                 negativeButtonText = "Close"
                 resTheme = android.R.style.Theme_DeviceDefault_Light_Dialog
             }
