@@ -32,21 +32,23 @@ fun PlayerButton(
     val viewConfiguration = LocalViewConfiguration.current
     val hapticFeedback = LocalHapticFeedback.current
 
-    LaunchedEffect(interactionSource) {
-        var isLongPressClicked = false
-        interactionSource.interactions.collectLatest { interaction ->
-            when (interaction) {
-                is PressInteraction.Press -> {
-                    isLongPressClicked = false
-                    delay(viewConfiguration.longPressTimeoutMillis)
-                    onLongClick?.let {
-                        isLongPressClicked = true
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                        it.invoke()
+    if (onLongClick != null) {
+        LaunchedEffect(interactionSource) {
+            var isLongPressClicked = false
+            interactionSource.interactions.collectLatest { interaction ->
+                when (interaction) {
+                    is PressInteraction.Press -> {
+                        isLongPressClicked = false
+                        delay(viewConfiguration.longPressTimeoutMillis)
+                        onLongClick.let {
+                            isLongPressClicked = true
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            it.invoke()
+                        }
                     }
-                }
-                is PressInteraction.Release -> {
-                    if (!isLongPressClicked) onClick()
+                    is PressInteraction.Release -> {
+                        if (!isLongPressClicked) onClick()
+                    }
                 }
             }
         }
@@ -54,7 +56,7 @@ fun PlayerButton(
 
     CompositionLocalProvider(LocalContentColor provides Color.White) {
         IconButton(
-            onClick = {},
+            onClick = if (onLongClick == null) onClick else {{}},
             enabled = isEnabled,
             modifier = modifier.size(40.dp),
             interactionSource = interactionSource,
