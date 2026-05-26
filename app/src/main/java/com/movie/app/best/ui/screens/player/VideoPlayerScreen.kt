@@ -39,6 +39,8 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.movie.app.best.data.debug.DebugInterceptor
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 
 @Composable
@@ -49,6 +51,8 @@ fun VideoPlayerScreen(
     title: String,
     youtubeId: String,
     movieId: String,
+    slug: String = "",
+    resumePosition: Long = 0,
     viewModel: VideoPlayerViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -127,6 +131,33 @@ fun VideoPlayerScreen(
         }
     }
 
+    var hasResumed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(exoPlayer) {
+        exoPlayer?.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY && resumePosition > 0 && !hasResumed) {
+                    hasResumed = true
+                    exoPlayer.seekTo(resumePosition)
+                }
+            }
+        })
+    }
+
+    val firebaseRepository = remember { com.movie.app.best.data.repository.FirebaseRepository(context) }
+
+    LaunchedEffect(exoPlayer) {
+        if (exoPlayer == null || slug.isEmpty()) return@LaunchedEffect
+        while (true) {
+            delay(10_000)
+            val pos = exoPlayer.currentPosition
+            val dur = exoPlayer.duration
+            if (pos > 0 && dur > 0) {
+                firebaseRepository.updateProgressLocal(slug, pos, dur)
+            }
+        }
+    }
+
     var playerError by remember { mutableStateOf<String?>(null) }
 
     var lowestQualityApplied by remember { mutableStateOf(false) }
@@ -184,6 +215,16 @@ fun VideoPlayerScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            val pos = exoPlayer?.currentPosition ?: 0
+            val dur = exoPlayer?.duration ?: 0
+            if (pos > 0 && dur > 0 && slug.isNotEmpty()) {
+                firebaseRepository.updateProgressLocal(slug, pos, dur)
+                val repo = firebaseRepository
+                val s = slug
+                Thread {
+                    try { runBlocking { repo.updateProgress(s, pos, dur) } } catch (_: Exception) {}
+                }.start()
+            }
             exoPlayer?.release()
             activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }

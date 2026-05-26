@@ -33,7 +33,7 @@ import com.movie.app.best.ui.screens.moviedetail.components.*
 fun MovieDetailScreen(
     slug: String,
     onBackClick: () -> Unit,
-    onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String) -> Unit,
+    onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String, resumePosition: Long) -> Unit,
     onSeriesClick: (slug: String) -> Unit,
     onMovieClick: (slug: String) -> Unit = {},
     onDownloadClick: (linkUrl: String) -> Unit = { },
@@ -212,7 +212,7 @@ private fun MovieDetailContent(
     movie: WasmerMovieDetails,
     uiState: MovieDetailUiState,
     onBackClick: () -> Unit,
-    onPlayClick: (String, String, String, String, String) -> Unit,
+    onPlayClick: (String, String, String, String, String, String, Long) -> Unit,
     onStartDownload: (String) -> Unit,
     onPostComment: (String, String) -> Unit,
     onRequestStream: () -> Unit,
@@ -286,9 +286,15 @@ private fun MovieDetailContent(
                 streamRequested = uiState.streamRequested,
                 isInMyList      = uiState.isBookmarked,
                 isLiked         = uiState.isLiked,
-                onPlayClick     = {
+                resumePositionMs = uiState.resumePositionMs,
+                progressPercent = uiState.progressPercent,
+                onPlayClick     = { resumePos ->
                     val workerUrl = "https://sparkling-breeze-1ad6.badman993944.workers.dev/?id=${movie.id}"
-                    onPlayClick("", workerUrl, movie.title, "", movie.id.toString())
+                    onPlayClick("", workerUrl, movie.title, "", movie.id.toString(), movie.slug, resumePos)
+                },
+                onPlayFromStart = {
+                    val workerUrl = "https://sparkling-breeze-1ad6.badman993944.workers.dev/?id=${movie.id}"
+                    onPlayClick("", workerUrl, movie.title, "", movie.id.toString(), movie.slug, 0L)
                 },
                 onDownloadClick = { },
                 onMyListClick   = onToggleBookmark,
@@ -326,7 +332,7 @@ private fun MovieDetailContent(
             TrailersRow(
                 youtubeId      = movie.youtubeId,
                 onTrailerClick = {
-                    onPlayClick("", "", movie.title, movie.youtubeId, movie.id.toString())
+                    onPlayClick("", "", movie.title, movie.youtubeId, movie.id.toString(), movie.slug, 0L)
                 }
             )
 

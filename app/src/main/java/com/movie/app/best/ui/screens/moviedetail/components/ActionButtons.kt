@@ -26,110 +26,200 @@ fun DetailActionButtons(
     streamRequested: Boolean,
     isInMyList: Boolean,
     isLiked: Boolean,
+    resumePositionMs: Long = 0,
+    progressPercent: Float = 0f,
     modifier: Modifier = Modifier,
-    onPlayClick: () -> Unit,
+    onPlayClick: (resumePosition: Long) -> Unit = { _ -> },
+    onPlayFromStart: () -> Unit = {},
     onDownloadClick: () -> Unit,
     onMyListClick: () -> Unit,
     onLikeClick: () -> Unit,
     onRequestStream: () -> Unit
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         if (hasStream) {
-            val playBg = Brush.linearGradient(colors = listOf(Color(0xFFE50914), Color(0xFFB71C1C)))
-            val playBorder = Brush.linearGradient(colors = listOf(Color(0xFFFF5252), Color(0xFFFFD700), Color(0xFFFF5252)))
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(playBg)
-                    .border(width = 1.dp, brush = playBorder, shape = RoundedCornerShape(24.dp))
-                    .clickable { onPlayClick() },
-                contentAlignment = Alignment.Center
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(22.dp), tint = Color.White)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Watch Now", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+            if (resumePositionMs > 0 && progressPercent in 0.01f..0.95f) {
+                val resumeMin = resumePositionMs / 60000
+                val resumeSec = (resumePositionMs % 60000) / 1000
+                val resumeText = "${resumeMin}:${resumeSec.toString().padStart(2, '0')}"
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val resumeBg = Brush.linearGradient(colors = listOf(Color(0xFFE50914), Color(0xFFB71C1C)))
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(resumeBg)
+                            .clickable { onPlayClick(resumePositionMs) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(22.dp), tint = Color.White)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Resume $resumeText", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = onPlayFromStart,
+                        modifier = Modifier.height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                    ) {
+                        Text("Start Over", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 6.dp)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = 0.15f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progressPercent)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(Color(0xFFE50914))
+                    )
+                }
+            } else if (progressPercent >= 0.96f) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val playBg = Brush.linearGradient(colors = listOf(Color(0xFFE50914), Color(0xFFB71C1C)))
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(playBg)
+                            .clickable { onPlayFromStart() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Replay, null, modifier = Modifier.size(22.dp), tint = Color.White)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Watch Again", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                        }
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 6.dp)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFFE50914))
+                )
+            } else {
+                val playBg = Brush.linearGradient(colors = listOf(Color(0xFFE50914), Color(0xFFB71C1C)))
+                val playBorder = Brush.linearGradient(colors = listOf(Color(0xFFFF5252), Color(0xFFFFD700), Color(0xFFFF5252)))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(playBg)
+                            .border(width = 1.dp, brush = playBorder, shape = RoundedCornerShape(24.dp))
+                            .clickable { onPlayClick(0) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(22.dp), tint = Color.White)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Watch Now", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                        }
+                    }
+                    ActionIconButton(icon = Icons.Default.Download, label = "Download", onClick = onDownloadClick)
+                    ActionIconButton(icon = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, label = if (isLiked) "Liked" else "Like", tint = if (isLiked) Color(0xFFFF1744) else Color.White, onClick = onLikeClick)
+                    ActionIconButton(icon = if (isInMyList) Icons.Default.BookmarkAdded else Icons.Default.BookmarkAdd, label = if (isInMyList) "Saved" else "My List", tint = if (isInMyList) Color(0xFFE50914) else Color.White, onClick = onMyListClick)
                 }
             }
         } else {
-            val capsuleBg = if (streamRequested) {
-                Brush.linearGradient(colors = listOf(Color(0xFF1B5E20).copy(alpha = 0.5f), Color(0xFF2E7D32).copy(alpha = 0.3f)))
-            } else {
-                Brush.linearGradient(colors = listOf(Color(0xFFE50914), Color(0xFFB71C1C)))
-            }
-            val borderBrush = if (streamRequested) {
-                Brush.linearGradient(colors = listOf(Color(0xFF4CAF50).copy(alpha = 0.6f), Color(0xFF81C784).copy(alpha = 0.3f)))
-            } else {
-                Brush.linearGradient(colors = listOf(Color(0xFFFF5252), Color(0xFFFFD700), Color(0xFFFF5252)))
-            }
-
-            Box(
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(capsuleBg)
-                    .border(
-                        width = if (!streamRequested) 1.dp else 0.5.dp,
-                        brush = borderBrush,
-                        shape = RoundedCornerShape(24.dp)
-                    )
-                    .clickable(enabled = !streamRequested) { onRequestStream() },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (streamRequested) {
-                        Icon(
-                            Icons.Default.CheckCircle, null,
-                            modifier = Modifier.size(18.dp),
-                            tint = Color(0xFF81C784)
+                val capsuleBg = if (streamRequested) {
+                    Brush.linearGradient(colors = listOf(Color(0xFF1B5E20).copy(alpha = 0.5f), Color(0xFF2E7D32).copy(alpha = 0.3f)))
+                } else {
+                    Brush.linearGradient(colors = listOf(Color(0xFFE50914), Color(0xFFB71C1C)))
+                }
+                val borderBrush = if (streamRequested) {
+                    Brush.linearGradient(colors = listOf(Color(0xFF4CAF50).copy(alpha = 0.6f), Color(0xFF81C784).copy(alpha = 0.3f)))
+                } else {
+                    Brush.linearGradient(colors = listOf(Color(0xFFFF5252), Color(0xFFFFD700), Color(0xFFFF5252)))
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(capsuleBg)
+                        .border(
+                            width = if (!streamRequested) 1.dp else 0.5.dp,
+                            brush = borderBrush,
+                            shape = RoundedCornerShape(24.dp)
                         )
-                    } else {
-                        Icon(
-                            Icons.Default.SmartDisplay, null,
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.White
+                        .clickable(enabled = !streamRequested) { onRequestStream() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (streamRequested) {
+                            Icon(
+                                Icons.Default.CheckCircle, null,
+                                modifier = Modifier.size(18.dp),
+                                tint = Color(0xFF81C784)
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.SmartDisplay, null,
+                                modifier = Modifier.size(20.dp),
+                                tint = Color.White
+                            )
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (streamRequested) "Requested ✓" else "Request Stream",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = if (streamRequested) Color(0xFFA5D6A7) else Color.White
                         )
                     }
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = if (streamRequested) "Requested ✓" else "Request Stream",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = if (streamRequested) Color(0xFFA5D6A7) else Color.White
-                    )
                 }
+
+                ActionIconButton(icon = Icons.Default.Download, label = "Download", onClick = onDownloadClick)
+                ActionIconButton(icon = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, label = if (isLiked) "Liked" else "Like", tint = if (isLiked) Color(0xFFFF1744) else Color.White, onClick = onLikeClick)
+                ActionIconButton(icon = if (isInMyList) Icons.Default.BookmarkAdded else Icons.Default.BookmarkAdd, label = if (isInMyList) "Saved" else "My List", tint = if (isInMyList) Color(0xFFE50914) else Color.White, onClick = onMyListClick)
             }
         }
-
-        ActionIconButton(
-            icon = Icons.Default.Download,
-            label = "Download",
-            onClick = onDownloadClick
-        )
-
-        ActionIconButton(
-            icon = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-            label = if (isLiked) "Liked" else "Like",
-            tint = if (isLiked) Color(0xFFFF1744) else Color.White,
-            onClick = onLikeClick
-        )
-
-        ActionIconButton(
-            icon = if (isInMyList) Icons.Default.BookmarkAdded else Icons.Default.BookmarkAdd,
-            label = if (isInMyList) "Saved" else "My List",
-            tint = if (isInMyList) Color(0xFFE50914) else Color.White,
-            onClick = onMyListClick
-        )
     }
 }
 

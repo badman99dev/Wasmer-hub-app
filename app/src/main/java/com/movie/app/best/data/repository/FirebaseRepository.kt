@@ -189,6 +189,11 @@ class FirebaseRepository @Inject constructor(
         prefs.edit().remove("history").apply()
     }
 
+    fun updateProgressLocal(slug: String, progressMs: Long, durationMs: Long) {
+        val percent = if (durationMs > 0) progressMs.toFloat() / durationMs.toFloat() else 0f
+        saveLocalProgress(slug, progressMs, durationMs, percent)
+    }
+
     suspend fun updateProgress(slug: String, progressMs: Long, durationMs: Long) = withContext(Dispatchers.IO) {
         val doc = userDoc() ?: return@withContext
         val percent = if (durationMs > 0) progressMs.toFloat() / durationMs.toFloat() else 0f
@@ -197,9 +202,57 @@ class FirebaseRepository @Inject constructor(
                 mapOf(
                     "progressMs" to progressMs,
                     "durationMs" to durationMs,
-                    "progressPercent" to percent
+                    "progressPercent" to percent,
+                    "watchedAt" to System.currentTimeMillis()
                 )
             ).await()
+        } catch (_: Exception) {}
+        saveLocalProgress(slug, progressMs, durationMs, percent)
+    }
+
+    suspend fun getProgress(slug: String): FirebaseHistoryItem? = withContext(Dispatchers.IO) {
+        val doc = userDoc()
+        if (doc != null) {
+            try {
+                val d = doc.collection("history").document(slug).get().await()
+                if (d.exists()) {
+                    val m = d.data ?: return@withContext null
+                    return@withContext FirebaseHistoryItem(
+                        slug = m["slug"] as? String ?: d.id,
+                        title = m["title"] as? String ?: "",
+                        posterUrl = m["posterUrl"] as? String ?: "",
+                        isSeries = m["isSeries"] as? Boolean ?: false,
+                        imdbId = m["imdbId"] as? String ?: "",
+                        watchedAt = (m["watchedAt"] as? Number)?.toLong() ?: 0,
+                        progressMs = (m["progressMs"] as? Number)?.toLong() ?: 0,
+                        durationMs = (m["durationMs"] as? Number)?.toLong() ?: 0,
+                        progressPercent = (m["progressPercent"] as? Number)?.toFloat() ?: 0f
+                    )
+                }
+            } catch (_: Exception) {}
+        }
+        getLocalProgress(slug)
+    }
+
+    suspend fun syncRemoteToLocal() = withContext(Dispatchers.IO) {
+        val doc = userDoc() ?: return@withContext
+        try {
+            val snap = doc.collection("history").orderBy("watchedAt", com.google.firebase.firestore.Query.Direction.DESCENDING).limit(50).get().await()
+            val items = snap.documents.mapNotNull { d ->
+                val m = d.data ?: return@mapNotNull null
+                FirebaseHistoryItem(
+                    slug = m["slug"] as? String ?: d.id,
+                    title = m["title"] as? String ?: "",
+                    posterUrl = m["posterUrl"] as? String ?: "",
+                    isSeries = m["isSeries"] as? Boolean ?: false,
+                    imdbId = m["imdbId"] as? String ?: "",
+                    watchedAt = (m["watchedAt"] as? Number)?.toLong() ?: 0,
+                    progressMs = (m["progressMs"] as? Number)?.toLong() ?: 0,
+                    durationMs = (m["durationMs"] as? Number)?.toLong() ?: 0,
+                    progressPercent = (m["progressPercent"] as? Number)?.toFloat() ?: 0f
+                )
+            }
+            saveAllLocalHistory(items)
         } catch (_: Exception) {}
     }
 
@@ -307,6 +360,22 @@ class FirebaseRepository @Inject constructor(
         prefs.edit().putString("history", gson.toJson(list)).apply()
     }
 
+    private fun saveLocalProgress(slug: String, progressMs: Long, durationMs: Long, progressPercent: Float) {
+        val list = getLocalHistory().toMutableList()
+        val existing = list.find { it.slug == slug }
+        if (existing != null) {
+            list.removeAll { it.slug == slug }
+            list.add(0, existing.copy(progressMs = progressMs, durationMs = durationMs, progressPercent = progressPercent, watchedAt = System.currentTimeMillis()))
+        }
+        prefs.edit().putString("history", gson.toJson(list)).apply()
+    }
+
+    private fun saveAllLocalHistory(items: List<FirebaseHistoryItem>) {
+        prefs.edit().putString("history", gson.toJson(items)).apply()
+    }
+
+    fun getLocalProgress(slug: String): FirebaseHistoryItem? = getLocalHistory().find { it.slug == slug }
+
     private fun removeLocalHistory(slug: String) {
         val list = getLocalHistory().toMutableList()
         list.removeAll { it.slug == slug }
@@ -316,6 +385,13 @@ class FirebaseRepository @Inject constructor(
     private fun getLocalHistory(): List<FirebaseHistoryItem> {
         val json = prefs.getString("history", null) ?: return emptyList()
         return try { gson.fromJson(json, Array<FirebaseHistoryItem>::class.java).toList() } catch (_: Exception) { emptyList() }
+    }
+
+    fun getLocalHistoryForContinueWatching(): List<FirebaseHistoryItem> {
+        return getLocalHistory()
+            .filter { it.progressPercent > 0f && it.progressPercent < 0.96f }
+            .sortedByDescending { it.watchedAt }
+            .take(20)
     }
 
     private fun saveLocalLike(item: LikeItem) {

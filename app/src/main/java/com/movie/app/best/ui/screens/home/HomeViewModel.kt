@@ -7,7 +7,7 @@ import com.movie.app.best.data.model.WasmerMovie
 import com.movie.app.best.data.model.WasmerNotification
 import com.movie.app.best.data.model.WasmerSliderResult
 import com.movie.app.best.data.repository.MovieRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
+import com.movie.app.best.data.repository.FirebaseRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,10 +15,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import javax.inject.Inject
+import dagger.hilt.android.lifecycle.HiltViewModel
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: MovieRepository
+    private val repository: MovieRepository,
+    private val firebaseRepository: FirebaseRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -30,6 +32,7 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadAllContent()
+        loadContinueWatching()
     }
 
     fun loadAllContent() {
@@ -39,6 +42,13 @@ class HomeViewModel @Inject constructor(
         loadMyFeed()
         loadNotification()
     }
+
+    private fun loadContinueWatching() {
+        val items = firebaseRepository.getLocalHistoryForContinueWatching()
+        _uiState.update { it.copy(continueWatching = items) }
+    }
+
+    fun refreshContinueWatching() = loadContinueWatching()
 
     fun loadTrending() {
         viewModelScope.launch {
@@ -253,5 +263,7 @@ data class HomeUiState(
 
     val notification: WasmerNotification? = null,
     val isNotificationLoading: Boolean = false,
-    val notificationError: String? = null
+    val notificationError: String? = null,
+
+    val continueWatching: List<com.movie.app.best.data.model.FirebaseHistoryItem> = emptyList()
 )
