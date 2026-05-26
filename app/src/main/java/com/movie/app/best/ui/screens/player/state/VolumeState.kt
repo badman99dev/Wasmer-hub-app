@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioManager
+import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.DisposableEffectResult
@@ -15,7 +16,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat.getSystemService
+import androidx.core.content.ContextCompat
 import androidx.media3.common.Player
 
 @Composable
@@ -31,7 +32,8 @@ class VolumeState(
     private val player: Player?,
     private val context: Context,
 ) {
-    private val audioManager = getSystemService(context, AudioManager::class.java)!!
+    private val audioManager = ContextCompat.getSystemService(context, AudioManager::class.java)
+        ?: throw IllegalStateException("AudioManager not available")
     private val systemMaxVolume: Int = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 
     val maxVolumePercentage: Int = 100
@@ -61,7 +63,11 @@ class VolumeState(
                     }
                 }
             }
-            context.registerReceiver(receiver, IntentFilter(VOLUME_CHANGED_ACTION))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(receiver, IntentFilter(VOLUME_CHANGED_ACTION), Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                context.registerReceiver(receiver, IntentFilter(VOLUME_CHANGED_ACTION))
+            }
             onDispose { context.unregisterReceiver(receiver) }
         }
 

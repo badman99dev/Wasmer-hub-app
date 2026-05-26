@@ -30,6 +30,13 @@ fun rememberControlsVisibilityState(player: Player, hideAfter: Duration): Contro
         }
         player.addListener(listener)
         controlsVisibilityState.autoHideControls()
+        try {
+            while (true) {
+                delay(Long.MAX_VALUE)
+            }
+        } finally {
+            player.removeListener(listener)
+        }
     }
     LaunchedEffect(controlsVisibilityState.controlsVisible, controlsVisibilityState.controlsLocked) {
         if (controlsVisibilityState.controlsLocked) {

@@ -44,9 +44,13 @@ fun rememberMediaPresentationState(player: Player): MediaPresentationState {
         }
         player.addListener(listener)
 
-        while (true) {
-            delay(500)
-            if (player.isPlaying) state.updatePosition()
+        try {
+            while (true) {
+                delay(500)
+                if (player.isPlaying) state.updatePosition()
+            }
+        } finally {
+            player.removeListener(listener)
         }
     }
     return state

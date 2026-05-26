@@ -23,6 +23,13 @@ fun rememberPlaybackParametersState(player: Player): PlaybackParametersState {
             }
         }
         player.addListener(listener)
+        try {
+            while (true) {
+                kotlinx.coroutines.delay(Long.MAX_VALUE)
+            }
+        } finally {
+            player.removeListener(listener)
+        }
     }
     return state
 }

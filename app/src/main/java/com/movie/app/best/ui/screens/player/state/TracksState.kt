@@ -22,6 +22,13 @@ fun rememberTracksState(player: Player, trackType: @C.TrackType Int): TracksStat
             }
         }
         player.addListener(listener)
+        try {
+            while (true) {
+                kotlinx.coroutines.delay(Long.MAX_VALUE)
+            }
+        } finally {
+            player.removeListener(listener)
+        }
     }
     return state
 }
