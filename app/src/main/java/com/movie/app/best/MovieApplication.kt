@@ -2,11 +2,10 @@ package com.movie.app.best
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
-import org.acra.config.httpSender
 import org.acra.config.toast
 import org.acra.config.dialog
 import org.acra.ktx.initAcra
-import org.acra.sender.HttpSender
+import org.acra.data.StringFormat
 
 @HiltAndroidApp
 class MovieApplication : Application() {
@@ -15,25 +14,20 @@ class MovieApplication : Application() {
 
         initAcra {
             buildConfigClass = BuildConfig::class.java
-            reportFormat = org.acra.data.StringFormat.KEY_VALUE_LIST
+            reportFormat = StringFormat.KEY_VALUE_LIST
 
             toast {
-                text = "Oops! Crash ho gaya 😵 Report bhej raha hoon..."
+                text = "Crash ho gaya! Report save hua device pe 📄"
                 length = android.widget.Toast.LENGTH_LONG
             }
 
             dialog {
                 title = "Crash Report"
-                text = "App crash ho gaya! Kya aap crash report developer ko bhejna chahte ho?"
+                text = "App crash ho gaya! Stack trace clipboard pe copy ho gaya.\n\nDeveloper ko bhej do."
                 commentPrompt = "Kya kar rahe the jab crash hua? (optional)"
-                positiveButtonText = "Bhejo"
-                negativeButtonText = "Cancel"
+                positiveButtonText = "Copy & Close"
+                negativeButtonText = "Close"
                 resTheme = android.R.style.Theme_DeviceDefault_Light_Dialog
-            }
-
-            httpSender {
-                uri = "https://collector.tracepot.com/e6f5c0d0"
-                httpMethod = HttpSender.Method.POST
             }
         }
     }
