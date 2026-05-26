@@ -52,7 +52,6 @@ fun VideoPlayerScreen(
     youtubeId: String,
     movieId: String,
     slug: String = "",
-    resumePosition: Long = 0,
     viewModel: VideoPlayerViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -131,20 +130,30 @@ fun VideoPlayerScreen(
         }
     }
 
+    val firebaseRepository = remember { com.movie.app.best.data.repository.FirebaseRepository(context) }
+
+    var resumePos by remember { mutableStateOf(0L) }
     var hasResumed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(slug) {
+        if (slug.isNotEmpty()) {
+            val local = firebaseRepository.getLocalProgress(slug)
+            resumePos = local?.progressMs ?: 0L
+        }
+    }
 
     LaunchedEffect(exoPlayer) {
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY && resumePosition > 0 && !hasResumed) {
+                if (state == Player.STATE_READY && resumePos > 0 && !hasResumed) {
                     hasResumed = true
-                    exoPlayer.seekTo(resumePosition)
+                    val seekTo = resumePos
+                    resumePos = 0L
+                    exoPlayer.seekTo(seekTo)
                 }
             }
         })
     }
-
-    val firebaseRepository = remember { com.movie.app.best.data.repository.FirebaseRepository(context) }
 
     LaunchedEffect(exoPlayer) {
         if (exoPlayer == null || slug.isEmpty()) return@LaunchedEffect

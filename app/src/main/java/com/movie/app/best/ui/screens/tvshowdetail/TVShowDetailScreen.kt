@@ -98,7 +98,7 @@ import kotlinx.coroutines.delay
 fun TVShowDetailScreen(
     slug: String,
     onBackClick: () -> Unit,
-    onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String, resumePosition: Long) -> Unit,
+    onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String) -> Unit,
     onMovieClick: (String) -> Unit = {},
     onSeriesClick: (String) -> Unit = {},
     viewModel: TVShowDetailViewModel = hiltViewModel()
@@ -227,7 +227,7 @@ private fun TVShowDetailContent(
     series: WasmerMovieDetails,
     uiState: TVShowDetailUiState,
     onBackClick: () -> Unit,
-    onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String, resumePosition: Long) -> Unit,
+    onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String) -> Unit,
     onPostComment: (name: String, msg: String) -> Unit,
     onRequestStream: () -> Unit,
     onStartDownload: (linkUrl: String) -> Unit,
@@ -504,7 +504,7 @@ private fun TVShowDetailContent(
                     isLiked = uiState.isLiked,
                     onPlayClick = {
                         val workerUrl = "https://sparkling-breeze-1ad6.badman993944.workers.dev/?id=${series.id}"
-                        onPlayClick("", workerUrl, series.title, "", series.id.toString(), series.slug, 0L)
+                        onPlayClick("", workerUrl, series.title, "", series.id.toString(), series.slug)
                     },
                     onDownloadClick = { },
                     onMyListClick = onToggleBookmark,
@@ -583,7 +583,7 @@ private fun TVShowDetailContent(
                     downloadLinks = uiState.linksByEpisode[episode.id] ?: emptyList(),
                     onPlayClick = {
                         val workerUrl = "https://sparkling-breeze-1ad6.badman993944.workers.dev/?id=${series.id}"
-                        onPlayClick("", workerUrl, "${series.title} - S${episode.seasonNo}:E${episode.episodeNo}", "", series.id.toString(), series.slug, 0L)
+                        onPlayClick("", workerUrl, "${series.title} - S${episode.seasonNo}:E${episode.episodeNo}", "", series.id.toString(), series.slug)
                     }
                 )
                 HorizontalDivider(

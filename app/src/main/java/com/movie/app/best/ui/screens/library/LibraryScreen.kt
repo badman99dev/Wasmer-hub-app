@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,8 +50,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.movie.app.best.data.repository.HistoryItem
-import com.movie.app.best.data.repository.PlaylistItem
+import com.movie.app.best.data.model.FirebaseHistoryItem
+import com.movie.app.best.data.model.BookmarkItem
+import com.movie.app.best.data.model.LikeItem
+import com.movie.app.best.data.settings.ModerationSettings
+import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.components.SkeletonLibraryPage
 
 @Composable
@@ -161,11 +165,12 @@ fun LibraryScreen(
 
 @Composable
 private fun HistorySection(
-    history: List<HistoryItem>,
+    history: List<FirebaseHistoryItem>,
     onContentClick: (String, Boolean) -> Unit,
     onRemove: (String) -> Unit,
     onClearAll: () -> Unit
 ) {
+    val context = LocalContext.current
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Row(
             modifier = Modifier
@@ -204,10 +209,13 @@ private fun HistorySection(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(history, key = { it.slug + it.timestamp }) { item ->
+                items(history, key = { it.slug + it.watchedAt }) { item ->
+                    val shouldBlur = ModerationSettings.shouldBlur(context, item.contentModeration)
                     SmallMovieCard(
                         title = item.title,
                         posterUrl = item.posterUrl,
+                        progressPercent = item.progressPercent,
+                        shouldBlur = shouldBlur,
                         onClick = { onContentClick(item.slug, item.isSeries) },
                         onRemove = { onRemove(item.slug) }
                     )
@@ -221,10 +229,11 @@ private fun HistorySection(
 private fun PlaylistSection(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    items: List<PlaylistItem>,
+    items: List<Any>,
     onContentClick: (String, Boolean) -> Unit,
     onRemove: (String) -> Unit
 ) {
+    val context = LocalContext.current
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -263,12 +272,21 @@ private fun PlaylistSection(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(items, key = { it.slug }) { item ->
+                items(count = items.size, key = { it }) { idx ->
+                    val item = items[idx]
+                    val slug = when (item) { is BookmarkItem -> item.slug; is LikeItem -> item.slug; else -> "" }
+                    val itemTitle = when (item) { is BookmarkItem -> item.title; is LikeItem -> item.title; else -> "" }
+                    val posterUrl = when (item) { is BookmarkItem -> item.posterUrl; is LikeItem -> item.posterUrl; else -> "" }
+                    val isSeries = when (item) { is BookmarkItem -> item.isSeries; is LikeItem -> item.isSeries; else -> false }
+                    val cm = when (item) { is BookmarkItem -> item.contentModeration; is LikeItem -> item.contentModeration; else -> null }
+                    val shouldBlur = ModerationSettings.shouldBlur(context, cm)
                     SmallMovieCard(
-                        title = item.title,
-                        posterUrl = item.posterUrl,
-                        onClick = { onContentClick(item.slug, item.isSeries) },
-                        onRemove = { onRemove(item.slug) }
+                        title = itemTitle,
+                        posterUrl = posterUrl,
+                        progressPercent = 0f,
+                        shouldBlur = shouldBlur,
+                        onClick = { onContentClick(slug, isSeries) },
+                        onRemove = { onRemove(slug) }
                     )
                 }
             }
@@ -280,23 +298,35 @@ private fun PlaylistSection(
 private fun SmallMovieCard(
     title: String,
     posterUrl: String,
+    progressPercent: Float = 0f,
+    shouldBlur: Boolean = false,
     onClick: () -> Unit,
     onRemove: () -> Unit
 ) {
+    val displayProgress = when {
+        progressPercent >= 0.98f -> 1.0f
+        progressPercent <= 0f -> 0f
+        else -> maxOf(0.05f, progressPercent)
+    }
     Card(
         modifier = Modifier.width(110.dp),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
     ) {
         Box(modifier = Modifier.clickable { onClick() }) {
-            AsyncImage(
-                model = posterUrl,
-                contentDescription = title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(155.dp)
-            )
+            BlurredContent(
+                shouldBlur = shouldBlur,
+                modifier = Modifier.fillMaxWidth().height(155.dp)
+            ) {
+                AsyncImage(
+                    model = posterUrl,
+                    contentDescription = title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(155.dp)
+                )
+            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -311,7 +341,7 @@ private fun SmallMovieCard(
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(8.dp)
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
             ) {
                 Text(
                     text = title,
@@ -333,6 +363,21 @@ private fun SmallMovieCard(
                     contentDescription = "Remove",
                     tint = Color.White.copy(alpha = 0.7f),
                     modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+        if (displayProgress > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(Color.White.copy(alpha = 0.15f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(displayProgress)
+                        .background(Color(0xFFE50914))
                 )
             }
         }

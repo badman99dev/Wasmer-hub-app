@@ -209,7 +209,8 @@ class TVShowDetailViewModel @Inject constructor(
                         slug = series.slug,
                         title = series.title,
                         posterUrl = series.posterUrl,
-                        isSeries = true
+                        isSeries = true,
+                        contentModeration = series.contentModeration?.toModerationMap()
                     )
                 )
             }
@@ -230,7 +231,8 @@ class TVShowDetailViewModel @Inject constructor(
                         slug = series.slug,
                         title = series.title,
                         posterUrl = series.posterUrl,
-                        isSeries = true
+                        isSeries = true,
+                        contentModeration = series.contentModeration?.toModerationMap()
                     )
                 )
             }
@@ -248,7 +250,8 @@ class TVShowDetailViewModel @Inject constructor(
                     title = series.title,
                     posterUrl = series.posterUrl,
                     isSeries = true,
-                    imdbId = series.imdbId
+                    imdbId = series.imdbId,
+                    contentModeration = series.contentModeration?.toModerationMap()
                 )
             )
         }

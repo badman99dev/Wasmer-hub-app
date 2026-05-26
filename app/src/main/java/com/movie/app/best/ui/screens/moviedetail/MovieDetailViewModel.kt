@@ -76,7 +76,6 @@ class MovieDetailViewModel @Inject constructor(
                         }
                         if (detailData?.movie != null) {
                             addToFirebaseHistory()
-                            loadWatchProgress(detailData.movie.slug)
                             checkBookmarkAndLikeStatus()
                             loadSimilarMovies(detailData.movie.imdbId)
                             val movie = detailData.movie
@@ -252,7 +251,8 @@ class MovieDetailViewModel @Inject constructor(
                         slug = movie.slug,
                         title = movie.title,
                         posterUrl = movie.posterUrl,
-                        isSeries = movie.isSeries
+                        isSeries = movie.isSeries,
+                        contentModeration = movie.contentModeration?.toModerationMap()
                     )
                 )
             }
@@ -273,7 +273,8 @@ class MovieDetailViewModel @Inject constructor(
                         slug = movie.slug,
                         title = movie.title,
                         posterUrl = movie.posterUrl,
-                        isSeries = movie.isSeries
+                        isSeries = movie.isSeries,
+                        contentModeration = movie.contentModeration?.toModerationMap()
                     )
                 )
             }
@@ -291,20 +292,10 @@ class MovieDetailViewModel @Inject constructor(
                     title = movie.title,
                     posterUrl = movie.posterUrl,
                     isSeries = movie.isSeries,
-                    imdbId = movie.imdbId
+                    imdbId = movie.imdbId,
+                    contentModeration = movie.contentModeration?.toModerationMap()
                 )
             )
-        }
-    }
-
-    private fun loadWatchProgress(movieSlug: String) {
-        viewModelScope.launch {
-            try {
-                val local = firebaseRepository.getLocalProgress(movieSlug)
-                if (local != null) {
-                    _uiState.update { it.copy(resumePositionMs = local.progressMs, progressPercent = local.progressPercent) }
-                }
-            } catch (_: Exception) {}
         }
     }
 
@@ -469,7 +460,5 @@ data class MovieDetailUiState(
     val moderationError: String? = null,
     val reportModerationResult: com.movie.app.best.data.model.ContentModerationResponse? = null,
     val previousModerationResult: com.movie.app.best.data.model.ContentModerationResponse? = null,
-    val showCelebration: Boolean = false,
-    val resumePositionMs: Long = 0,
-    val progressPercent: Float = 0f
+    val showCelebration: Boolean = false
 )

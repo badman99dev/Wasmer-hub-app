@@ -14,6 +14,20 @@ data class ContentModeration(
     val isScreenshotsSexual get() = screenshots == "sexual"
     val isStorylineSexual get() = storyline == "sexual"
     val hasAnyFlag get() = isPosterSexual || isScreenshotsSexual || isStorylineSexual
+
+    fun toModerationMap(): Map<String, String> = mapOf(
+        "poster" to poster,
+        "screenshots" to screenshots,
+        "storyline" to storyline
+    )
+}
+
+fun Map<String, String>?.toContentModeration(): ContentModeration? = this?.let {
+    ContentModeration(
+        poster = get("poster") ?: "safe",
+        screenshots = get("screenshots") ?: "safe",
+        storyline = get("storyline") ?: "none"
+    )
 }
 
 data class ContentModerationResponse(

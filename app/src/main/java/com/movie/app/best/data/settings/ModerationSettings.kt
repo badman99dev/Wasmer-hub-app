@@ -83,6 +83,18 @@ object ModerationSettings {
         return contentModeration?.isStorylineSexual == true
     }
 
+    fun shouldBlur(context: Context, contentModeration: Map<String, String>?): Boolean {
+        if (!isEnabled(context)) return false
+        if (getMode(context) != MODE_BLUR) return false
+        return contentModeration?.get("poster") == "sexual"
+    }
+
+    fun shouldHide(context: Context, contentModeration: Map<String, String>?): Boolean {
+        if (!isEnabled(context)) return false
+        if (getMode(context) != MODE_HIDE) return false
+        return contentModeration?.get("poster") == "sexual" || contentModeration?.get("screenshots") == "sexual" || contentModeration?.get("storyline") == "sexual"
+    }
+
     fun filterMovies(context: Context, movies: List<com.movie.app.best.data.model.WasmerMovie>): List<com.movie.app.best.data.model.WasmerMovie> {
         if (!isEnabled(context) || getMode(context) != MODE_HIDE) return movies
         return movies.filter { !it.shouldBlurPoster }

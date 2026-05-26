@@ -121,7 +121,8 @@ class FirebaseRepository @Inject constructor(
                         title = m["title"] as? String ?: "",
                         posterUrl = m["posterUrl"] as? String ?: "",
                         isSeries = m["isSeries"] as? Boolean ?: false,
-                        addedAt = (m["addedAt"] as? Number)?.toLong() ?: 0
+                        addedAt = (m["addedAt"] as? Number)?.toLong() ?: 0,
+                        contentModeration = m["contentModeration"] as? Map<String, String>
                     )
                 }
             } catch (_: Exception) {}
@@ -164,7 +165,8 @@ class FirebaseRepository @Inject constructor(
                         watchedAt = (m["watchedAt"] as? Number)?.toLong() ?: 0,
                         progressMs = (m["progressMs"] as? Number)?.toLong() ?: 0,
                         durationMs = (m["durationMs"] as? Number)?.toLong() ?: 0,
-                        progressPercent = (m["progressPercent"] as? Number)?.toFloat() ?: 0f
+                        progressPercent = (m["progressPercent"] as? Number)?.toFloat() ?: 0f,
+                        contentModeration = m["contentModeration"] as? Map<String, String>
                     )
                 }
             } catch (_: Exception) {}
@@ -226,7 +228,8 @@ class FirebaseRepository @Inject constructor(
                         watchedAt = (m["watchedAt"] as? Number)?.toLong() ?: 0,
                         progressMs = (m["progressMs"] as? Number)?.toLong() ?: 0,
                         durationMs = (m["durationMs"] as? Number)?.toLong() ?: 0,
-                        progressPercent = (m["progressPercent"] as? Number)?.toFloat() ?: 0f
+                        progressPercent = (m["progressPercent"] as? Number)?.toFloat() ?: 0f,
+                        contentModeration = m["contentModeration"] as? Map<String, String>
                     )
                 }
             } catch (_: Exception) {}
@@ -249,7 +252,8 @@ class FirebaseRepository @Inject constructor(
                     watchedAt = (m["watchedAt"] as? Number)?.toLong() ?: 0,
                     progressMs = (m["progressMs"] as? Number)?.toLong() ?: 0,
                     durationMs = (m["durationMs"] as? Number)?.toLong() ?: 0,
-                    progressPercent = (m["progressPercent"] as? Number)?.toFloat() ?: 0f
+                    progressPercent = (m["progressPercent"] as? Number)?.toFloat() ?: 0f,
+                    contentModeration = m["contentModeration"] as? Map<String, String>
                 )
             }
             saveAllLocalHistory(items)
@@ -282,7 +286,8 @@ class FirebaseRepository @Inject constructor(
                         title = m["title"] as? String ?: "",
                         posterUrl = m["posterUrl"] as? String ?: "",
                         isSeries = m["isSeries"] as? Boolean ?: false,
-                        likedAt = (m["likedAt"] as? Number)?.toLong() ?: 0
+                        likedAt = (m["likedAt"] as? Number)?.toLong() ?: 0,
+                        contentModeration = m["contentModeration"] as? Map<String, String>
                     )
                 }
             } catch (_: Exception) {}

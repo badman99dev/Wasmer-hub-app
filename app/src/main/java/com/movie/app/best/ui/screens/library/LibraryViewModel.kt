@@ -7,11 +7,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.movie.app.best.data.model.BookmarkItem
 import com.movie.app.best.data.model.FirebaseHistoryItem
 import com.movie.app.best.data.model.LikeItem
+import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.data.repository.FirebaseRepository
-import com.movie.app.best.data.repository.HistoryItem
 import com.movie.app.best.data.repository.LibraryRepository
 import com.movie.app.best.data.repository.MyListRefreshState
-import com.movie.app.best.data.repository.PlaylistItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,12 +21,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class LibraryUiState(
-    val history: List<HistoryItem> = emptyList(),
-    val likedPlaylist: List<PlaylistItem> = emptyList(),
-    val watchLaterPlaylist: List<PlaylistItem> = emptyList(),
-    val bookmarks: List<BookmarkItem> = emptyList(),
-    val firebaseHistory: List<FirebaseHistoryItem> = emptyList(),
-    val likes: List<LikeItem> = emptyList(),
+    val history: List<FirebaseHistoryItem> = emptyList(),
+    val likedPlaylist: List<LikeItem> = emptyList(),
+    val watchLaterPlaylist: List<BookmarkItem> = emptyList(),
     val isOnline: Boolean = true,
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false
@@ -65,17 +61,11 @@ class LibraryViewModel @Inject constructor(
                 val bookmarks = firebaseRepository.getBookmarks()
                 val history = firebaseRepository.getHistory()
                 val likes = firebaseRepository.getLikes()
-                val watchLater = bookmarks.map { PlaylistItem(it.slug, it.title, it.posterUrl, it.isSeries) }
-                val likedPlaylist = likes.map { PlaylistItem(it.slug, it.title, it.posterUrl, it.isSeries) }
-                val historyItems = history.map { HistoryItem(it.slug, it.title, it.posterUrl, it.isSeries, it.watchedAt) }
                 _uiState.update {
                     it.copy(
-                        bookmarks = bookmarks,
-                        firebaseHistory = history,
-                        likes = likes,
-                        watchLaterPlaylist = watchLater,
-                        likedPlaylist = likedPlaylist,
-                        history = historyItems,
+                        history = applyModerationFilterHistory(history),
+                        watchLaterPlaylist = applyModerationFilterBookmarks(bookmarks),
+                        likedPlaylist = applyModerationFilterLikes(likes),
                         isOnline = isOnline(context),
                         isLoading = false,
                         isRefreshing = false
@@ -154,10 +144,16 @@ class LibraryViewModel @Inject constructor(
     }
 
     private fun isOnline(context: Context): Boolean {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-        val network = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-               caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+
+    private fun applyModerationFilterHistory(items: List<FirebaseHistoryItem>): List<FirebaseHistoryItem> {
+        return items.filter { !ModerationSettings.shouldHide(context, it.contentModeration) }
+    }
+
+    private fun applyModerationFilterBookmarks(items: List<BookmarkItem>): List<BookmarkItem> {
+        return items.filter { !ModerationSettings.shouldHide(context, it.contentModeration) }
+    }
+
+    private fun applyModerationFilterLikes(items: List<LikeItem>): List<LikeItem> {
+        return items.filter { !ModerationSettings.shouldHide(context, it.contentModeration) }
     }
 }

@@ -37,14 +37,16 @@ data class BookmarkItem(
     val title: String,
     val posterUrl: String,
     val isSeries: Boolean,
-    val addedAt: Long = System.currentTimeMillis()
+    val addedAt: Long = System.currentTimeMillis(),
+    val contentModeration: Map<String, String>? = null
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "slug" to slug,
         "title" to title,
         "posterUrl" to posterUrl,
         "isSeries" to isSeries,
-        "addedAt" to addedAt
+        "addedAt" to addedAt,
+        "contentModeration" to contentModeration
     )
 }
 
@@ -57,7 +59,8 @@ data class FirebaseHistoryItem(
     val watchedAt: Long = System.currentTimeMillis(),
     val progressMs: Long = 0,
     val durationMs: Long = 0,
-    val progressPercent: Float = 0f
+    val progressPercent: Float = 0f,
+    val contentModeration: Map<String, String>? = null
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "slug" to slug,
@@ -68,7 +71,8 @@ data class FirebaseHistoryItem(
         "watchedAt" to watchedAt,
         "progressMs" to progressMs,
         "durationMs" to durationMs,
-        "progressPercent" to progressPercent
+        "progressPercent" to progressPercent,
+        "contentModeration" to contentModeration
     )
 }
 
@@ -77,13 +81,15 @@ data class LikeItem(
     val title: String,
     val posterUrl: String,
     val isSeries: Boolean,
-    val likedAt: Long = System.currentTimeMillis()
+    val likedAt: Long = System.currentTimeMillis(),
+    val contentModeration: Map<String, String>? = null
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "slug" to slug,
         "title" to title,
         "posterUrl" to posterUrl,
         "isSeries" to isSeries,
-        "likedAt" to likedAt
+        "likedAt" to likedAt,
+        "contentModeration" to contentModeration
     )
 }

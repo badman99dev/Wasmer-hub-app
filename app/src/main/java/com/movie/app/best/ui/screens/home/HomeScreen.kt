@@ -80,15 +80,6 @@ fun HomeScreen(
                 }
             }
 
-            if (uiState.continueWatching.isNotEmpty()) {
-                item {
-                    ContinueWatchingRow(
-                        items = uiState.continueWatching,
-                        onContentClick = onContentClick
-                    )
-                }
-            }
-
             if (uiState.isAllTabLoading && allMovies.isEmpty()) {
                 item { SkeletonHomeContent() }
             } else {
