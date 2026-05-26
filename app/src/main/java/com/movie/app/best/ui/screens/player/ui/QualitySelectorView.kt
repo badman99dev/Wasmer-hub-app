@@ -108,6 +108,7 @@ private fun setQualityByOverride(player: Player, height: Int) {
                     .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, listOf(i)))
                     .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
                     .build()
+                player.seekTo(player.currentPosition)
                 return
             }
         }
