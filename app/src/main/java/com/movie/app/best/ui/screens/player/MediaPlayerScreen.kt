@@ -253,7 +253,7 @@ fun MediaPlayerScreen(
                                 seekGestureState.seekAmount != null -> InfoView(info = "${seekGestureState.seekAmountFormatted}\n[${seekGestureState.seekToPositionFormated}]")
                                 videoZoomAndContentScaleState.isZooming -> InfoView(info = "${(videoZoomAndContentScaleState.zoom * 100).toInt()}%")
                                 videoZoomAndContentScaleState.showContentScaleIndicator -> InfoView(info = videoZoomAndContentScaleState.videoContentScale.nameRes())
-                                controlsVisibilityState.controlsVisible -> ControlsMiddleView(player = player)
+                                controlsVisibilityState.controlsVisible -> ControlsMiddleView(player = player, isPlaying = mediaPresentationState.isPlaying)
                                 else -> Unit
                             }
                         },
@@ -370,7 +370,7 @@ fun InfoView(
 }
 
 @Composable
-fun ControlsMiddleView(modifier: Modifier = Modifier, player: Player) {
+fun ControlsMiddleView(modifier: Modifier = Modifier, player: Player, isPlaying: Boolean) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(40.dp, alignment = Alignment.CenterHorizontally),
@@ -381,10 +381,10 @@ fun ControlsMiddleView(modifier: Modifier = Modifier, player: Player) {
         }
         PlayerButton(
             modifier = Modifier.size(64.dp),
-            onClick = { if (player.isPlaying) player.pause() else player.play() },
+            onClick = { if (isPlaying) player.pause() else player.play() },
         ) {
             Icon(
-                imageVector = if (player.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
             )
