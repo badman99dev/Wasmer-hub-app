@@ -141,15 +141,6 @@ fun ControlsBottomView(
             ) {
                 Icon(imageVector = Icons.Default.FitScreen, contentDescription = null)
             }
-            if (isPipSupported) {
-                PlayerButton(onClick = onPictureInPictureClick) {
-                    Icon(imageVector = Icons.Default.PictureInPicture, contentDescription = null)
-                }
-            }
-            PlayerButton(onClick = onPlayInBackgroundClick) {
-                Icon(imageVector = Icons.Default.Headset, contentDescription = null)
-            }
-
             Spacer(modifier = Modifier.weight(1f))
 
             PlayerButton(onClick = onFullscreenClick) {
