@@ -136,6 +136,8 @@ fun VideoPlayerScreen(
     var hasResumed by remember { mutableStateOf(false) }
 
     LaunchedEffect(slug, effectiveUrl) {
+        hasResumed = false
+        resumePos = 0L
         if (isLocalFile && effectiveUrl.isNotEmpty()) {
             val fileProgress = firebaseRepository.getLocalFileProgress(effectiveUrl, title)
             resumePos = fileProgress?.progressMs ?: 0L
@@ -145,17 +147,32 @@ fun VideoPlayerScreen(
         }
     }
 
-    LaunchedEffect(exoPlayer) {
-        exoPlayer?.addListener(object : Player.Listener {
+    LaunchedEffect(resumePos) {
+        if (resumePos > 0 && !hasResumed && exoPlayer != null) {
+            if (exoPlayer.playbackState == Player.STATE_READY) {
+                hasResumed = true
+                val seekTo = resumePos
+                resumePos = 0L
+                exoPlayer.seekTo(seekTo)
+            }
+        }
+    }
+
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY && resumePos > 0 && !hasResumed) {
                     hasResumed = true
                     val seekTo = resumePos
                     resumePos = 0L
-                    exoPlayer.seekTo(seekTo)
+                    exoPlayer?.seekTo(seekTo)
                 }
             }
-        })
+        }
+        exoPlayer?.addListener(listener)
+        onDispose {
+            exoPlayer?.removeListener(listener)
+        }
     }
 
     LaunchedEffect(exoPlayer) {
@@ -180,8 +197,8 @@ fun VideoPlayerScreen(
 
     var lowestQualityApplied by remember { mutableStateOf(false) }
 
-    LaunchedEffect(exoPlayer) {
-        exoPlayer?.addListener(object : Player.Listener {
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
                 if (!lowestQualityApplied) {
                     val heights = mutableSetOf<Int>()
@@ -217,7 +234,11 @@ fun VideoPlayerScreen(
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isPlaying) playerError = null
             }
-        })
+        }
+        exoPlayer?.addListener(listener)
+        onDispose {
+            exoPlayer?.removeListener(listener)
+        }
     }
 
     DisposableEffect(lifecycleOwner) {
