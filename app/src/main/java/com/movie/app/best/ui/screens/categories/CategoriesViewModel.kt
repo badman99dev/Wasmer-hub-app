@@ -36,7 +36,9 @@ class CategoriesViewModel @Inject constructor(
                     is Resource.Success -> {
                         _uiState.update {
                             it.copy(
-                                categories = (result.data ?: emptyList()).sortedByDescending { cat -> cat.count },
+                                categories = (result.data ?: emptyList())
+                                    .distinctBy { c -> c.slug }
+                                    .sortedByDescending { cat -> cat.count },
                                 isLoading = false,
                                 error = null
                             )
