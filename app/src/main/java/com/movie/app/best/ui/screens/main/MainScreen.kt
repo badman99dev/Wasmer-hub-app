@@ -10,20 +10,19 @@ import android.net.NetworkRequest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -31,6 +30,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,13 +41,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.movie.app.best.data.debug.NetworkMonitor
 import com.movie.app.best.ui.components.CategoryDrawerContent
 import com.movie.app.best.ui.navigation.AppNavigation
 import com.movie.app.best.ui.navigation.BottomNavigationBar
@@ -97,6 +97,8 @@ fun MainContent() {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    val hasNetworkError by NetworkMonitor.hasNetworkError.collectAsState()
+
     val connectivityManager = remember {
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     }
@@ -124,12 +126,9 @@ fun MainContent() {
         if (isConnected && wasOffline) {
             showBackOnlineBanner = true
             wasOffline = false
+            NetworkMonitor.onBackOnline()
             delay(1500)
             showBackOnlineBanner = false
-            navController.navigate(Screen.Home.route) {
-                popUpTo(navController.graph.startDestinationId) { inclusive = true }
-                launchSingleTop = true
-            }
         } else if (!isConnected) {
             wasOffline = true
         }
@@ -155,8 +154,6 @@ fun MainContent() {
         Screen.Downloads.route,
         Screen.Profile.route
     )
-
-    val shouldShowNoInternet = !isConnected && currentRoute != Screen.Downloads.route
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -184,9 +181,6 @@ fun MainContent() {
         Scaffold(
             bottomBar = {
                 Column {
-                    if (showBackOnlineBanner) {
-                        BackOnlineBanner()
-                    }
                     if (shouldShowBottomBar) {
                         BottomNavigationBar(
                             navController = navController
@@ -202,8 +196,20 @@ fun MainContent() {
                     onMenuClick = { scope.launch { drawerState.open() } }
                 )
 
-                if (shouldShowNoInternet) {
-                    NoInternetOverlay()
+                AnimatedVisibility(
+                    visible = hasNetworkError,
+                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(tween(300)),
+                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(tween(200))
+                ) {
+                    NetworkErrorBanner()
+                }
+
+                AnimatedVisibility(
+                    visible = showBackOnlineBanner,
+                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(tween(300)),
+                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(tween(200))
+                ) {
+                    BackOnlineBanner()
                 }
             }
         }
@@ -218,47 +224,20 @@ private fun isCurrentlyConnected(cm: ConnectivityManager): Boolean {
 }
 
 @Composable
-private fun NoInternetOverlay() {
+private fun NetworkErrorBanner() {
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.92f)),
+            .fillMaxWidth()
+            .background(Color(0xFFD32F2F))
+            .padding(vertical = 3.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.WifiOff,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.size(80.dp)
-            )
-            Spacer(Modifier.height(24.dp))
-            Text(
-                text = "No Internet Connection",
-                color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Check your network settings",
-                color = Color.White.copy(alpha = 0.45f),
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "Downloads are still available",
-                color = Color(0xFF4CAF50).copy(alpha = 0.7f),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center
-            )
-        }
+        Text(
+            text = "⚠ Connection lost — some features may be unavailable",
+            color = Color.White,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
@@ -274,7 +253,7 @@ private fun BackOnlineBanner() {
         Text(
             text = "✓ Back Online",
             color = Color.White,
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold
         )
     }

@@ -8,6 +8,7 @@ import com.movie.app.best.data.model.FirebaseHistoryItem
 import com.movie.app.best.data.model.LikeItem
 import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.model.WasmerContentDetailResponse
+import com.movie.app.best.data.debug.NetworkMonitor
 import com.movie.app.best.data.model.WasmerDownloadLink
 import com.movie.app.best.data.model.WasmerMovieDetails
 import com.movie.app.best.data.repository.DownloadRepository
@@ -50,6 +51,9 @@ class MovieDetailViewModel @Inject constructor(
                 val isMod = profile?.tier == "moderator"
                 _uiState.update { it.copy(isModerator = isMod) }
             } catch (_: Exception) {}
+        }
+        viewModelScope.launch {
+            NetworkMonitor.refreshCounter.collect { if (it > 0) loadMovieDetails() }
         }
     }
 

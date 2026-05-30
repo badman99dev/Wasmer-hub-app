@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.model.WasmerMovie
+import com.movie.app.best.data.debug.NetworkMonitor
 import com.movie.app.best.data.repository.MovieRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +39,12 @@ class MyFeedViewModel @Inject constructor(
 
     init {
         loadFeed()
+    }
+
+    init {
+        viewModelScope.launch {
+            NetworkMonitor.refreshCounter.collect { if (it > 0) loadFeed() }
+        }
     }
 
     fun loadFeed() {

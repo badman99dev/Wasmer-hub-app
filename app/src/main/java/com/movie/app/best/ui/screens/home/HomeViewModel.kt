@@ -6,6 +6,7 @@ import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.model.WasmerMovie
 import com.movie.app.best.data.model.WasmerNotification
 import com.movie.app.best.data.model.WasmerSliderResult
+import com.movie.app.best.data.debug.NetworkMonitor
 import com.movie.app.best.data.repository.MovieRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +31,14 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadAllContent()
+    }
+
+    init {
+        viewModelScope.launch {
+            NetworkMonitor.refreshCounter.collect {
+                if (it > 0) loadAllContent()
+            }
+        }
     }
 
     fun loadAllContent() {

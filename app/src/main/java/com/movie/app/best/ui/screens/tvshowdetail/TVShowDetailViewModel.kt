@@ -12,6 +12,7 @@ import com.movie.app.best.data.model.WasmerDownloadLink
 import com.movie.app.best.data.model.WasmerEpisode
 import com.movie.app.best.data.model.WasmerMovieDetails
 import com.movie.app.best.data.model.WasmerSeason
+import com.movie.app.best.data.debug.NetworkMonitor
 import com.movie.app.best.data.repository.DownloadRepository
 import com.movie.app.best.data.repository.FirebaseRepository
 import com.movie.app.best.data.repository.MovieRepository
@@ -47,6 +48,9 @@ class TVShowDetailViewModel @Inject constructor(
                 val isMod = profile?.tier == "moderator"
                 _uiState.update { it.copy(isModerator = isMod) }
             } catch (_: Exception) {}
+        }
+        viewModelScope.launch {
+            NetworkMonitor.refreshCounter.collect { if (it > 0) loadSeriesDetails() }
         }
     }
 
