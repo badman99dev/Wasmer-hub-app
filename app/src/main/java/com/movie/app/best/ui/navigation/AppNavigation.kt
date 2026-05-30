@@ -75,6 +75,7 @@ sealed class Screen(val route: String) {
 @Composable
 fun AppNavigation(
     navController: NavHostController,
+    isOnline: Boolean = true,
     onMenuClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -101,65 +102,53 @@ fun AppNavigation(
         return if (toIdx > fromIdx) 1 else -1
     }
 
+    val noTransition = EnterTransition.None + ExitTransition.None
+    val tabEnter: (from: String?, to: String?, Int) -> EnterTransition = { from, to, dir ->
+        if (dir != 0) {
+            slideInHorizontally(
+                initialOffsetX = { w -> dir * w / 3 },
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(animationSpec = tween(200))
+        } else {
+            slideInHorizontally(
+                initialOffsetX = { w -> w },
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(animationSpec = tween(200))
+        }
+    }
+    val tabExit: (from: String?, to: String?, Int) -> ExitTransition = { from, to, dir ->
+        if (dir != 0) {
+            slideOutHorizontally(
+                targetOffsetX = { w -> -dir * w / 4 },
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeOut(animationSpec = tween(150))
+        } else {
+            slideOutHorizontally(
+                targetOffsetX = { w -> -w / 4 },
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeOut(animationSpec = tween(150))
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = Screen.Home.route,
         modifier = modifier,
         enterTransition = {
-            val dir = slideDirection(initialState.destination.route, targetState.destination.route)
-            if (dir != 0) {
-                slideInHorizontally(
-                    initialOffsetX = { w -> dir * w / 3 },
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                ) + fadeIn(animationSpec = tween(200))
-            } else {
-                slideInHorizontally(
-                    initialOffsetX = { w -> w },
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                ) + fadeIn(animationSpec = tween(200))
-            }
+            if (!isOnline) EnterTransition.None
+            else tabEnter(initialState.destination.route, targetState.destination.route, slideDirection(initialState.destination.route, targetState.destination.route))
         },
         exitTransition = {
-            val dir = slideDirection(initialState.destination.route, targetState.destination.route)
-            if (dir != 0) {
-                slideOutHorizontally(
-                    targetOffsetX = { w -> -dir * w / 4 },
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                ) + fadeOut(animationSpec = tween(150))
-            } else {
-                slideOutHorizontally(
-                    targetOffsetX = { w -> -w / 4 },
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                ) + fadeOut(animationSpec = tween(150))
-            }
+            if (!isOnline) ExitTransition.None
+            else tabExit(initialState.destination.route, targetState.destination.route, slideDirection(initialState.destination.route, targetState.destination.route))
         },
         popEnterTransition = {
-            val dir = slideDirection(targetState.destination.route, initialState.destination.route)
-            if (dir != 0) {
-                slideInHorizontally(
-                    initialOffsetX = { w -> dir * w / 3 },
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                ) + fadeIn(animationSpec = tween(200))
-            } else {
-                slideInHorizontally(
-                    initialOffsetX = { w -> -w / 4 },
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                ) + fadeIn(animationSpec = tween(200))
-            }
+            if (!isOnline) EnterTransition.None
+            else tabEnter(targetState.destination.route, initialState.destination.route, slideDirection(targetState.destination.route, initialState.destination.route))
         },
         popExitTransition = {
-            val dir = slideDirection(targetState.destination.route, initialState.destination.route)
-            if (dir != 0) {
-                slideOutHorizontally(
-                    targetOffsetX = { w -> -dir * w / 3 },
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                ) + fadeOut(animationSpec = tween(150))
-            } else {
-                slideOutHorizontally(
-                    targetOffsetX = { w -> w },
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
-                ) + fadeOut(animationSpec = tween(150))
-            }
+            if (!isOnline) ExitTransition.None
+            else tabExit(targetState.destination.route, initialState.destination.route, slideDirection(targetState.destination.route, initialState.destination.route))
         }
     ) {
         composable(Screen.Home.route) {

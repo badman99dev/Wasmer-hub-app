@@ -198,6 +198,7 @@ fun MainContent() {
             Box(modifier = Modifier.padding(innerPadding)) {
                 AppNavigation(
                     navController = navController,
+                    isOnline = isConnected,
                     onMenuClick = { scope.launch { drawerState.open() } }
                 )
 
@@ -267,7 +268,7 @@ private fun BackOnlineBanner() {
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xFF4CAF50))
-            .padding(vertical = 5.dp),
+            .padding(vertical = 2.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
