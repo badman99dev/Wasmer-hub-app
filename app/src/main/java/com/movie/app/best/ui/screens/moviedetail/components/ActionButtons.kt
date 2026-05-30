@@ -26,6 +26,7 @@ fun DetailActionButtons(
     streamRequested: Boolean,
     isInMyList: Boolean,
     isLiked: Boolean,
+    hasDownloadLinks: Boolean = true,
     modifier: Modifier = Modifier,
     onPlayClick: () -> Unit,
     onDownloadClick: () -> Unit,
@@ -103,7 +104,7 @@ fun DetailActionButtons(
             }
         }
 
-        ActionIconButton(icon = Icons.Default.Download, label = "Download", onClick = onDownloadClick)
+        ActionIconButton(icon = Icons.Default.Download, label = "Download", tint = if (hasDownloadLinks) Color.White else Color.Gray.copy(alpha = 0.5f), onClick = if (hasDownloadLinks) onDownloadClick else {{}}))
         ActionIconButton(icon = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, label = if (isLiked) "Liked" else "Like", tint = if (isLiked) Color(0xFFFF1744) else Color.White, onClick = onLikeClick)
         ActionIconButton(icon = if (isInMyList) Icons.Default.BookmarkAdded else Icons.Default.BookmarkAdd, label = if (isInMyList) "Saved" else "My List", tint = if (isInMyList) Color(0xFFE50914) else Color.White, onClick = onMyListClick)
     }

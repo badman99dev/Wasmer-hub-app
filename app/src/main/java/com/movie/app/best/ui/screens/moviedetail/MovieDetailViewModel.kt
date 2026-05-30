@@ -184,10 +184,10 @@ class MovieDetailViewModel @Inject constructor(
         _uiState.update { it.copy(showStreamRequestResult = false) }
     }
 
-    fun startDownload(linkUrl: String) {
+    fun startDownload(linkUrl: String, linkId: Int? = null) {
         val title = _uiState.value.movie?.title ?: "Movie"
         viewModelScope.launch {
-            _uiState.update { it.copy(isDownloadLoading = true, downloadError = null, downloadUrl = "") }
+            _uiState.update { it.copy(downloadLoadingLinkId = linkId, downloadError = null, downloadUrl = "", downloadStarted = false) }
             downloadRepository.resolveDownloadUrl(linkUrl).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
@@ -198,7 +198,7 @@ class MovieDetailViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 downloadUrl = directUrl,
-                                isDownloadLoading = false,
+                                downloadLoadingLinkId = null,
                                 downloadStarted = true,
                                 downloadError = null
                             )
@@ -207,7 +207,7 @@ class MovieDetailViewModel @Inject constructor(
                     is Resource.Error -> {
                         _uiState.update {
                             it.copy(
-                                isDownloadLoading = false,
+                                downloadLoadingLinkId = null,
                                 downloadError = result.error
                             )
                         }
@@ -446,7 +446,7 @@ data class MovieDetailUiState(
     val streamRequestError: String? = null,
 
     val downloadUrl: String = "",
-    val isDownloadLoading: Boolean = false,
+    val downloadLoadingLinkId: Int? = null,
     val downloadStarted: Boolean = false,
     val downloadError: String? = null,
 

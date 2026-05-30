@@ -192,7 +192,8 @@ fun AppNavigation(
                         popUpTo(Screen.MovieDetail.route) { inclusive = true }
                     }
                 },
-                onDownloadClick = { }
+                onDownloadClick = { },
+                onGoToDownloads = { navController.navigate(Screen.Downloads.route) }
             )
         }
 

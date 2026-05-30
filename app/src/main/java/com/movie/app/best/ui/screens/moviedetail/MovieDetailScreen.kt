@@ -37,6 +37,7 @@ fun MovieDetailScreen(
     onSeriesClick: (slug: String) -> Unit,
     onMovieClick: (slug: String) -> Unit = {},
     onDownloadClick: (linkUrl: String) -> Unit = { },
+    onGoToDownloads: () -> Unit = {},
     viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -58,32 +59,33 @@ fun MovieDetailScreen(
             else true
         )
     }
-    var pendingDownload by remember { mutableStateOf<String?>(null) }
+    var showDownloadSheet by remember { mutableStateOf(false) }
+    var pendingDownload by remember { mutableStateOf<Pair<String, Int?>?>(null) }
 
     val storageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasStoragePermission = granted
-        if (granted) pendingDownload?.let { viewModel.startDownload(it); pendingDownload = null }
+        if (granted) pendingDownload?.let { viewModel.startDownload(it.first, it.second); pendingDownload = null }
     }
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasNotifPermission = granted
-        pendingDownload?.let { viewModel.startDownload(it); pendingDownload = null }
+        pendingDownload?.let { viewModel.startDownload(it.first, it.second); pendingDownload = null }
     }
 
-    fun requestDownload(linkUrl: String) {
+    fun requestDownload(linkUrl: String, linkId: Int? = null) {
         when {
             Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q && !hasStoragePermission -> {
-                pendingDownload = linkUrl
+                pendingDownload = Pair(linkUrl, linkId)
                 storageLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
             }
             Build.VERSION.SDK_INT >= 33 && !hasNotifPermission -> {
-                pendingDownload = linkUrl
+                pendingDownload = Pair(linkUrl, linkId)
                 notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-            else -> viewModel.startDownload(linkUrl)
+            else -> viewModel.startDownload(linkUrl, linkId)
         }
     }
 
@@ -108,7 +110,7 @@ fun MovieDetailScreen(
                     uiState            = uiState,
                     onBackClick        = onBackClick,
                     onPlayClick        = onPlayClick,
-                    onStartDownload    = { linkUrl -> requestDownload(linkUrl) },
+                    onDownloadClick    = { showDownloadSheet = true },
                     onPostComment      = viewModel::postComment,
                     onRequestStream    = viewModel::requestStream,
                     onResetCommentState = viewModel::resetCommentState,
@@ -128,6 +130,27 @@ fun MovieDetailScreen(
             play = uiState.showCelebration,
             onFinished = viewModel::dismissCelebration
         )
+
+        if (showDownloadSheet && uiState.movie != null) {
+            androidx.compose.material3.ModalBottomSheet(
+                onDismissRequest = { showDownloadSheet = false },
+                containerColor = Color(0xFF1A1A1A),
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+            ) {
+                DownloadBottomSheetContent(
+                    downloadLinks = uiState.downloadLinks,
+                    downloadLoadingLinkId = uiState.downloadLoadingLinkId,
+                    downloadStarted = uiState.downloadStarted,
+                    downloadError = uiState.downloadError,
+                    onStartDownload = { linkUrl, linkId -> requestDownload(linkUrl, linkId) },
+                    onDismiss = { showDownloadSheet = false },
+                    onGoToDownloads = {
+                        showDownloadSheet = false
+                        onGoToDownloads()
+                    }
+                )
+            }
+        }
 
         if (uiState.showReportDrawer) {
             androidx.compose.material3.ModalBottomSheet(
@@ -213,7 +236,7 @@ private fun MovieDetailContent(
     uiState: MovieDetailUiState,
     onBackClick: () -> Unit,
     onPlayClick: (String, String, String, String, String, String) -> Unit,
-    onStartDownload: (String) -> Unit,
+    onDownloadClick: () -> Unit,
     onPostComment: (String, String) -> Unit,
     onRequestStream: () -> Unit,
     onResetCommentState: () -> Unit,
@@ -286,11 +309,12 @@ private fun MovieDetailContent(
                 streamRequested = uiState.streamRequested,
                 isInMyList      = uiState.isBookmarked,
                 isLiked         = uiState.isLiked,
+                hasDownloadLinks = uiState.downloadLinks.isNotEmpty(),
                 onPlayClick     = {
                     val workerUrl = "https://sparkling-breeze-1ad6.badman993944.workers.dev/?id=${movie.id}"
                     onPlayClick("", workerUrl, movie.title, "", movie.id.toString(), movie.slug)
                 },
-                onDownloadClick = { },
+                onDownloadClick = onDownloadClick,
                 onMyListClick   = onToggleBookmark,
                 onLikeClick     = onToggleLike,
                 onRequestStream = onRequestStream
@@ -332,16 +356,7 @@ private fun MovieDetailContent(
 
             Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp))
 
-            // 8. Download links
-            DownloadSection(
-                downloadLinks     = uiState.downloadLinks,
-                isDownloadLoading = uiState.isDownloadLoading,
-                downloadStarted   = uiState.downloadStarted,
-                downloadError     = uiState.downloadError,
-                onStartDownload   = onStartDownload
-            )
-
-            // 9. Screenshots
+            // 8. Screenshots
             if (uiState.screenshots.isNotEmpty()) {
                 Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp))
                 ScreenshotsSection(
@@ -350,7 +365,7 @@ private fun MovieDetailContent(
                 )
             }
 
-            // 10. More Like This (after screenshots)
+            // 9. More Like This (after screenshots)
             if (movie.imdbId.startsWith("tt")) {
                 Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
                 if (uiState.isSimilarLoading) {
@@ -363,7 +378,7 @@ private fun MovieDetailContent(
                 }
             }
 
-            // 11. Comments
+            // 10. Comments
             Divider(color = Color.White.copy(alpha = 0.07f), modifier = Modifier.padding(horizontal = 18.dp))
             CommentsSection(
                 comments          = uiState.comments,

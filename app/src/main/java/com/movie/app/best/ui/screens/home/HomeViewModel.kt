@@ -112,7 +112,7 @@ class HomeViewModel @Inject constructor(
                     is Resource.Success -> {
                         _uiState.update {
                             it.copy(
-                                sliderMovies = result.data?.movies ?: emptyList(),
+                                sliderMovies = (result.data?.movies ?: emptyList()).filter { it.hasStream },
                                 isSliderLoading = false,
                                 sliderError = null
                             )

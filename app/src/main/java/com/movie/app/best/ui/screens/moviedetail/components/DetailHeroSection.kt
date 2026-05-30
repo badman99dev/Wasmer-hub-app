@@ -20,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -190,8 +189,6 @@ fun DetailHeroSection(
                 color      = Color.White,
                 fontSize   = 26.sp,
                 fontWeight = FontWeight.ExtraBold,
-                maxLines   = 2,
-                overflow   = TextOverflow.Ellipsis,
                 lineHeight = 30.sp
             )
 

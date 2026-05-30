@@ -47,7 +47,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -65,7 +64,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.movie.app.best.data.debug.NetworkLogger
-import com.movie.app.best.data.repository.LibraryRepository
 import com.movie.app.best.data.settings.ModerationSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -213,35 +211,6 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             SettingsSectionTitle("General")
-
-            val libraryRepo = remember { LibraryRepository(context) }
-            var selectedPlayer by remember { mutableIntStateOf(libraryRepo.getDefaultPlayer()) }
-
-            SettingsItem(
-                icon = Icons.Default.PlayCircle,
-                title = "Player",
-                subtitle = when(selectedPlayer) {
-                    1 -> "Player 1 (Native)"
-                    2 -> "Player 2 (Web)"
-                    else -> "Ask every time"
-                },
-                onClick = {
-                    val next = (selectedPlayer + 1) % 3
-                    selectedPlayer = next
-                    libraryRepo.setDefaultPlayer(next)
-                }
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                PlayerOptionChip("Ask", selectedPlayer == 0) { selectedPlayer = 0; libraryRepo.setDefaultPlayer(0) }
-                PlayerOptionChip("P1 Native", selectedPlayer == 1) { selectedPlayer = 1; libraryRepo.setDefaultPlayer(1) }
-                PlayerOptionChip("P2 Web", selectedPlayer == 2) { selectedPlayer = 2; libraryRepo.setDefaultPlayer(2) }
-            }
 
             Card(
                 modifier = Modifier

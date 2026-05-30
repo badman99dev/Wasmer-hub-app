@@ -26,6 +26,7 @@ fun ExpandableDescription(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var isOverflowing by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -34,31 +35,39 @@ fun ExpandableDescription(
             .animateContentSize(animationSpec = tween(250))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { expanded = !expanded }
+                indication = null,
+                onClick = { if (isOverflowing) expanded = !expanded }
+            )
     ) {
         Text(
             text     = text,
             color    = Color.White.copy(alpha = 0.70f),
             fontSize = 14.sp,
             lineHeight = 21.sp,
-            maxLines = if (expanded) Int.MAX_VALUE else 3,
-            overflow = if (expanded) TextOverflow.Visible else TextOverflow.Ellipsis
+            maxLines = if (expanded) Int.MAX_VALUE else 5,
+            overflow = if (expanded) TextOverflow.Visible else TextOverflow.Ellipsis,
+            onTextLayout = { result ->
+                if (!expanded) {
+                    isOverflowing = result.didOverflow
+                }
+            }
         )
-        Spacer(Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text       = if (expanded) "Show less" else "Read More",
-                color      = WasmerRed,
-                fontSize   = 12.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Icon(
-                imageVector  = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = null,
-                tint         = WasmerRed,
-                modifier     = Modifier.size(16.dp)
-            )
+        if (isOverflowing) {
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text       = if (expanded) "Show less" else "Read More",
+                    color      = WasmerRed,
+                    fontSize   = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Icon(
+                    imageVector  = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint         = WasmerRed,
+                    modifier     = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
