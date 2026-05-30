@@ -102,7 +102,6 @@ fun AppNavigation(
         return if (toIdx > fromIdx) 1 else -1
     }
 
-    val noTransition = EnterTransition.None + ExitTransition.None
     val tabEnter: (from: String?, to: String?, Int) -> EnterTransition = { from, to, dir ->
         if (dir != 0) {
             slideInHorizontally(
