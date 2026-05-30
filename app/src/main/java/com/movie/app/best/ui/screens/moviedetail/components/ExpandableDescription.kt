@@ -48,7 +48,7 @@ fun ExpandableDescription(
             overflow = if (expanded) TextOverflow.Visible else TextOverflow.Ellipsis,
             onTextLayout = { result ->
                 if (!expanded) {
-                    isOverflowing = result.didOverflow
+                    isOverflowing = result.lineCount > 5 || result.hasVisualOverflow
                 }
             }
         )

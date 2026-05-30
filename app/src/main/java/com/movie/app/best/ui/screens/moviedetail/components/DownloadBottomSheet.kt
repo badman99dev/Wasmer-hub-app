@@ -155,7 +155,7 @@ fun DownloadBottomSheetContent(
                 text = downloadError,
                 color = MaterialTheme.colorScheme.error,
                 fontSize = 12.sp,
-                modifier = Modifier.padding(horizontal = 20.dp, top = 8.dp)
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp)
             )
         }
 
