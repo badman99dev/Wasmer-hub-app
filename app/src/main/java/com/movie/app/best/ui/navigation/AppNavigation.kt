@@ -193,7 +193,15 @@ fun AppNavigation(
                     }
                 },
                 onDownloadClick = { },
-                onGoToDownloads = { navController.navigate(Screen.Downloads.route) }
+                onGoToDownloads = {
+                    navController.navigate(Screen.Downloads.route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
             )
         }
 
