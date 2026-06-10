@@ -92,6 +92,7 @@ fun MediaPlayerScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit,
     onPlayInBackgroundClick: () -> Unit,
+    onFullscreenClick: (() -> Unit)? = null,
     title: String = "",
 ) {
     val context = LocalContext.current
@@ -282,11 +283,15 @@ fun MediaPlayerScreen(
                                         }
                                     },
                                     onFullscreenClick = {
-                                        val isLandscape = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-                                        if (isLandscape) {
-                                            activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                        if (onFullscreenClick != null) {
+                                            onFullscreenClick()
                                         } else {
-                                            activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                                            val isLandscape = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                                            if (isLandscape) {
+                                                activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                            } else {
+                                                activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                                            }
                                         }
                                     },
                                     onPlayInBackgroundClick = onPlayInBackgroundClick,

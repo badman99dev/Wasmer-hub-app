@@ -1,6 +1,7 @@
 package com.movie.app.best.ui.screens.serieswatch
 
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -45,7 +45,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -60,10 +59,8 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.ui.PlayerView
 import com.movie.app.best.data.debug.DebugInterceptor
-import com.movie.app.best.data.model.ExtractionState
-import com.movie.app.best.data.model.WatchEpisode
+import com.movie.app.best.ui.screens.player.MediaPlayerScreen
 import com.movie.app.best.ui.screens.serieswatch.components.EpisodeCard
 import com.movie.app.best.ui.screens.serieswatch.components.LanguageSelector
 import com.movie.app.best.ui.screens.serieswatch.components.SeasonChips
@@ -87,6 +84,7 @@ fun SeriesWatchScreen(
     val trackSelector = remember { DefaultTrackSelector(context) }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var lowestQualityApplied by remember { mutableStateOf(false) }
+    var isFullscreen by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.currentM3u8) {
         val m3u8 = state.currentM3u8
@@ -127,7 +125,6 @@ fun SeriesWatchScreen(
         player.prepare()
         player.playWhenReady = true
         exoPlayer = player
-        activity?.let { ImmersiveMode.enter(it) }
     }
 
     DisposableEffect(exoPlayer) {
@@ -164,8 +161,8 @@ fun SeriesWatchScreen(
             }
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 activity?.let {
-                    val state = player.playbackState
-                    ImmersiveMode.keepScreenOn(it, isPlaying || state == Player.STATE_BUFFERING)
+                    val pState = player.playbackState
+                    ImmersiveMode.keepScreenOn(it, isPlaying || pState == Player.STATE_BUFFERING)
                 }
             }
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -200,10 +197,26 @@ fun SeriesWatchScreen(
         }
     }
 
-    BackHandler {
-        activity?.let { ImmersiveMode.exit(it) }
+    val exitFullscreen = {
+        isFullscreen = false
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        onBackClick()
+        activity?.let { ImmersiveMode.exit(it) }
+    }
+
+    val enterFullscreen = {
+        isFullscreen = true
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        activity?.let { ImmersiveMode.enter(it) }
+    }
+
+    BackHandler {
+        if (isFullscreen) {
+            exitFullscreen()
+        } else {
+            activity?.let { ImmersiveMode.exit(it) }
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            onBackClick()
+        }
     }
 
     if (showLangSheet) {
@@ -213,6 +226,24 @@ fun SeriesWatchScreen(
             onLanguageSelect = { viewModel.selectLanguage(it) },
             onDismiss = { showLangSheet = false }
         )
+    }
+
+    if (isFullscreen && exoPlayer != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) {
+            MediaPlayerScreen(
+                player = exoPlayer,
+                modifier = Modifier.fillMaxSize(),
+                onBackClick = { exitFullscreen() },
+                onPlayInBackgroundClick = {},
+                onFullscreenClick = { exitFullscreen() },
+                title = state.currentEpisode?.displayTitle ?: ""
+            )
+        }
+        return
     }
 
     Column(
@@ -284,16 +315,17 @@ fun SeriesWatchScreen(
                 .background(Color.Black)
         ) {
             if (exoPlayer != null) {
-                AndroidView(
-                    factory = { ctx ->
-                        PlayerView(ctx).apply {
-                            this.player = exoPlayer
-                            useController = true
-                            controllerShowTimeoutMs = 4000
-                            controllerHideOnTouch = true
-                        }
+                MediaPlayerScreen(
+                    player = exoPlayer,
+                    modifier = Modifier.fillMaxSize(),
+                    onBackClick = {
+                        activity?.let { ImmersiveMode.exit(it) }
+                        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        onBackClick()
                     },
-                    modifier = Modifier.fillMaxSize()
+                    onPlayInBackgroundClick = {},
+                    onFullscreenClick = { enterFullscreen() },
+                    title = state.currentEpisode?.displayTitle ?: ""
                 )
             } else {
                 Box(
