@@ -10,8 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -26,23 +25,21 @@ fun BoxScope.QualitySelectorView(
     player: Player,
     onDismiss: () -> Unit,
 ) {
-    var selectedHeight by remember { mutableIntStateOf(0) }
-    var lowestQualityApplied by remember { mutableStateOf(false) }
+    var selectedHeight by rememberSaveable { mutableIntStateOf(0) }
 
-    LaunchedEffect(player.currentTracks) {
+    LaunchedEffect(Unit) {
+        // Detect currently selected quality from player
         val groups = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
-        val heights = mutableSetOf<Int>()
         for (group in groups) {
             for (i in 0 until group.length) {
-                val fmt = group.getTrackFormat(i)
-                if (fmt.height > 0) heights.add(fmt.height)
+                if (group.isTrackSelected(i)) {
+                    val fmt = group.getTrackFormat(i)
+                    if (fmt.height > 0) {
+                        selectedHeight = fmt.height
+                        return@LaunchedEffect
+                    }
+                }
             }
-        }
-        if (heights.isNotEmpty() && !lowestQualityApplied) {
-            lowestQualityApplied = true
-            val lowest = heights.min()
-            selectedHeight = lowest
-            setQualityByOverride(player, lowest)
         }
     }
 

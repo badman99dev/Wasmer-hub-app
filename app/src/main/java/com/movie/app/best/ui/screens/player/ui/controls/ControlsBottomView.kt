@@ -233,7 +233,8 @@ private fun PlayerSeekbar(
             )
         },
         track = { sliderState ->
-            val disabledAlpha = 0.15f
+            val trackBgColor = Color(0xFF333333)
+            val playedColor = primaryColor
             Canvas(
                 modifier = Modifier.fillMaxWidth().height(trackHeight),
             ) {
@@ -248,14 +249,12 @@ private fun PlayerSeekbar(
                 val leftEnd = (playedPixels - gapHalf).coerceIn(0f, size.width)
                 val rightStart = (playedPixels + gapHalf).coerceIn(0f, size.width)
 
+                // Full track background (dark grey, solid - no video shows through)
+                drawRoundedRect(Offset(0f, 0f), Size(size.width, size.height), trackBgColor, endCornerRadius, endCornerRadius)
+
+                // Played portion (solid red)
                 if (leftEnd > 0f) {
-                    drawRoundedRect(Offset(0f, 0f), Size(leftEnd, size.height), primaryColor.copy(alpha = disabledAlpha), endCornerRadius, insideCornerRadius)
-                }
-                if (rightStart < size.width) {
-                    drawRoundedRect(Offset(rightStart, 0f), Size(size.width - rightStart, size.height), primaryColor.copy(alpha = disabledAlpha), insideCornerRadius, endCornerRadius)
-                }
-                if (leftEnd > 0f) {
-                    drawRoundedRect(Offset(0f, 0f), Size(leftEnd, size.height), primaryColor, endCornerRadius, insideCornerRadius)
+                    drawRoundedRect(Offset(0f, 0f), Size(leftEnd, size.height), playedColor, endCornerRadius, insideCornerRadius)
                 }
             }
         },
