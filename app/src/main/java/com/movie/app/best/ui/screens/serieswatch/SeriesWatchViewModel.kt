@@ -71,13 +71,13 @@ class SeriesWatchViewModel @Inject constructor(
                 langs.addAll(ep.languages.keys)
             }
         }
-        val sorted = langs.sortedWith(compareBy { lang ->
+        val sorted = langs.sortedWith(compareBy<String> { lang ->
             when {
                 lang.contains("Hindi", ignoreCase = true) -> 0
                 lang.contains("English", ignoreCase = true) -> 1
                 else -> 2
-            }.thenBy { it }
-        })
+            }
+        }.thenBy { it })
         val default = sorted.firstOrNull { it.contains("Hindi", ignoreCase = true) } ?: sorted.firstOrNull() ?: "Hindi"
         _state.update { it.copy(availableLanguages = sorted, selectedLanguage = default) }
     }
