@@ -86,20 +86,13 @@ fun ControlsBottomView(
     if (isInline) {
         Column(
             modifier = modifier
-                .offset(y = 12.dp)
-                .padding(start = 8.dp, end = 8.dp, bottom = 4.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp)
         ) {
-            PlayerSeekbar(
-                position = mediaPresentationState.position.toFloat(),
-                duration = mediaPresentationState.duration.toFloat(),
-                onSeek = { onSeek(it.toLong()) },
-                onSeekFinished = { onSeekEnd() },
-            )
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 2.dp),
+                    .padding(bottom = 0.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 var showPendingPosition by rememberSaveable { mutableStateOf(false) }
@@ -129,6 +122,16 @@ fun ControlsBottomView(
                     )
                 }
             }
+
+            PlayerSeekbar(
+                modifier = Modifier.offset(y = 2.dp),
+                position = mediaPresentationState.position.toFloat(),
+                duration = mediaPresentationState.duration.toFloat(),
+                trackHeight = 2.dp,
+                thumbWidth = 3.dp,
+                onSeek = { onSeek(it.toLong()) },
+                onSeekFinished = { onSeekEnd() },
+            )
         }
     } else {
         val bottomPad = if (systemBarsPadding.calculateBottomPadding() == 0.dp) 16.dp else systemBarsPadding.calculateBottomPadding()
@@ -209,12 +212,12 @@ private fun PlayerSeekbar(
     modifier: Modifier = Modifier,
     position: Float,
     duration: Float,
+    trackHeight: androidx.compose.ui.unit.Dp = 8.dp,
+    thumbWidth: androidx.compose.ui.unit.Dp = 4.dp,
     onSeek: (Float) -> Unit,
     onSeekFinished: () -> Unit,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
-    val trackHeight = 8.dp
-    val thumbWidth = 4.dp
     val trackThumbGapWidth = 12.dp
 
     Slider(

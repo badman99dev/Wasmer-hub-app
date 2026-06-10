@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -271,6 +272,7 @@ fun SeriesWatchScreen(
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
                 .background(Color.Black)
+                .zIndex(1f)
         ) {
             if (exoPlayer != null) {
                 MediaPlayerScreen(
