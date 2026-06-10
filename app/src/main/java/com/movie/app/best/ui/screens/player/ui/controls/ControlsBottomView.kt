@@ -2,6 +2,7 @@ package com.movie.app.best.ui.screens.player.ui.controls
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +50,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import com.movie.app.best.ui.screens.player.buttons.PlayerButton
@@ -123,15 +126,12 @@ fun ControlsBottomView(
                 }
             }
 
-            PlayerSeekbar(
+            CustomSeekbar(
                 modifier = Modifier.offset(y = 2.dp),
                 position = mediaPresentationState.position.toFloat(),
                 duration = mediaPresentationState.duration.toFloat(),
-                trackHeight = 2.dp,
-                thumbWidth = 3.dp,
-                trackThumbGapWidth = 0.dp,
                 onSeek = { onSeek(it.toLong()) },
-                onSeekFinished = { onSeekEnd() },
+                onSeekEnd = { onSeekEnd() },
             )
         }
     } else {
@@ -170,11 +170,11 @@ fun ControlsBottomView(
                 }
             }
 
-            PlayerSeekbar(
+            CustomSeekbar(
                 position = mediaPresentationState.position.toFloat(),
                 duration = mediaPresentationState.duration.toFloat(),
                 onSeek = { onSeek(it.toLong()) },
-                onSeekFinished = { onSeekEnd() },
+                onSeekEnd = { onSeekEnd() },
             )
 
             Row(
@@ -207,58 +207,86 @@ fun ControlsBottomView(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PlayerSeekbar(
+private fun CustomSeekbar(
     modifier: Modifier = Modifier,
     position: Float,
     duration: Float,
-    trackHeight: androidx.compose.ui.unit.Dp = 8.dp,
-    thumbWidth: androidx.compose.ui.unit.Dp = 4.dp,
-    trackThumbGapWidth: androidx.compose.ui.unit.Dp = 12.dp,
     onSeek: (Float) -> Unit,
-    onSeekFinished: () -> Unit,
+    onSeekEnd: () -> Unit,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
-
-    Slider(
-        value = position,
-        valueRange = 0f..duration,
-        onValueChange = onSeek,
-        onValueChangeFinished = onSeekFinished,
-        modifier = modifier.height(20.dp),
-        thumb = {
-            Box(
-                modifier = Modifier.width(thumbWidth).height(20.dp).background(primaryColor, CircleShape),
-            )
-        },
-        track = { sliderState ->
-            val trackBgColor = Color(0xFF333333)
-            val playedColor = primaryColor
-            Canvas(
-                modifier = Modifier.fillMaxWidth().height(trackHeight),
-            ) {
-                val min = sliderState.valueRange.start
-                val max = sliderState.valueRange.endInclusive
-                val range = (max - min).takeIf { it > 0f } ?: 1f
-                val playedFraction = ((sliderState.value - min) / range).coerceIn(0f, 1f)
-                val playedPixels = size.width * playedFraction
-                val endCornerRadius = size.height / 2f
-                val insideCornerRadius = 2.dp.toPx()
-                val gapHalf = trackThumbGapWidth.toPx() / 2f
-                val leftEnd = (playedPixels - gapHalf).coerceIn(0f, size.width)
-                val rightStart = (playedPixels + gapHalf).coerceIn(0f, size.width)
-
-                // Full track background (dark grey, solid - no video shows through)
-                drawRoundedRect(Offset(0f, 0f), Size(size.width, size.height), trackBgColor, endCornerRadius, endCornerRadius)
-
-                // Played portion (solid red)
-                if (leftEnd > 0f) {
-                    drawRoundedRect(Offset(0f, 0f), Size(leftEnd, size.height), playedColor, endCornerRadius, insideCornerRadius)
-                }
+    val trackHeight = 2.dp
+    val thumbRadius = 6.dp
+    
+    var sliderWidth by rememberSaveable { mutableStateOf(0f) }
+    var isDragging by rememberSaveable { mutableStateOf(false) }
+    var dragPosition by rememberSaveable { mutableStateOf(0f) }
+    
+    val currentPosition = if (isDragging) dragPosition else position
+    
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(20.dp)
+            .onGloballyPositioned { coordinates ->
+                sliderWidth = coordinates.size.width.toFloat()
             }
-        },
-    )
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        isDragging = true
+                        dragPosition = (offset.x / sliderWidth) * duration
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        onSeekEnd()
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        dragPosition = ((dragPosition + (dragAmount / sliderWidth) * duration).coerceIn(0f, duration))
+                        onSeek(dragPosition.toLong())
+                    }
+                )
+            }
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            if (sliderWidth <= 0f) return@Canvas
+            
+            val centerY = size.height / 2
+            val trackStrokeWidth = trackHeight.toPx()
+            val radius = thumbRadius.toPx()
+            
+            // Calculate the position of the circle center
+            val fraction = if (duration > 0) (currentPosition / duration).coerceIn(0f, 1f) else 0f
+            val circleCenterX = radius + (size.width - 2 * radius) * fraction
+            
+            // Draw grey track from circle center to end
+            drawLine(
+                color = Color(0xFF333333),
+                start = Offset(circleCenterX, centerY),
+                end = Offset(size.width - radius, centerY),
+                strokeWidth = trackStrokeWidth,
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+            
+            // Draw red track from start to circle center
+            drawLine(
+                color = primaryColor,
+                start = Offset(radius, centerY),
+                end = Offset(circleCenterX, centerY),
+                strokeWidth = trackStrokeWidth,
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+            
+            // Draw filled circle thumb at the boundary
+            drawCircle(
+                color = primaryColor,
+                radius = radius,
+                center = Offset(circleCenterX, centerY)
+            )
+        }
+    }
 }
 
 private fun DrawScope.drawRoundedRect(offset: Offset, size: Size, color: Color, startCornerRadius: Float, endCornerRadius: Float) {
