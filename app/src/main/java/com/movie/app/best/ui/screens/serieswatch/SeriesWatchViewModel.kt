@@ -84,7 +84,7 @@ class SeriesWatchViewModel @Inject constructor(
 
     fun loadImdbEpisodes(seasonNo: Int) {
         if (imdbCache.containsKey(seasonNo)) {
-            _state.update { it.copy(imdbEpisodes = it.imdbEpisodes.toMutableMap().apply { put(seasonNo, imdbCache[seasonNo]!! }) }
+            _state.update { it.copy(imdbEpisodes = it.imdbEpisodes.toMutableMap().apply { put(seasonNo, imdbCache[seasonNo]!!) }) }
             return
         }
         viewModelScope.launch {
