@@ -69,6 +69,9 @@ import com.movie.app.best.ui.screens.serieswatch.components.LanguageSelector
 import com.movie.app.best.ui.screens.serieswatch.components.SeasonChips
 import okhttp3.OkHttpClient
 
+import androidx.compose.material3.ExperimentalMaterial3Api
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeriesWatchScreen(
     onBackClick: () -> Unit,

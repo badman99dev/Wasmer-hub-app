@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun LanguageSelector(
     availableLanguages: List<String>,
