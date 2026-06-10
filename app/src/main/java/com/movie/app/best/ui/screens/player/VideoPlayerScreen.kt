@@ -235,11 +235,22 @@ fun VideoPlayerScreen(
             }
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isPlaying) playerError = null
+                activity?.let {
+                    val state = exoPlayer?.playbackState ?: Player.STATE_IDLE
+                    ImmersiveMode.keepScreenOn(it, isPlaying || state == Player.STATE_BUFFERING)
+                }
+            }
+            override fun onPlaybackStateChanged(state: Int) {
+                activity?.let {
+                    val playing = exoPlayer?.isPlaying == true
+                    ImmersiveMode.keepScreenOn(it, playing || state == Player.STATE_BUFFERING)
+                }
             }
         }
         exoPlayer?.addListener(listener)
         onDispose {
             exoPlayer?.removeListener(listener)
+            activity?.let { ImmersiveMode.keepScreenOn(it, false) }
         }
     }
 

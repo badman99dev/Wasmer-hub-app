@@ -162,9 +162,24 @@ fun SeriesWatchScreen(
                     }
                 }
             }
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                activity?.let {
+                    val state = player.playbackState
+                    ImmersiveMode.keepScreenOn(it, isPlaying || state == Player.STATE_BUFFERING)
+                }
+            }
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                activity?.let {
+                    val playing = player.isPlaying
+                    ImmersiveMode.keepScreenOn(it, playing || playbackState == Player.STATE_BUFFERING)
+                }
+            }
         }
         player.addListener(listener)
-        onDispose { player.removeListener(listener) }
+        onDispose {
+            player.removeListener(listener)
+            activity?.let { ImmersiveMode.keepScreenOn(it, false) }
+        }
     }
 
     DisposableEffect(lifecycleOwner) {

@@ -1,7 +1,7 @@
 package com.movie.app.best.util
 
 import android.app.Activity
-import android.os.Build
+import android.view.WindowManager
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -28,5 +28,10 @@ object ImmersiveMode {
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         controller.show(WindowInsetsCompat.Type.statusBars())
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    }
+
+    fun keepScreenOn(activity: Activity, on: Boolean) {
+        if (on) activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 }
