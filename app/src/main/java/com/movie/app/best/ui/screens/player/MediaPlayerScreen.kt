@@ -76,12 +76,16 @@ import com.movie.app.best.ui.screens.player.state.rememberVolumeAndBrightnessGes
 import com.movie.app.best.ui.screens.player.state.rememberVolumeState
 import com.movie.app.best.ui.screens.player.state.seekAmountFormatted
 import com.movie.app.best.ui.screens.player.state.seekToPositionFormated
+import com.movie.app.best.ui.screens.player.ui.AudioTrackSelectorView
 import com.movie.app.best.ui.screens.player.ui.DoubleTapIndicator
 import com.movie.app.best.ui.screens.player.ui.OverlayShowView
 import com.movie.app.best.ui.screens.player.ui.OverlayViewType
+import com.movie.app.best.ui.screens.player.ui.PlaybackSpeedSelectorView
 import com.movie.app.best.ui.screens.player.ui.PlayerGestures
+import com.movie.app.best.ui.screens.player.ui.QualitySelectorView
 import com.movie.app.best.ui.screens.player.ui.ShutterView
 import com.movie.app.best.ui.screens.player.ui.VerticalProgressView
+import com.movie.app.best.ui.screens.player.ui.VideoContentScaleSelectorView
 import com.movie.app.best.ui.screens.player.ui.controls.ControlsBottomView
 import com.movie.app.best.ui.screens.player.ui.controls.ControlsTopView
 import com.movie.app.best.ui.screens.player.extensions.nameRes
@@ -367,21 +371,21 @@ fun MediaPlayerScreen(
                                 .clickable { overlayView = null }
                         )
                         when (overlayView) {
-                            OverlayViewType.AUDIO_SELECTOR -> com.movie.app.best.ui.screens.player.ui.AudioTrackSelectorView(
+                            OverlayViewType.AUDIO_SELECTOR -> AudioTrackSelectorView(
                                 show = true,
                                 player = player,
                                 onDismiss = { overlayView = null }
                             )
-                            OverlayViewType.QUALITY_SELECTOR -> com.movie.app.best.ui.screens.player.ui.QualitySelectorView(
+                            OverlayViewType.QUALITY_SELECTOR -> QualitySelectorView(
                                 show = true,
                                 player = player,
                                 onDismiss = { overlayView = null }
                             )
-                            OverlayViewType.PLAYBACK_SPEED -> com.movie.app.best.ui.screens.player.ui.PlaybackSpeedSelectorView(
+                            OverlayViewType.PLAYBACK_SPEED -> PlaybackSpeedSelectorView(
                                 show = true,
                                 player = player
                             )
-                            OverlayViewType.VIDEO_CONTENT_SCALE -> com.movie.app.best.ui.screens.player.ui.VideoContentScaleSelectorView(
+                            OverlayViewType.VIDEO_CONTENT_SCALE -> VideoContentScaleSelectorView(
                                 show = true,
                                 videoContentScale = videoZoomAndContentScaleState.videoContentScale,
                                 onVideoContentScaleChanged = { videoZoomAndContentScaleState.onVideoContentScaleChanged(it) },
