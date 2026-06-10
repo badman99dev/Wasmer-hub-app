@@ -27,6 +27,7 @@ import com.movie.app.best.ui.screens.moviedetail.MovieDetailScreen
 import com.movie.app.best.ui.screens.search.SearchScreen
 import com.movie.app.best.ui.screens.tvshowdetail.TVShowDetailScreen
 import com.movie.app.best.ui.screens.tvshows.TVShowsScreen
+import com.movie.app.best.ui.screens.serieswatch.SeriesWatchScreen
 import java.net.URLEncoder
 import com.movie.app.best.ui.screens.player.VideoPlayerScreen
 import com.movie.app.best.ui.screens.movies.MoviesScreen
@@ -64,6 +65,11 @@ sealed class Screen(val route: String) {
     object Notifications : Screen("notifications")
     object SeriesDetail : Screen("series/{slug}") {
         fun createRoute(slug: String) = "series/${Uri.encode(slug)}"
+    }
+    object SeriesWatch : Screen("seriesWatch/{imdbId}/{title}/{movieId}/{slug}") {
+        fun createRoute(imdbId: String, title: String, movieId: String, slug: String): String {
+            return "seriesWatch/${Uri.encode(imdbId)}/${Uri.encode(title)}/${Uri.encode(movieId)}/${Uri.encode(slug)}"
+        }
     }
     object VideoPlayer : Screen("videoPlayer?playerUrl={playerUrl}&streamUrl={streamUrl}&title={title}&youtubeId={youtubeId}&movieId={movieId}&slug={slug}") {
         fun createRoute(playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String = "", slug: String = ""): String {
@@ -204,6 +210,9 @@ fun AppNavigation(
                 onPlayClick = { playerUrl, streamUrl, title, youtubeId, movieId, slug ->
                     navController.navigate(Screen.VideoPlayer.createRoute(playerUrl, streamUrl, title, youtubeId, movieId, slug))
                 },
+                onWatchNow = { imdbId, title, movieId, slug ->
+                    navController.navigate(Screen.SeriesWatch.createRoute(imdbId, title, movieId, slug))
+                },
                 onMovieClick = { movieSlug ->
                     navController.navigate(Screen.MovieDetail.createRoute(movieSlug))
                 },
@@ -212,6 +221,20 @@ fun AppNavigation(
                         popUpTo(Screen.SeriesDetail.route) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        composable(
+            route = Screen.SeriesWatch.route,
+            arguments = listOf(
+                navArgument("imdbId") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType },
+                navArgument("movieId") { type = NavType.StringType },
+                navArgument("slug") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            SeriesWatchScreen(
+                onBackClick = { navController.popBackStack() }
             )
         }
 

@@ -6,6 +6,7 @@ import com.movie.app.best.BuildConfig
 import com.movie.app.best.data.debug.DebugInterceptor
 import com.movie.app.best.data.remote.AuthApiService
 import com.movie.app.best.data.remote.BypassApiService
+import com.movie.app.best.data.remote.ImdbApiService
 import com.movie.app.best.data.remote.MovieApiService
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
@@ -119,6 +120,17 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @Named("imdb")
+    fun provideImdbRetrofit(okHttpClient: OkHttpClient, gson: com.google.gson.Gson): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://api.imdbapi.dev/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
     fun provideMovieApiService(@Named("main") retrofit: Retrofit): MovieApiService {
         return retrofit.create(MovieApiService::class.java)
     }
@@ -133,5 +145,11 @@ object NetworkModule {
     @Singleton
     fun provideBypassApiService(@Named("bypass") retrofit: Retrofit): BypassApiService {
         return retrofit.create(BypassApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideImdbApiService(@Named("imdb") retrofit: Retrofit): ImdbApiService {
+        return retrofit.create(ImdbApiService::class.java)
     }
 }

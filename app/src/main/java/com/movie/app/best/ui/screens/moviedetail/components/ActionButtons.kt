@@ -27,6 +27,7 @@ fun DetailActionButtons(
     isInMyList: Boolean,
     isLiked: Boolean,
     hasDownloadLinks: Boolean = true,
+    isSeries: Boolean = false,
     modifier: Modifier = Modifier,
     onPlayClick: () -> Unit,
     onDownloadClick: () -> Unit,
@@ -41,7 +42,7 @@ fun DetailActionButtons(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (hasStream) {
+        if (hasStream || isSeries) {
             val playBg = Brush.linearGradient(colors = listOf(Color(0xFFE50914), Color(0xFFB71C1C)))
             val playBorder = Brush.linearGradient(colors = listOf(Color(0xFFFF5252), Color(0xFFFFD700), Color(0xFFFF5252)))
 

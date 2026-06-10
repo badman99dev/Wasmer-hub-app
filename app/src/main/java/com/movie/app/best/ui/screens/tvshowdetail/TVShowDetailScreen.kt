@@ -99,6 +99,7 @@ fun TVShowDetailScreen(
     slug: String,
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String) -> Unit,
+    onWatchNow: (imdbId: String, title: String, movieId: String, slug: String) -> Unit = { _, _, _, _ -> },
     onMovieClick: (String) -> Unit = {},
     onSeriesClick: (String) -> Unit = {},
     viewModel: TVShowDetailViewModel = hiltViewModel()
@@ -127,6 +128,7 @@ fun TVShowDetailScreen(
                     uiState = uiState,
                     onBackClick = onBackClick,
                     onPlayClick = onPlayClick,
+                    onWatchNow = onWatchNow,
                     onPostComment = viewModel::postComment,
                     onRequestStream = viewModel::requestStream,
                     onStartDownload = viewModel::startDownload,
@@ -228,6 +230,7 @@ private fun TVShowDetailContent(
     uiState: TVShowDetailUiState,
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String) -> Unit,
+    onWatchNow: (imdbId: String, title: String, movieId: String, slug: String) -> Unit,
     onPostComment: (name: String, msg: String) -> Unit,
     onRequestStream: () -> Unit,
     onStartDownload: (linkUrl: String) -> Unit,
@@ -502,9 +505,9 @@ private fun TVShowDetailContent(
                     streamRequested = uiState.streamRequested,
                     isInMyList = uiState.isBookmarked,
                     isLiked = uiState.isLiked,
+                    isSeries = true,
                     onPlayClick = {
-                        val workerUrl = "https://sparkling-breeze-1ad6.badman993944.workers.dev/?id=${series.id}"
-                        onPlayClick("", workerUrl, series.title, "", series.id.toString(), series.slug)
+                        onWatchNow(series.imdbId, series.title, series.id.toString(), series.slug)
                     },
                     onDownloadClick = { },
                     onMyListClick = onToggleBookmark,
@@ -582,8 +585,7 @@ private fun TVShowDetailContent(
                     episode = episode,
                     downloadLinks = uiState.linksByEpisode[episode.id] ?: emptyList(),
                     onPlayClick = {
-                        val workerUrl = "https://sparkling-breeze-1ad6.badman993944.workers.dev/?id=${series.id}"
-                        onPlayClick("", workerUrl, "${series.title} - S${episode.seasonNo}:E${episode.episodeNo}", "", series.id.toString(), series.slug)
+                        onWatchNow(series.imdbId, series.title, series.id.toString(), series.slug)
                     }
                 )
                 HorizontalDivider(
