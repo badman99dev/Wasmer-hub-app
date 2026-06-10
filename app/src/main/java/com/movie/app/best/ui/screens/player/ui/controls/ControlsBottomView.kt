@@ -129,6 +129,7 @@ fun ControlsBottomView(
                 duration = mediaPresentationState.duration.toFloat(),
                 trackHeight = 2.dp,
                 thumbWidth = 3.dp,
+                trackThumbGapWidth = 0.dp,
                 onSeek = { onSeek(it.toLong()) },
                 onSeekFinished = { onSeekEnd() },
             )
@@ -214,11 +215,11 @@ private fun PlayerSeekbar(
     duration: Float,
     trackHeight: androidx.compose.ui.unit.Dp = 8.dp,
     thumbWidth: androidx.compose.ui.unit.Dp = 4.dp,
+    trackThumbGapWidth: androidx.compose.ui.unit.Dp = 12.dp,
     onSeek: (Float) -> Unit,
     onSeekFinished: () -> Unit,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
-    val trackThumbGapWidth = 12.dp
 
     Slider(
         value = position,
@@ -232,7 +233,7 @@ private fun PlayerSeekbar(
             )
         },
         track = { sliderState ->
-            val disabledAlpha = 0.4f
+            val disabledAlpha = 0.15f
             Canvas(
                 modifier = Modifier.fillMaxWidth().height(trackHeight),
             ) {

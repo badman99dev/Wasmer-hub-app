@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -22,6 +23,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FitScreen
 import androidx.compose.material.icons.filled.Lock
@@ -351,13 +354,52 @@ fun MediaPlayerScreen(
                 }
             }
 
-            OverlayShowView(
-                player = player,
-                overlayView = overlayView,
-                videoContentScale = videoZoomAndContentScaleState.videoContentScale,
-                onDismiss = { overlayView = null },
-                onVideoContentScaleChanged = { videoZoomAndContentScaleState.onVideoContentScaleChanged(it) },
-            )
+            if (isInline && overlayView != null) {
+                Dialog(
+                    onDismissRequest = { overlayView = null },
+                    properties = DialogProperties(usePlatformDefaultWidth = false)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.7f))
+                                .clickable { overlayView = null }
+                        )
+                        when (overlayView) {
+                            OverlayViewType.AUDIO_SELECTOR -> com.movie.app.best.ui.screens.player.ui.AudioTrackSelectorView(
+                                show = true,
+                                player = player,
+                                onDismiss = { overlayView = null }
+                            )
+                            OverlayViewType.QUALITY_SELECTOR -> com.movie.app.best.ui.screens.player.ui.QualitySelectorView(
+                                show = true,
+                                player = player,
+                                onDismiss = { overlayView = null }
+                            )
+                            OverlayViewType.PLAYBACK_SPEED -> com.movie.app.best.ui.screens.player.ui.PlaybackSpeedSelectorView(
+                                show = true,
+                                player = player
+                            )
+                            OverlayViewType.VIDEO_CONTENT_SCALE -> com.movie.app.best.ui.screens.player.ui.VideoContentScaleSelectorView(
+                                show = true,
+                                videoContentScale = videoZoomAndContentScaleState.videoContentScale,
+                                onVideoContentScaleChanged = { videoZoomAndContentScaleState.onVideoContentScaleChanged(it) },
+                                onDismiss = { overlayView = null }
+                            )
+                            else -> {}
+                        }
+                    }
+                }
+            } else {
+                OverlayShowView(
+                    player = player,
+                    overlayView = overlayView,
+                    videoContentScale = videoZoomAndContentScaleState.videoContentScale,
+                    onDismiss = { overlayView = null },
+                    onVideoContentScaleChanged = { videoZoomAndContentScaleState.onVideoContentScaleChanged(it) },
+                )
+            }
         }
     }
 }
