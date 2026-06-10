@@ -93,6 +93,7 @@ fun MediaPlayerScreen(
     onBackClick: () -> Unit,
     onPlayInBackgroundClick: () -> Unit,
     onFullscreenClick: (() -> Unit)? = null,
+    isInline: Boolean = false,
     title: String = "",
 ) {
     val context = LocalContext.current
@@ -233,6 +234,7 @@ fun MediaPlayerScreen(
                             ) {
                                 ControlsTopView(
                                     title = title,
+                                    isInline = isInline,
                                     onAudioClick = {
                                         controlsVisibilityState.hideControls()
                                         overlayView = OverlayViewType.AUDIO_SELECTOR
@@ -271,6 +273,7 @@ fun MediaPlayerScreen(
                                     controlsAlignment = Alignment.Start,
                                     videoContentScale = videoZoomAndContentScaleState.videoContentScale,
                                     isPipSupported = true,
+                                    isInline = isInline,
                                     onSeek = seekGestureState::onSeek,
                                     onSeekEnd = seekGestureState::onSeekEnd,
                                     isRotationLocked = isRotationLocked,

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -67,6 +68,7 @@ fun ControlsBottomView(
     controlsAlignment: Alignment.Horizontal,
     videoContentScale: VideoContentScale,
     isPipSupported: Boolean,
+    isInline: Boolean = false,
     isRotationLocked: Boolean,
     onVideoContentScaleClick: () -> Unit,
     onVideoContentScaleLongClick: () -> Unit,
@@ -79,72 +81,123 @@ fun ControlsBottomView(
     onSeekEnd: () -> Unit,
 ) {
     val systemBarsPadding = WindowInsets.systemBars.union(WindowInsets.displayCutout).asPaddingValues()
-    val bottomPad = if (systemBarsPadding.calculateBottomPadding() == 0.dp) 16.dp else systemBarsPadding.calculateBottomPadding()
-    Column(
-        modifier = modifier
-            .padding(start = systemBarsPadding.calculateLeftPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), end = systemBarsPadding.calculateRightPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), top = 0.dp, bottom = bottomPad)
-            .padding(horizontal = 8.dp)
-            .padding(top = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
+
+    if (isInline) {
+        Column(
+            modifier = modifier
+                .offset(y = 12.dp)
+                .padding(start = 8.dp, end = 8.dp, bottom = 4.dp)
         ) {
-            var showPendingPosition by rememberSaveable { mutableStateOf(false) }
+            PlayerSeekbar(
+                position = mediaPresentationState.position.toFloat(),
+                duration = mediaPresentationState.duration.toFloat(),
+                onSeek = { onSeek(it.toLong()) },
+                onSeekFinished = { onSeekEnd() },
+            )
 
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.noRippleClickable { showPendingPosition = !showPendingPosition },
             ) {
-                Text(
-                    text = when (showPendingPosition) {
-                        true -> "-${mediaPresentationState.pendingPositionFormatted}"
-                        false -> mediaPresentationState.positionFormatted
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
-                )
-                Text(text = " / ", style = MaterialTheme.typography.bodyMedium, color = Color.White)
-                Text(
-                    text = mediaPresentationState.durationFormatted,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
-                )
+                var showPendingPosition by rememberSaveable { mutableStateOf(false) }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.noRippleClickable { showPendingPosition = !showPendingPosition },
+                ) {
+                    Text(
+                        text = when (showPendingPosition) {
+                            true -> "-${mediaPresentationState.pendingPositionFormatted}"
+                            false -> "${mediaPresentationState.positionFormatted} / ${mediaPresentationState.durationFormatted}"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.8f),
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                PlayerButton(onClick = onFullscreenClick) {
+                    Icon(
+                        imageVector = Icons.Default.Fullscreen,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = Color.White.copy(alpha = 0.85f),
+                    )
+                }
             }
         }
-
-        PlayerSeekbar(
-            position = mediaPresentationState.position.toFloat(),
-            duration = mediaPresentationState.duration.toFloat(),
-            onSeek = { onSeek(it.toLong()) },
-            onSeekFinished = { onSeekEnd() },
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+    } else {
+        val bottomPad = if (systemBarsPadding.calculateBottomPadding() == 0.dp) 16.dp else systemBarsPadding.calculateBottomPadding()
+        Column(
+            modifier = modifier
+                .padding(start = systemBarsPadding.calculateLeftPadding(layoutDirection), end = systemBarsPadding.calculateRightPadding(layoutDirection), top = 0.dp, bottom = bottomPad)
+                .padding(horizontal = 8.dp)
+                .padding(top = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            PlayerButton(onClick = onLockControlsClick) {
-                Icon(imageVector = Icons.Default.LockOpen, contentDescription = null)
-            }
-            PlayerButton(onClick = onRotateClick) {
-                Icon(
-                    imageVector = Icons.Default.ScreenRotation,
-                    contentDescription = null,
-                    tint = if (isRotationLocked) MaterialTheme.colorScheme.primary else Color.White,
-                )
-            }
-            PlayerButton(
-                onClick = onVideoContentScaleClick,
-                onLongClick = onVideoContentScaleLongClick,
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(imageVector = Icons.Default.FitScreen, contentDescription = null)
-            }
-            Spacer(modifier = Modifier.weight(1f))
+                var showPendingPosition by rememberSaveable { mutableStateOf(false) }
 
-            PlayerButton(onClick = onFullscreenClick) {
-                Icon(imageVector = Icons.Default.Fullscreen, contentDescription = null)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.noRippleClickable { showPendingPosition = !showPendingPosition },
+                ) {
+                    Text(
+                        text = when (showPendingPosition) {
+                            true -> "-${mediaPresentationState.pendingPositionFormatted}"
+                            false -> mediaPresentationState.positionFormatted
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White,
+                    )
+                    Text(text = " / ", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                    Text(
+                        text = mediaPresentationState.durationFormatted,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White,
+                    )
+                }
+            }
+
+            PlayerSeekbar(
+                position = mediaPresentationState.position.toFloat(),
+                duration = mediaPresentationState.duration.toFloat(),
+                onSeek = { onSeek(it.toLong()) },
+                onSeekFinished = { onSeekEnd() },
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PlayerButton(onClick = onLockControlsClick) {
+                    Icon(imageVector = Icons.Default.LockOpen, contentDescription = null)
+                }
+                PlayerButton(onClick = onRotateClick) {
+                    Icon(
+                        imageVector = Icons.Default.ScreenRotation,
+                        contentDescription = null,
+                        tint = if (isRotationLocked) MaterialTheme.colorScheme.primary else Color.White,
+                    )
+                }
+                PlayerButton(
+                    onClick = onVideoContentScaleClick,
+                    onLongClick = onVideoContentScaleLongClick,
+                ) {
+                    Icon(imageVector = Icons.Default.FitScreen, contentDescription = null)
+                }
+                Spacer(modifier = Modifier.weight(1f))
+
+                PlayerButton(onClick = onFullscreenClick) {
+                    Icon(imageVector = Icons.Default.Fullscreen, contentDescription = null)
+                }
             }
         }
     }
