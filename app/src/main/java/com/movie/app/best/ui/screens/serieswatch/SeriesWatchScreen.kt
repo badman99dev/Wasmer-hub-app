@@ -67,6 +67,7 @@ import com.movie.app.best.data.model.WatchEpisode
 import com.movie.app.best.ui.screens.serieswatch.components.EpisodeCard
 import com.movie.app.best.ui.screens.serieswatch.components.LanguageSelector
 import com.movie.app.best.ui.screens.serieswatch.components.SeasonChips
+import com.movie.app.best.util.ImmersiveMode
 import okhttp3.OkHttpClient
 
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -126,6 +127,7 @@ fun SeriesWatchScreen(
         player.prepare()
         player.playWhenReady = true
         exoPlayer = player
+        activity?.let { ImmersiveMode.enter(it) }
     }
 
     DisposableEffect(exoPlayer) {
@@ -178,11 +180,13 @@ fun SeriesWatchScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
             exoPlayer?.release()
             exoPlayer = null
+            activity?.let { ImmersiveMode.exit(it) }
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 
     BackHandler {
+        activity?.let { ImmersiveMode.exit(it) }
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         onBackClick()
     }
@@ -209,13 +213,13 @@ fun SeriesWatchScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 IconButton(
                     onClick = {
+                        activity?.let { ImmersiveMode.exit(it) }
                         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                         onBackClick()
                     },

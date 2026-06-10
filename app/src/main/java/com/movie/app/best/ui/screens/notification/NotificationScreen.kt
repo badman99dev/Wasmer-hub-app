@@ -54,7 +54,6 @@ fun NotificationScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
                 .height(56.dp)
                 .padding(horizontal = 8.dp)
         ) {

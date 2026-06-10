@@ -369,7 +369,6 @@ private fun SkeletonHeroPoster() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
                 .padding(horizontal = 14.dp, vertical = 8.dp)
                 .align(Alignment.TopStart),
             horizontalArrangement = Arrangement.SpaceBetween,

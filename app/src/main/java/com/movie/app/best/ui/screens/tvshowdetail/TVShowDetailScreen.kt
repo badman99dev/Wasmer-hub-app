@@ -326,8 +326,7 @@ private fun TVShowDetailContent(
                 onClick = onBackClick,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .statusBarsPadding()
-                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp)
                     .background(
                         color = Color.Black.copy(alpha = 0.5f),
                         shape = CircleShape
@@ -344,8 +343,7 @@ private fun TVShowDetailContent(
                 onClick = onReportClick,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(end = 16.dp, bottom = 16.dp)
+                    .padding(top = 16.dp, end = 16.dp, bottom = 16.dp)
                     .background(
                         color = Color(0xFFE50914).copy(alpha = 0.6f),
                         shape = CircleShape

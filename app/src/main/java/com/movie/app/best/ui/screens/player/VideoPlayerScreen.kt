@@ -39,6 +39,7 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.movie.app.best.data.debug.DebugInterceptor
+import com.movie.app.best.util.ImmersiveMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
@@ -128,6 +129,7 @@ fun VideoPlayerScreen(
             exoPlayer.setMediaItem(MediaItem.fromUri(effectiveUrl))
             exoPlayer.prepare()
         }
+        activity?.let { ImmersiveMode.enter(it) }
     }
 
     val firebaseRepository = remember { com.movie.app.best.data.repository.FirebaseRepository(context) }
@@ -269,11 +271,13 @@ fun VideoPlayerScreen(
                 }
             }
             exoPlayer?.release()
+            activity?.let { ImmersiveMode.exit(it) }
             activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 
     BackHandler {
+        activity?.let { ImmersiveMode.exit(it) }
         activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         onBackClick()
     }
