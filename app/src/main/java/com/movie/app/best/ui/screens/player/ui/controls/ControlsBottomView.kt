@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -245,7 +246,7 @@ private fun CustomSeekbar(
                     onHorizontalDrag = { change, dragAmount ->
                         change.consume()
                         dragPosition = ((dragPosition + (dragAmount / sliderWidth) * duration).coerceIn(0f, duration))
-                        onSeek(dragPosition.toLong())
+                        onSeek(dragPosition)
                     }
                 )
             }
