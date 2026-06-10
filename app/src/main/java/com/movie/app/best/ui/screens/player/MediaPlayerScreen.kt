@@ -124,7 +124,7 @@ fun MediaPlayerScreen(
     val seekGestureState = rememberSeekGestureState(
         player = player,
         sensitivity = 0.5f,
-        enableSeekGesture = true,
+        enableSeekGesture = !isInline,
     )
     val videoZoomAndContentScaleState = rememberVideoZoomAndContentScaleState(
         player = player,
@@ -136,8 +136,8 @@ fun MediaPlayerScreen(
     val volumeAndBrightnessGestureState = rememberVolumeAndBrightnessGestureState(
         volumeState = volumeState,
         brightnessState = brightnessState,
-        enableVolumeGesture = true,
-        enableBrightnessGesture = true,
+        enableVolumeGesture = !isInline,
+        enableBrightnessGesture = !isInline,
         volumeGestureSensitivity = 0.5f,
         brightnessGestureSensitivity = 0.5f,
     )
