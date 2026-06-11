@@ -1,8 +1,6 @@
 package com.movie.app.best.ui.screens.home.components
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -24,6 +22,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -40,7 +39,7 @@ fun LiveChannelsCarousel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp)
+            .padding(top = 68.dp, bottom = 12.dp)  // Top padding to clear AppHeader
     ) {
         // ── Section Title: ● LIVE TV ────────────────────
         Row(
@@ -49,7 +48,6 @@ fun LiveChannelsCarousel(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Red dot
             Box(
                 modifier = Modifier
                     .size(8.dp)
@@ -100,18 +98,17 @@ private fun LiveChannelCircle(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(80.dp)
     ) {
-        // ── Circle with red border + logo + LIVE badge ──
+        // ── Circle with thin red border + logo ──
         Box(
             modifier = Modifier
                 .size(72.dp)
                 .drawWithCache {
-                    // Red gradient border (like YouTube live ring)
                     onDrawWithContent {
                         drawCircle(
                             brush = redGradient,
                             radius = size.minDimension / 2,
                             center = center,
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f * density)
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5f * density)
                         )
                         drawContent()
                     }
@@ -124,50 +121,49 @@ private fun LiveChannelCircle(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // Channel logo inside circle
             AsyncImage(
                 model = channel.logoUrl,
                 contentDescription = channel.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-
-            // LIVE badge — bottom center, overlapping border
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .offset(y = 8.dp)
-                    .background(
-                        color = Color(0xFFFF0000),
-                        shape = RoundedCornerShape(4.dp)
-                    )
-                    .padding(horizontal = 4.dp, vertical = 1.dp)
-            ) {
-                Text(
-                    text = "LIVE",
-                    color = Color.White,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    style = TextStyle(
-                        shadow = Shadow(
-                            color = Color.Black.copy(alpha = 0.5f),
-                            offset = Offset(0f, 1f),
-                            blurRadius = 2f
-                        )
-                    )
-                )
-            }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        // ── LIVE badge BELOW circle (not overlapping border) ──
+        Box(
+            modifier = Modifier
+                .offset(y = (-6).dp)  // Slight overlap upward to sit snug against circle bottom
+                .background(
+                    color = Color(0xFFFF0000),
+                    shape = RoundedCornerShape(4.dp)
+                )
+                .padding(horizontal = 4.dp, vertical = 1.dp)
+        ) {
+            Text(
+                text = "LIVE",
+                color = Color.White,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.ExtraBold,
+                style = TextStyle(
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.5f),
+                        offset = Offset(0f, 1f),
+                        blurRadius = 2f
+                    )
+                )
+            )
+        }
 
-        // ── Channel name below circle ──────────────────
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // ── Channel name below — center aligned ──────────────────
         Text(
             text = channel.name,
             color = Color.White,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
+            textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
     }
