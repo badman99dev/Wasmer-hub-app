@@ -26,6 +26,8 @@ import com.movie.app.best.ui.components.AppHeader
 import com.movie.app.best.ui.components.SkeletonHomeContent
 import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.screens.home.components.*
+import com.movie.app.best.ui.screens.home.components.LiveChannelsCarousel
+import com.movie.app.best.data.model.LiveChannel
 
 @Composable
 fun HomeScreen(
@@ -67,17 +69,14 @@ fun HomeScreen(
             state = listState,
             modifier = Modifier.fillMaxSize()
         ) {
-            if (uiState.isSliderLoading && uiState.sliderMovies.isEmpty()) {
-                item { SkeletonHomeContent() }
-            } else {
-                item {
-                    HeroCarousel(
-                        movies      = uiState.sliderMovies,
-                        isLoading   = uiState.isSliderLoading,
-                        onPlayClick = onContentClick,
-                        onInfoClick = onContentClick
-                    )
-                }
+            item {
+                LiveChannelsCarousel(
+                    onChannelClick = { channel ->
+                        navController.navigate(
+                            "videoPlayer?playerUrl=${channel.streamUrl}&title=${channel.name}&isLive=true"
+                        )
+                    }
+                )
             }
 
             if (uiState.isAllTabLoading && allMovies.isEmpty()) {

@@ -101,6 +101,7 @@ fun MediaPlayerScreen(
     onPlayInBackgroundClick: () -> Unit,
     onFullscreenClick: (() -> Unit)? = null,
     isInline: Boolean = false,
+    isLive: Boolean = false,
     title: String = "",
 ) {
     val context = LocalContext.current
@@ -124,7 +125,7 @@ fun MediaPlayerScreen(
     val seekGestureState = rememberSeekGestureState(
         player = player,
         sensitivity = 0.5f,
-        enableSeekGesture = !isInline,
+        enableSeekGesture = !isInline && !isLive,
     )
     val videoZoomAndContentScaleState = rememberVideoZoomAndContentScaleState(
         player = player,
@@ -281,6 +282,7 @@ fun MediaPlayerScreen(
                                     videoContentScale = videoZoomAndContentScaleState.videoContentScale,
                                     isPipSupported = true,
                                     isInline = isInline,
+                                    isLive = isLive,
                                     onSeek = seekGestureState::onSeek,
                                     onSeekEnd = seekGestureState::onSeekEnd,
                                     isRotationLocked = isRotationLocked,

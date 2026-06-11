@@ -73,6 +73,7 @@ fun ControlsBottomView(
     videoContentScale: VideoContentScale,
     isPipSupported: Boolean,
     isInline: Boolean = false,
+    isLive: Boolean = false,
     isRotationLocked: Boolean,
     onVideoContentScaleClick: () -> Unit,
     onVideoContentScaleLongClick: () -> Unit,
@@ -103,16 +104,32 @@ fun ControlsBottomView(
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.noRippleClickable { showPendingPosition = !showPendingPosition },
+                    modifier = Modifier.noRippleClickable { if (!isLive) showPendingPosition = !showPendingPosition },
                 ) {
-                    Text(
-                        text = when (showPendingPosition) {
-                            true -> "-${mediaPresentationState.pendingPositionFormatted}"
-                            false -> "${mediaPresentationState.positionFormatted} / ${mediaPresentationState.durationFormatted}"
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.8f),
-                    )
+                    if (isLive) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(Color(0xFFFF0000), CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "LIVE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.8f),
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = when (showPendingPosition) {
+                                true -> "-${mediaPresentationState.pendingPositionFormatted}"
+                                false -> "${mediaPresentationState.positionFormatted} / ${mediaPresentationState.durationFormatted}"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.8f),
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -129,10 +146,11 @@ fun ControlsBottomView(
 
             CustomSeekbar(
                 modifier = Modifier.offset(y = 2.dp),
-                position = mediaPresentationState.position.toFloat(),
+                position = if (isLive) mediaPresentationState.duration.toFloat() else mediaPresentationState.position.toFloat(),
                 duration = mediaPresentationState.duration.toFloat(),
-                onSeek = { onSeek(it.toLong()) },
-                onSeekEnd = { onSeekEnd() },
+                onSeek = { if (!isLive) onSeek(it.toLong()) },
+                onSeekEnd = { if (!isLive) onSeekEnd() },
+                isLive = isLive,
             )
         }
     } else {
@@ -152,30 +170,47 @@ fun ControlsBottomView(
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.noRippleClickable { showPendingPosition = !showPendingPosition },
+                    modifier = Modifier.noRippleClickable { if (!isLive) showPendingPosition = !showPendingPosition },
                 ) {
-                    Text(
-                        text = when (showPendingPosition) {
-                            true -> "-${mediaPresentationState.pendingPositionFormatted}"
-                            false -> mediaPresentationState.positionFormatted
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White,
-                    )
-                    Text(text = " / ", style = MaterialTheme.typography.bodyMedium, color = Color.White)
-                    Text(
-                        text = mediaPresentationState.durationFormatted,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White,
-                    )
+                    if (isLive) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(Color(0xFFFF0000), CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "LIVE",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White,
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = when (showPendingPosition) {
+                                true -> "-${mediaPresentationState.pendingPositionFormatted}"
+                                false -> mediaPresentationState.positionFormatted
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White,
+                        )
+                        Text(text = " / ", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                        Text(
+                            text = mediaPresentationState.durationFormatted,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White,
+                        )
+                    }
                 }
             }
 
             CustomSeekbar(
-                position = mediaPresentationState.position.toFloat(),
+                position = if (isLive) mediaPresentationState.duration.toFloat() else mediaPresentationState.position.toFloat(),
                 duration = mediaPresentationState.duration.toFloat(),
-                onSeek = { onSeek(it.toLong()) },
-                onSeekEnd = { onSeekEnd() },
+                onSeek = { if (!isLive) onSeek(it.toLong()) },
+                onSeekEnd = { if (!isLive) onSeekEnd() },
+                isLive = isLive,
             )
 
             Row(
@@ -215,6 +250,7 @@ private fun CustomSeekbar(
     duration: Float,
     onSeek: (Float) -> Unit,
     onSeekEnd: () -> Unit,
+    isLive: Boolean = false,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val trackHeight = 2.dp
@@ -233,23 +269,25 @@ private fun CustomSeekbar(
             .onGloballyPositioned { coordinates ->
                 sliderWidth = coordinates.size.width.toFloat()
             }
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures(
-                    onDragStart = { offset ->
-                        isDragging = true
-                        dragPosition = (offset.x / sliderWidth) * duration
-                    },
-                    onDragEnd = {
-                        isDragging = false
-                        onSeekEnd()
-                    },
-                    onHorizontalDrag = { change, dragAmount ->
-                        change.consume()
-                        dragPosition = ((dragPosition + (dragAmount / sliderWidth) * duration).coerceIn(0f, duration))
-                        onSeek(dragPosition)
-                    }
-                )
-            }
+            .then(
+                if (isLive) Modifier else Modifier.pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { offset ->
+                            isDragging = true
+                            dragPosition = (offset.x / sliderWidth) * duration
+                        },
+                        onDragEnd = {
+                            isDragging = false
+                            onSeekEnd()
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            dragPosition = ((dragPosition + (dragAmount / sliderWidth) * duration).coerceIn(0f, duration))
+                            onSeek(dragPosition)
+                        }
+                    )
+                }
+            )
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (sliderWidth <= 0f) return@Canvas
@@ -259,19 +297,21 @@ private fun CustomSeekbar(
             val radius = thumbRadius.toPx()
             
             // Calculate the position of the circle center
-            val fraction = if (duration > 0) (currentPosition / duration).coerceIn(0f, 1f) else 0f
+            val fraction = if (isLive) 1f else if (duration > 0) (currentPosition / duration).coerceIn(0f, 1f) else 0f
             val circleCenterX = radius + (size.width - 2 * radius) * fraction
             
-            // Draw grey track from circle center to end
-            drawLine(
-                color = Color(0xFF333333),
-                start = Offset(circleCenterX, centerY),
-                end = Offset(size.width - radius, centerY),
-                strokeWidth = trackStrokeWidth,
-                cap = androidx.compose.ui.graphics.StrokeCap.Round
-            )
+            if (!isLive) {
+                // Draw grey track from circle center to end
+                drawLine(
+                    color = Color(0xFF333333),
+                    start = Offset(circleCenterX, centerY),
+                    end = Offset(size.width - radius, centerY),
+                    strokeWidth = trackStrokeWidth,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+            }
             
-            // Draw red track from start to circle center
+            // Draw red track from start to circle center (or full width when live)
             drawLine(
                 color = primaryColor,
                 start = Offset(radius, centerY),
@@ -280,12 +320,14 @@ private fun CustomSeekbar(
                 cap = androidx.compose.ui.graphics.StrokeCap.Round
             )
             
-            // Draw filled circle thumb at the boundary
-            drawCircle(
-                color = primaryColor,
-                radius = radius,
-                center = Offset(circleCenterX, centerY)
-            )
+            if (!isLive) {
+                // Draw filled circle thumb at the boundary
+                drawCircle(
+                    color = primaryColor,
+                    radius = radius,
+                    center = Offset(circleCenterX, centerY)
+                )
+            }
         }
     }
 }

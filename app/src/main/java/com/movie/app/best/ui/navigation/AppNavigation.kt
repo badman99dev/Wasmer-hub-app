@@ -71,9 +71,9 @@ sealed class Screen(val route: String) {
             return "seriesWatch/${Uri.encode(imdbId)}/${Uri.encode(title)}/${Uri.encode(movieId)}/${Uri.encode(slug)}"
         }
     }
-    object VideoPlayer : Screen("videoPlayer?playerUrl={playerUrl}&streamUrl={streamUrl}&title={title}&youtubeId={youtubeId}&movieId={movieId}&slug={slug}") {
-        fun createRoute(playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String = "", slug: String = ""): String {
-            return "videoPlayer?playerUrl=${URLEncoder.encode(playerUrl, "UTF-8")}&streamUrl=${URLEncoder.encode(streamUrl, "UTF-8")}&title=${URLEncoder.encode(title, "UTF-8")}&youtubeId=${URLEncoder.encode(youtubeId, "UTF-8")}&movieId=${URLEncoder.encode(movieId, "UTF-8")}&slug=${URLEncoder.encode(slug, "UTF-8")}"
+    object VideoPlayer : Screen("videoPlayer?playerUrl={playerUrl}&streamUrl={streamUrl}&title={title}&youtubeId={youtubeId}&movieId={movieId}&slug={slug}&isLive={isLive}") {
+        fun createRoute(playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String = "", slug: String = "", isLive: Boolean = false): String {
+            return "videoPlayer?playerUrl=${URLEncoder.encode(playerUrl, "UTF-8")}&streamUrl=${URLEncoder.encode(streamUrl, "UTF-8")}&title=${URLEncoder.encode(title, "UTF-8")}&youtubeId=${URLEncoder.encode(youtubeId, "UTF-8")}&movieId=${URLEncoder.encode(movieId, "UTF-8")}&slug=${URLEncoder.encode(slug, "UTF-8")}&isLive=$isLive"
         }
     }
 }
@@ -290,7 +290,8 @@ fun AppNavigation(
                 navArgument("title") { type = NavType.StringType; defaultValue = "" },
                 navArgument("youtubeId") { type = NavType.StringType; defaultValue = "" },
                 navArgument("movieId") { type = NavType.StringType; defaultValue = "" },
-                navArgument("slug") { type = NavType.StringType; defaultValue = "" }
+                navArgument("slug") { type = NavType.StringType; defaultValue = "" },
+                navArgument("isLive") { type = NavType.BoolType; defaultValue = false }
             )
         ) { backStackEntry ->
             val playerUrl = backStackEntry.arguments?.getString("playerUrl") ?: ""
@@ -299,6 +300,7 @@ fun AppNavigation(
             val youtubeId = backStackEntry.arguments?.getString("youtubeId") ?: ""
             val movieId = backStackEntry.arguments?.getString("movieId") ?: ""
             val slug = backStackEntry.arguments?.getString("slug") ?: ""
+            val isLive = backStackEntry.arguments?.getBoolean("isLive") ?: false
 
             VideoPlayerScreen(
                 onBackClick = { navController.popBackStack() },
@@ -307,7 +309,8 @@ fun AppNavigation(
                 title = title,
                 youtubeId = youtubeId,
                 movieId = movieId,
-                slug = slug
+                slug = slug,
+                isLive = isLive
             )
         }
 

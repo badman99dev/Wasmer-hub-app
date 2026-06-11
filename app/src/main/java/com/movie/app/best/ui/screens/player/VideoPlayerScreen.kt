@@ -53,6 +53,7 @@ fun VideoPlayerScreen(
     youtubeId: String,
     movieId: String,
     slug: String = "",
+    isLive: Boolean = false,
     viewModel: VideoPlayerViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -300,6 +301,7 @@ fun VideoPlayerScreen(
                 onBackClick = onBackClick,
                 onPlayInBackgroundClick = { },
                 title = title,
+                isLive = isLive,
             )
         } else if (playerError != null) {
             Column(
