@@ -118,19 +118,19 @@ fun Zee5DetailScreen(
 
                     // Meta Info
                     item {
-                        Zee5DetailMeta(detail = detail)
+                        Zee5DetailMeta(detail = detail!!)
                     }
 
                     // Description
                     item {
-                        Zee5DetailDescription(detail = detail)
+                        Zee5DetailDescription(detail = detail!!)
                     }
 
                     // Season Selector (for TV shows)
-                    if (detail.isTvShow && detail.seasons?.isNotEmpty() == true) {
+                    if (detail?.isTvShow == true && detail.seasons?.isNotEmpty() == true) {
                         item {
                             Zee5SeasonSelector(
-                                seasons = detail.seasons,
+                                seasons = detail.seasons!!,
                                 onSeasonSelect = { seasonId ->
                                     viewModel.loadEpisodes(seasonId)
                                 }
@@ -154,10 +154,10 @@ fun Zee5DetailScreen(
                     }
 
                     // Related Content
-                    if (detail.related?.isNotEmpty() == true) {
+                    if (detail?.related?.isNotEmpty() == true) {
                         item {
                             Zee5RelatedSection(
-                                related = detail.related,
+                                related = detail.related!!,
                                 onItemClick = { item ->
                                     item.id?.let { id ->
                                         navController.navigate("zee5_detail/${id}")

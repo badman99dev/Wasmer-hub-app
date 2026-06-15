@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
@@ -300,7 +302,7 @@ fun Zee5HeroCarousel(
     items: List<Zee5Item>,
     onItemClick: (Zee5Item) -> Unit
 ) {
-    val pagerState = remember { androidx.compose.foundation.pager.PagerState(0, 0, items.size - 1) }
+    val pagerState = rememberPagerState(pageCount = { items.size })
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -312,7 +314,7 @@ fun Zee5HeroCarousel(
         }
     }
 
-    androidx.compose.foundation.pager.HorizontalPager(
+    HorizontalPager(
         state = pagerState,
         modifier = Modifier
             .fillMaxWidth()
