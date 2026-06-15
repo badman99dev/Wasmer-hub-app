@@ -57,6 +57,10 @@ fun Zee5DetailScreen(
     var selectedSeasonId by remember { mutableStateOf<String?>(null) }
     val seasonsList = remember { mutableStateOf<List<com.movie.app.best.data.model.Zee5Season>>(emptyList()) }
 
+    LaunchedEffect(contentId) {
+        viewModel.loadDetails(contentId)
+    }
+
     LaunchedEffect(detail) {
         detail?.let {
             if (it.isTvShow) {
