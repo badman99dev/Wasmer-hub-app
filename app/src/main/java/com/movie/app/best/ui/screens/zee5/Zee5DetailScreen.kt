@@ -68,29 +68,6 @@ fun Zee5DetailScreen(
         }
     }
 
-    val detail = (detailState as? Zee5DetailState.Success)?.detail
-
-    var selectedSeasonId by remember { mutableStateOf<String?>(null) }
-
-    val currentEpisodes = remember(detail, selectedSeasonId) {
-        val seasons = detail?.seasons
-        if (seasons != null && seasons.isNotEmpty()) {
-            val season = seasons.find { it.id == selectedSeasonId } ?: seasons.last()
-            season.episodes ?: season.episode ?: emptyList()
-        } else {
-            detail?.episodes ?: detail?.episode ?: emptyList()
-        }
-    }
-
-    LaunchedEffect(detail) {
-        detail?.let {
-            if (it.seasons?.isNotEmpty() == true) {
-                val latestSeason = it.seasons.last()
-                selectedSeasonId = latestSeason.id
-            }
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -159,21 +136,21 @@ fun Zee5DetailScreen(
 
                     // Season Selector (for TV shows)
                     if (detail?.isTvShow == true) {
-                        val seasonsResponse = remember { mutableStateOf<List<com.movie.app.best.data.model.Zee5Season>>(emptyList()) }
-                        LaunchedEffect(detail) {
+                        val seasonsList = remember { mutableStateOf<List<com.movie.app.best.data.model.Zee5Season>>(emptyList()) }
+                        LaunchedEffect(detail.id) {
                             try {
                                 val seasonData = viewModel.apiService.getSeasons(detail.id ?: "")
-                                seasonsResponse.value = seasonData.seasons ?: emptyList()
+                                seasonsList.value = seasonData.seasons ?: emptyList()
                                 if (selectedSeasonId == null && seasonData.seasons?.isNotEmpty() == true) {
                                     selectedSeasonId = seasonData.seasons.last()?.id
                                 }
                             } catch(_: Exception) {}
                         }
                         
-                        if (seasonsResponse.value.isNotEmpty()) {
+                        if (seasonsList.value.isNotEmpty()) {
                             item {
                                 Zee5SeasonSelector(
-                                    seasons = seasonsResponse.value,
+                                    seasons = seasonsList.value,
                                     selectedSeasonId = selectedSeasonId,
                                     onSeasonSelect = { seasonId ->
                                         selectedSeasonId = seasonId
