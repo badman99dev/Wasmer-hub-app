@@ -55,7 +55,7 @@ interface Zee5ApiService {
     @GET("seasons/{showId}")
     suspend fun getSeasons(
         @Path("showId") showId: String
-    ): Zee5CollectionResponse
+    ): Zee5DetailResponse
     
     // ─── Episodes for a Season ───
     @GET("episodes/{seasonId}")

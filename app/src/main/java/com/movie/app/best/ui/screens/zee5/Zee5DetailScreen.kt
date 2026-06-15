@@ -165,7 +165,7 @@ fun Zee5DetailScreen(
                                 val seasonData = viewModel.apiService.getSeasons(detail.id ?: "")
                                 seasonsResponse.value = seasonData.seasons ?: emptyList()
                                 if (selectedSeasonId == null && seasonData.seasons?.isNotEmpty() == true) {
-                                    selectedSeasonId = seasonData.seasons.last().id
+                                    selectedSeasonId = seasonData.seasons.last()?.id
                                 }
                             } catch(_: Exception) {}
                         }
