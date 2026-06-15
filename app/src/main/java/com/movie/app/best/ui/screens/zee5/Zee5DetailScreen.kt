@@ -110,7 +110,14 @@ fun Zee5DetailScreen(
                         Zee5DetailHero(
                             detail = detail!!,
                             onPlayClick = {
-                                viewModel.loadPlayback(contentId)
+                                if (detail?.isTvShow == true) {
+                                    val firstEpisode = (episodesState as? Zee5EpisodesState.Success)?.episodes?.firstOrNull()
+                                    if (firstEpisode?.id != null) {
+                                        viewModel.loadPlayback(firstEpisode.id!!)
+                                    }
+                                } else {
+                                    viewModel.loadPlayback(contentId)
+                                }
                             },
                             onBackClick = { navController.popBackStack() }
                         )
