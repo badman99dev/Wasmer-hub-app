@@ -82,4 +82,5 @@ enum class OverlayViewType {
     QUALITY_SELECTOR,
     PLAYBACK_SPEED,
     VIDEO_CONTENT_SCALE,
+    SUBTITLE_SELECTOR,
 }

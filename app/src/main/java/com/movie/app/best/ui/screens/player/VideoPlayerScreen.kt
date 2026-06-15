@@ -82,7 +82,11 @@ fun VideoPlayerScreen(
         effectiveUrl.contains("/?id=", ignoreCase = true)
     )
 
-    val trackSelector = remember { DefaultTrackSelector(context) }
+    val trackSelector = remember {
+        DefaultTrackSelector(context).apply {
+            setParameters(buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true))
+        }
+    }
 
     val exoPlayer = remember(effectiveUrl) {
         if (effectiveUrl.isEmpty()) return@remember null

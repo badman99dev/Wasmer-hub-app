@@ -21,9 +21,9 @@ fun BoxScope.SubtitleSelectorView(
     player: Player,
     onDismiss: () -> Unit,
 ) {
-    val subtitleTracksState = rememberTracksState(player, C.TRACK_TYPE_TEXT)
+    val textTracksState = rememberTracksState(player, C.TRACK_TYPE_TEXT)
 
-    OverlayView(modifier = modifier, show = show, title = "Subtitle Track") {
+    OverlayView(modifier = modifier, show = show, title = "Subtitles") {
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())
@@ -31,21 +31,21 @@ fun BoxScope.SubtitleSelectorView(
                 .padding(horizontal = 24.dp)
                 .selectableGroup(),
         ) {
-            subtitleTracksState.tracks.forEachIndexed { index, track ->
+            textTracksState.tracks.forEachIndexed { index, track ->
                 RadioButtonRow(
                     selected = track.isSelected,
                     text = track.mediaTrackGroup.getName(C.TRACK_TYPE_TEXT, index),
                     onClick = {
-                        subtitleTracksState.switchTrack(index)
+                        textTracksState.switchTrack(index)
                         onDismiss()
                     },
                 )
             }
             RadioButtonRow(
-                selected = subtitleTracksState.tracks.none { it.isSelected },
-                text = "Disable",
+                selected = textTracksState.tracks.none { it.isSelected },
+                text = "Off",
                 onClick = {
-                    subtitleTracksState.switchTrack(-1)
+                    textTracksState.switchTrack(-1)
                     onDismiss()
                 },
             )

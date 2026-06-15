@@ -84,7 +84,11 @@ fun Zee5WatchScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     var isFullscreen by remember { mutableStateOf(false) }
 
-    val trackSelector = remember { DefaultTrackSelector(context) }
+    val trackSelector = remember {
+        DefaultTrackSelector(context).apply {
+            setParameters(buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true))
+        }
+    }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var lowestQualityApplied by remember { mutableStateOf(false) }
     var zee5RetryCount by remember { mutableStateOf(0) }

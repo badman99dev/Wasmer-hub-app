@@ -255,6 +255,10 @@ fun MediaPlayerScreen(
                                         controlsVisibilityState.hideControls()
                                         overlayView = OverlayViewType.PLAYBACK_SPEED
                                     },
+                                    onSubtitleClick = {
+                                        controlsVisibilityState.hideControls()
+                                        overlayView = OverlayViewType.SUBTITLE_SELECTOR
+                                    },
                                     onBackClick = onBackClick,
                                 )
                             }
@@ -374,6 +378,11 @@ fun MediaPlayerScreen(
                         )
                         when (overlayView) {
                             OverlayViewType.AUDIO_SELECTOR -> AudioTrackSelectorView(
+                                show = true,
+                                player = player,
+                                onDismiss = { overlayView = null }
+                            )
+                            OverlayViewType.SUBTITLE_SELECTOR -> SubtitleSelectorView(
                                 show = true,
                                 player = player,
                                 onDismiss = { overlayView = null }

@@ -81,7 +81,11 @@ fun SeriesWatchScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     var showLangSheet by remember { mutableStateOf(false) }
 
-    val trackSelector = remember { DefaultTrackSelector(context) }
+    val trackSelector = remember {
+        DefaultTrackSelector(context).apply {
+            setParameters(buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true))
+        }
+    }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var lowestQualityApplied by remember { mutableStateOf(false) }
     var isFullscreen by remember { mutableStateOf(false) }

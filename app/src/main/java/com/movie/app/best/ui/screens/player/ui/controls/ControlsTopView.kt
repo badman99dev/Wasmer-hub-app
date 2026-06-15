@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Icon
@@ -35,6 +36,7 @@ fun ControlsTopView(
     onAudioClick: () -> Unit = {},
     onQualityClick: () -> Unit = {},
     onPlaybackSpeedClick: () -> Unit = {},
+    onSubtitleClick: () -> Unit = {},
     onBackClick: () -> Unit,
 ) {
     val systemBarsPadding = WindowInsets.systemBars.union(WindowInsets.displayCutout).asPaddingValues()
@@ -55,6 +57,9 @@ fun ControlsTopView(
             ) {
                 PlayerButton(onClick = onPlaybackSpeedClick) {
                     Icon(imageVector = Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White.copy(alpha = 0.85f))
+                }
+                PlayerButton(onClick = onSubtitleClick) {
+                    Icon(imageVector = Icons.Default.ClosedCaption, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White.copy(alpha = 0.85f))
                 }
                 PlayerButton(onClick = onAudioClick) {
                     Icon(imageVector = Icons.Default.Audiotrack, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White.copy(alpha = 0.85f))
@@ -90,6 +95,9 @@ fun ControlsTopView(
             ) {
                 PlayerButton(onClick = onPlaybackSpeedClick) {
                     Icon(imageVector = Icons.Default.Speed, contentDescription = null)
+                }
+                PlayerButton(onClick = onSubtitleClick) {
+                    Icon(imageVector = Icons.Default.ClosedCaption, contentDescription = null)
                 }
                 PlayerButton(onClick = onAudioClick) {
                     Icon(imageVector = Icons.Default.Audiotrack, contentDescription = null)
