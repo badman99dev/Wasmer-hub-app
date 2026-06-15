@@ -49,7 +49,6 @@ fun Zee5DetailScreen(
     onPlayClick: (String, String, String, String, String, String, Boolean, String) -> Unit
 ) {
     val detailState by viewModel.detailState.collectAsState()
-    val episodesState by viewModel.episodesState.collectAsState()
     val playbackState by viewModel.playbackState.collectAsState()
 
     LaunchedEffect(contentId) {
@@ -60,15 +59,21 @@ fun Zee5DetailScreen(
 
     var selectedSeasonId by remember { mutableStateOf<String?>(null) }
 
+    val currentEpisodes = remember(detail, selectedSeasonId) {
+        val seasons = detail?.seasons
+        if (seasons != null && seasons.isNotEmpty()) {
+            val season = seasons.find { it.id == selectedSeasonId } ?: seasons.last()
+            season.episodes ?: season.episode ?: emptyList()
+        } else {
+            detail?.episodes ?: detail?.episode ?: emptyList()
+        }
+    }
+
     LaunchedEffect(detail) {
         detail?.let {
-            if (it.isTvShow && it.seasons?.isNotEmpty() == true) {
+            if (it.seasons?.isNotEmpty() == true) {
                 val latestSeason = it.seasons.last()
                 selectedSeasonId = latestSeason.id
-                viewModel.loadEpisodes(latestSeason.id ?: "")
-            } else if (it.isTvShow) {
-                selectedSeasonId = contentId
-                viewModel.loadEpisodes(contentId)
             }
         }
     }
@@ -155,17 +160,14 @@ fun Zee5DetailScreen(
                     }
 
                     // Episodes List (always show for TV shows)
-                    if (detail?.isTvShow == true) {
+                    if (detail?.isTvShow == true && currentEpisodes.isNotEmpty()) {
                         item {
-                            Zee5EpisodesSection(
-                                episodesState = episodesState,
+                            Zee5EpisodesList(
+                                episodes = currentEpisodes,
                                 onEpisodeClick = { episode ->
                                     episode.id?.let { id ->
                                         viewModel.loadPlayback(id)
                                     }
-                                },
-                                onLoadMore = { seasonId ->
-                                    viewModel.loadEpisodes(seasonId, page = ((episodesState as? Zee5EpisodesState.Success)?.episodes?.size?.div(25) ?: 0) + 1)
                                 }
                             )
                         }
@@ -506,10 +508,9 @@ fun Zee5SeasonSelector(
 }
 
 @Composable
-fun Zee5EpisodesSection(
-    episodesState: Zee5EpisodesState,
-    onEpisodeClick: (Zee5Item) -> Unit,
-    onLoadMore: (String) -> Unit
+fun Zee5EpisodesList(
+    episodes: List<Zee5Item>,
+    onEpisodeClick: (Zee5Item) -> Unit
 ) {
     Column(modifier = Modifier.padding(16.dp)) {
         Text(
@@ -521,73 +522,15 @@ fun Zee5EpisodesSection(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        when (episodesState) {
-            is Zee5EpisodesState.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(24.dp))
-                }
-            }
-            is Zee5EpisodesState.Error -> {
-                Text(
-                    text = episodesState.message,
-                    color = WasmerSubText,
-                    fontSize = 12.sp
+        LazyColumn(
+            modifier = Modifier.heightIn(max = 600.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(episodes) { episode ->
+                Zee5EpisodeCard(
+                    episode = episode,
+                    onClick = { onEpisodeClick(episode) }
                 )
-            }
-            is Zee5EpisodesState.Success -> {
-                val listState = rememberLazyListState()
-                val episodes = episodesState.episodes
-
-                // Infinite scroll detection
-                val shouldLoadMore = remember {
-                    derivedStateOf {
-                        val layoutInfo = listState.layoutInfo
-                        val totalItems = layoutInfo.totalItemsCount
-                        val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                        totalItems > 0 && lastVisible >= totalItems - 2 && episodesState.hasMore
-                    }
-                }
-
-                LaunchedEffect(shouldLoadMore.value) {
-                    if (shouldLoadMore.value) {
-                        onLoadMore(episodesState.seasonId)
-                    }
-                }
-
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.heightIn(max = 600.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(episodes) { episode ->
-                        Zee5EpisodeCard(
-                            episode = episode,
-                            onClick = { onEpisodeClick(episode) }
-                        )
-                    }
-
-                    // Load more indicator
-                    if (episodesState.hasMore) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    color = WasmerRed,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    }
-                }
             }
         }
     }

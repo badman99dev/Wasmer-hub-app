@@ -191,6 +191,8 @@ data class Zee5DetailResponse(
     val related: List<Zee5Item>? = null,
     @SerializedName("related_collections_ss") val relatedCollections: Zee5RelatedCollections? = null,
     val seasons: List<Zee5Season>? = null,
+    val episodes: List<Zee5Item>? = null,
+    val episode: List<Zee5Item>? = null,
     @SerializedName("list_image") val listImage: String? = null,
     @SerializedName("cover_image") val coverImage: String? = null,
     val free: Boolean? = null,
@@ -235,7 +237,9 @@ data class Zee5Season(
     val id: String? = null,
     val title: String? = null,
     @SerializedName("season_number") val seasonNumber: Int? = null,
-    @SerializedName("total_episodes") val totalEpisodes: Int? = null
+    @SerializedName("total_episodes") val totalEpisodes: Int? = null,
+    val episodes: List<Zee5Item>? = null,
+    val episode: List<Zee5Item>? = null
 ) : Parcelable
 
 // ─── ZEE5 Playback Response ───
