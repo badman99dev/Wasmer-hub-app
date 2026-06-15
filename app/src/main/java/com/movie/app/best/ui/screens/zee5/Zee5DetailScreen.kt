@@ -49,10 +49,23 @@ fun Zee5DetailScreen(
     onPlayClick: (String, String, String, String, String, String, Boolean, String) -> Unit
 ) {
     val detailState by viewModel.detailState.collectAsState()
+    val episodesState by viewModel.episodesState.collectAsState()
     val playbackState by viewModel.playbackState.collectAsState()
 
-    LaunchedEffect(contentId) {
-        viewModel.loadDetails(contentId)
+    val detail = (detailState as? Zee5DetailState.Success)?.detail
+
+    var selectedSeasonId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(detail) {
+        detail?.let {
+            if (it.isTvShow) {
+                val seasonId = it.firstSeasonId
+                if (seasonId != null) {
+                    selectedSeasonId = seasonId
+                    viewModel.loadEpisodesFromSeasons(it.id ?: "")
+                }
+            }
+        }
     }
 
     val detail = (detailState as? Zee5DetailState.Success)?.detail
@@ -122,7 +135,7 @@ fun Zee5DetailScreen(
                             detail = detail!!,
                             onPlayClick = {
                                 if (detail?.isTvShow == true) {
-                                    val firstEpisode = currentEpisodes.firstOrNull()
+                                    val firstEpisode = (episodesState as? Zee5EpisodesState.Success)?.episodes?.firstOrNull()
                                     if (firstEpisode?.id != null) {
                                         viewModel.loadPlayback(firstEpisode.id!!)
                                     }
@@ -145,30 +158,58 @@ fun Zee5DetailScreen(
                     }
 
                     // Season Selector (for TV shows)
-                    if (detail?.isTvShow == true && detail.seasons?.isNotEmpty() == true) {
-                        item {
-                            Zee5SeasonSelector(
-                                seasons = detail.seasons!!,
-                                selectedSeasonId = selectedSeasonId,
-                                onSeasonSelect = { seasonId ->
-                                    selectedSeasonId = seasonId
-                                    viewModel.loadEpisodes(seasonId)
+                    if (detail?.isTvShow == true) {
+                        val seasonsResponse = remember { mutableStateOf<List<com.movie.app.best.data.model.Zee5Season>>(emptyList()) }
+                        LaunchedEffect(detail) {
+                            try {
+                                val seasonData = viewModel.apiService.getSeasons(detail.id ?: "")
+                                seasonsResponse.value = seasonData.seasons ?: emptyList()
+                                if (selectedSeasonId == null && seasonData.seasons?.isNotEmpty() == true) {
+                                    selectedSeasonId = seasonData.seasons.last().id
                                 }
-                            )
+                            } catch(_: Exception) {}
+                        }
+                        
+                        if (seasonsResponse.value.isNotEmpty()) {
+                            item {
+                                Zee5SeasonSelector(
+                                    seasons = seasonsResponse.value,
+                                    selectedSeasonId = selectedSeasonId,
+                                    onSeasonSelect = { seasonId ->
+                                        selectedSeasonId = seasonId
+                                        viewModel.loadEpisodesForSeason(seasonId)
+                                    }
+                                )
+                            }
                         }
                     }
 
                     // Episodes List (always show for TV shows)
-                    if (detail?.isTvShow == true && currentEpisodes.isNotEmpty()) {
+                    if (detail?.isTvShow == true) {
                         item {
-                            Zee5EpisodesList(
-                                episodes = currentEpisodes,
-                                onEpisodeClick = { episode ->
-                                    episode.id?.let { id ->
-                                        viewModel.loadPlayback(id)
+                            when (episodesState) {
+                                is Zee5EpisodesState.Loading -> {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(24.dp))
                                     }
                                 }
-                            )
+                                is Zee5EpisodesState.Error -> {
+                                    Text(text = (episodesState as Zee5EpisodesState.Error).message, color = WasmerSubText, fontSize = 12.sp, modifier = Modifier.padding(16.dp))
+                                }
+                                is Zee5EpisodesState.Success -> {
+                                    val episodes = (episodesState as Zee5EpisodesState.Success).episodes
+                                    if (episodes.isNotEmpty()) {
+                                        Zee5EpisodesList(
+                                            episodes = episodes,
+                                            onEpisodeClick = { episode ->
+                                                episode.id?.let { id ->
+                                                    viewModel.loadPlayback(id)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 

@@ -46,7 +46,7 @@ enum class Zee5Tab {
 
 @HiltViewModel
 class Zee5ViewModel @Inject constructor(
-    private val apiService: Zee5ApiService
+    val apiService: Zee5ApiService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<Zee5UiState>(Zee5UiState.Loading)
@@ -219,31 +219,45 @@ class Zee5ViewModel @Inject constructor(
     }
 
     private val loadedEpisodes = mutableListOf<Zee5Item>()
+    private var loadedSeasonId: String? = null
 
-    fun loadEpisodes(seasonId: String, page: Int = 0) {
+    fun loadEpisodesFromSeasons(showId: String) {
         viewModelScope.launch {
-            if (page == 0) {
-                loadedEpisodes.clear()
-                seenItemIds.clear()
-                _episodesState.value = Zee5EpisodesState.Loading
-            }
+            loadedEpisodes.clear()
+            seenItemIds.clear()
+            _episodesState.value = Zee5EpisodesState.Loading
             try {
-                val response = apiService.getEpisodes(seasonId, page = page, limit = 25)
-                val items = response.buckets?.firstOrNull()?.items ?: response.items ?: emptyList()
+                val seasonData = apiService.getSeasons(showId)
+                val seasons = seasonData.seasons ?: emptyList()
+                val latestSeason = seasons.lastOrNull()
+                val seasonId = latestSeason?.id ?: showId
+                loadedSeasonId = seasonId
+                
+                val eps = latestSeason?.episodes ?: latestSeason?.episode ?: emptyList()
+                loadedEpisodes.addAll(eps)
+                
+                _episodesState.value = Zee5EpisodesState.Success(loadedEpisodes.toList(), false, seasonId ?: "")
+            } catch (e: Exception) {
+                _episodesState.value = Zee5EpisodesState.Error(e.message ?: "Failed to load episodes")
+            }
+        }
+    }
 
-                val newItems = items.filter { item ->
-                    val id = item.id
-                    if (id == null || seenItemIds.contains(id)) {
-                        false
-                    } else {
-                        seenItemIds.add(id)
-                        true
-                    }
-                }
-
-                loadedEpisodes.addAll(newItems)
-                val hasMore = newItems.size == 25
-                _episodesState.value = Zee5EpisodesState.Success(loadedEpisodes.toList(), hasMore, seasonId)
+    fun loadEpisodesForSeason(seasonId: String) {
+        viewModelScope.launch {
+            loadedEpisodes.clear()
+            seenItemIds.clear()
+            loadedSeasonId = seasonId
+            _episodesState.value = Zee5EpisodesState.Loading
+            try {
+                val seasonData = apiService.getSeasons(_detailState.let {
+                    (it as? Zee5DetailState.Success)?.detail?.id ?: ""
+                })
+                val season = seasonData.seasons?.find { it.id == seasonId }
+                val eps = season?.episodes ?: season?.episode ?: emptyList()
+                loadedEpisodes.addAll(eps)
+                
+                _episodesState.value = Zee5EpisodesState.Success(loadedEpisodes.toList(), false, seasonId)
             } catch (e: Exception) {
                 _episodesState.value = Zee5EpisodesState.Error(e.message ?: "Failed to load episodes")
             }

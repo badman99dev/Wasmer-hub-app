@@ -191,6 +191,8 @@ data class Zee5DetailResponse(
     val related: List<Zee5Item>? = null,
     @SerializedName("related_collections_ss") val relatedCollections: Zee5RelatedCollections? = null,
     val seasons: List<Zee5Season>? = null,
+    @SerializedName("season_details") val seasonDetails: Zee5SeasonDetail? = null,
+    val season: Zee5SeasonDetail? = null,
     val episodes: List<Zee5Item>? = null,
     val episode: List<Zee5Item>? = null,
     @SerializedName("list_image") val listImage: String? = null,
@@ -215,6 +217,9 @@ data class Zee5DetailResponse(
     
     val isEpisode: Boolean
         get() = assetType == 1
+
+    val firstSeasonId: String?
+        get() = seasonDetails?.id ?: season?.id ?: seasons?.firstOrNull()?.id
     
     companion object {
         private fun buildPortraitUrl(id: String, hash: String): String {
@@ -230,6 +235,14 @@ data class Zee5DetailResponse(
 data class Zee5RelatedCollections(
     val id: String? = null,
     val title: String? = null
+) : Parcelable
+
+@Parcelize
+data class Zee5SeasonDetail(
+    val id: String? = null,
+    val title: String? = null,
+    @SerializedName("orderid") val orderId: Int? = null,
+    val index: Int? = null
 ) : Parcelable
 
 @Parcelize
