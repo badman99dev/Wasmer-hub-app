@@ -122,8 +122,7 @@ fun Zee5DetailScreen(
                             detail = detail!!,
                             onPlayClick = {
                                 if (detail?.isTvShow == true) {
-                                    val episodes = (episodesState as? Zee5EpisodesState.Success)?.episodes
-                                    val firstEpisode = episodes?.firstOrNull()
+                                    val firstEpisode = currentEpisodes.firstOrNull()
                                     if (firstEpisode?.id != null) {
                                         viewModel.loadPlayback(firstEpisode.id!!)
                                     }
