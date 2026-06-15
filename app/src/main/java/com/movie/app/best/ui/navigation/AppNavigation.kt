@@ -348,12 +348,19 @@ fun AppNavigation(
             val contentId = backStackEntry.arguments?.getString("contentId") ?: ""
             com.movie.app.best.ui.screens.zee5.Zee5DetailScreen(
                 contentId = contentId,
-                navController = navController,
-                onPlayClick = { playerUrl, streamUrl, title, youtubeId, movieId, slug, isLive, contentSource ->
-                    navController.navigate(
-                        Screen.VideoPlayer.createRoute(playerUrl, streamUrl, title, youtubeId, movieId, slug, isLive, contentSource)
-                    )
-                }
+                navController = navController
+            )
+        }
+
+        composable(
+            route = "zee5_watch/{contentId}?epId={epId}",
+            arguments = listOf(
+                navArgument("contentId") { type = NavType.StringType },
+                navArgument("epId") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
+        ) { backStackEntry ->
+            com.movie.app.best.ui.screens.zee5.Zee5WatchScreen(
+                onBackClick = { navController.popBackStack() }
             )
         }
 

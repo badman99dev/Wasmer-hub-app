@@ -65,6 +65,7 @@ fun BottomNavigationBar(
             || currentRoute?.startsWith("videoPlayer") == true
             || currentRoute?.startsWith("category/") == true
             || currentRoute?.startsWith("zee5_detail/") == true
+            || currentRoute?.startsWith("zee5_watch/") == true
             || currentRoute == "login"
 
     if (isHiddenScreen) return

@@ -6,7 +6,6 @@ import com.movie.app.best.data.model.Zee5Bucket
 import com.movie.app.best.data.model.Zee5CollectionResponse
 import com.movie.app.best.data.model.Zee5DetailResponse
 import com.movie.app.best.data.model.Zee5Item
-import com.movie.app.best.data.model.Zee5PlaybackResponse
 import com.movie.app.best.data.model.Zee5Season
 import com.movie.app.best.data.remote.Zee5ApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,12 +33,6 @@ sealed class Zee5EpisodesState {
     data class Error(val message: String) : Zee5EpisodesState()
 }
 
-sealed class Zee5PlaybackState {
-    object Loading : Zee5PlaybackState()
-    data class Success(val playback: Zee5PlaybackResponse) : Zee5PlaybackState()
-    data class Error(val message: String) : Zee5PlaybackState()
-}
-
 enum class Zee5Tab {
     ALL, TV_SHOWS, MOVIES, FREE
 }
@@ -57,9 +50,6 @@ class Zee5ViewModel @Inject constructor(
 
     private val _episodesState = MutableStateFlow<Zee5EpisodesState>(Zee5EpisodesState.Loading)
     val episodesState: StateFlow<Zee5EpisodesState> = _episodesState.asStateFlow()
-
-    private val _playbackState = MutableStateFlow<Zee5PlaybackState>(Zee5PlaybackState.Loading)
-    val playbackState: StateFlow<Zee5PlaybackState> = _playbackState.asStateFlow()
 
     private val _currentTab = MutableStateFlow(Zee5Tab.ALL)
     val currentTab: StateFlow<Zee5Tab> = _currentTab.asStateFlow()
@@ -263,18 +253,6 @@ class Zee5ViewModel @Inject constructor(
         }
     }
 
-    fun loadPlayback(contentId: String) {
-        viewModelScope.launch {
-            _playbackState.value = Zee5PlaybackState.Loading
-            try {
-                val playback = apiService.getPlayback(contentId)
-                _playbackState.value = Zee5PlaybackState.Success(playback)
-            } catch (e: Exception) {
-                _playbackState.value = Zee5PlaybackState.Error(e.message ?: "Failed to load playback")
-            }
-        }
-    }
-
     fun search(query: String) {
         viewModelScope.launch {
             _uiState.value = Zee5UiState.Loading
@@ -302,10 +280,5 @@ class Zee5ViewModel @Inject constructor(
     fun resetDetail() {
         _detailState.value = Zee5DetailState.Loading
         _episodesState.value = Zee5EpisodesState.Loading
-        _playbackState.value = Zee5PlaybackState.Loading
-    }
-
-    fun resetPlayback() {
-        _playbackState.value = Zee5PlaybackState.Loading
     }
 }

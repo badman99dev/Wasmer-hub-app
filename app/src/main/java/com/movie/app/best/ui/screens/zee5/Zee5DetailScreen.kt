@@ -1,8 +1,5 @@
 package com.movie.app.best.ui.screens.zee5
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -45,12 +42,10 @@ import com.movie.app.best.ui.theme.WasmerSubText
 fun Zee5DetailScreen(
     contentId: String,
     navController: NavController,
-    viewModel: Zee5ViewModel = hiltViewModel(),
-    onPlayClick: (String, String, String, String, String, String, Boolean, String) -> Unit
+    viewModel: Zee5ViewModel = hiltViewModel()
 ) {
     val detailState by viewModel.detailState.collectAsState()
     val episodesState by viewModel.episodesState.collectAsState()
-    val playbackState by viewModel.playbackState.collectAsState()
 
     val detail = (detailState as? Zee5DetailState.Success)?.detail
 
@@ -124,12 +119,9 @@ fun Zee5DetailScreen(
                             detail = detail!!,
                             onPlayClick = {
                                 if (detail?.isTvShow == true) {
-                                    val firstEpisode = (episodesState as? Zee5EpisodesState.Success)?.episodes?.firstOrNull()
-                                    if (firstEpisode?.id != null) {
-                                        viewModel.loadPlayback(firstEpisode.id!!)
-                                    }
+                                    navController.navigate("zee5_watch/${contentId}")
                                 } else {
-                                    viewModel.loadPlayback(contentId)
+                                    navController.navigate("zee5_watch/${contentId}")
                                 }
                             },
                             onBackClick = { navController.popBackStack() }
@@ -178,8 +170,8 @@ fun Zee5DetailScreen(
                                         Zee5EpisodesList(
                                             episodes = episodes,
                                             onEpisodeClick = { episode ->
-                                                episode.id?.let { id ->
-                                                    viewModel.loadPlayback(id)
+                                                episode.id?.let { epId ->
+                                                    navController.navigate("zee5_watch/${contentId}?epId=${epId}")
                                                 }
                                             }
                                         )
@@ -202,32 +194,6 @@ fun Zee5DetailScreen(
                             )
                         }
                     }
-                }
-            }
-        }
-
-        // Playback overlay (when playback is ready)
-        AnimatedVisibility(
-            visible = playbackState is Zee5PlaybackState.Success,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            val playback = (playbackState as? Zee5PlaybackState.Success)?.playback
-            playback?.let {
-                LaunchedEffect(it) {
-                    val streamUrl = it.effectiveStreamUrl ?: return@LaunchedEffect
-                    val title = detail?.title ?: ""
-                        onPlayClick(
-                            streamUrl,
-                            streamUrl,
-                            title,
-                            "",
-                            contentId,
-                            "",
-                            false,
-                            "zee5"
-                        )
-                    viewModel.resetPlayback()
                 }
             }
         }
