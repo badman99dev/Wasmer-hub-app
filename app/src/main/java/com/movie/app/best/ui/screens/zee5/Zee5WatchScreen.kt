@@ -69,6 +69,7 @@ import coil.compose.AsyncImage
 import com.movie.app.best.data.debug.DebugInterceptor
 import com.movie.app.best.data.model.Zee5Item
 import com.movie.app.best.ui.screens.player.MediaPlayerScreen
+import com.movie.app.best.ui.theme.WasmerRed
 import com.movie.app.best.util.ImmersiveMode
 import okhttp3.OkHttpClient
 
