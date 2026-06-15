@@ -147,13 +147,12 @@ fun Zee5DetailScreen(
                         item {
                             Zee5SeasonSelector(
                                 seasons = seasonsList.value,
-                                    selectedSeasonId = selectedSeasonId,
-                                    onSeasonSelect = { seasonId ->
-                                        selectedSeasonId = seasonId
-                                        viewModel.loadEpisodesForSeason(seasonId)
-                                    }
-                                )
-                            }
+                                selectedSeasonId = selectedSeasonId,
+                                onSeasonSelect = { seasonId ->
+                                    selectedSeasonId = seasonId
+                                    viewModel.loadEpisodesForSeason(seasonId)
+                                }
+                            )
                         }
                     }
 
@@ -226,6 +225,7 @@ fun Zee5DetailScreen(
                         )
                     viewModel.resetPlayback()
                 }
+            }
         }
     }
 }
