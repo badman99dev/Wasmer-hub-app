@@ -189,7 +189,7 @@ data class Zee5DetailResponse(
     @SerializedName("is_drm") val isDrm: Int? = null,
     @SerializedName("episode_number") val episodeNumber: Int? = null,
     val related: List<Zee5Item>? = null,
-    @SerializedName("related_collections_ss") val relatedCollections: List<Zee5RelatedCollection>? = null,
+    @SerializedName("related_collections_ss") val relatedCollections: Zee5RelatedCollections? = null,
     val seasons: List<Zee5Season>? = null,
     @SerializedName("list_image") val listImage: String? = null,
     @SerializedName("cover_image") val coverImage: String? = null,
@@ -225,7 +225,7 @@ data class Zee5DetailResponse(
 }
 
 @Parcelize
-data class Zee5RelatedCollection(
+data class Zee5RelatedCollections(
     val id: String? = null,
     val title: String? = null
 ) : Parcelable
