@@ -77,6 +77,7 @@ import com.movie.app.best.ui.screens.player.state.rememberVolumeState
 import com.movie.app.best.ui.screens.player.state.seekAmountFormatted
 import com.movie.app.best.ui.screens.player.state.seekToPositionFormated
 import com.movie.app.best.ui.screens.player.ui.AudioTrackSelectorView
+import com.movie.app.best.ui.screens.player.ui.SubtitleSelectorView
 import com.movie.app.best.ui.screens.player.ui.DoubleTapIndicator
 import com.movie.app.best.ui.screens.player.ui.OverlayShowView
 import com.movie.app.best.ui.screens.player.ui.OverlayViewType
