@@ -99,7 +99,6 @@ fun Zee5WatchScreen(
         if (m3u8 == null) {
             exoPlayer?.release()
             exoPlayer = null
-            lowestQualityApplied = false
             return@LaunchedEffect
         }
 
