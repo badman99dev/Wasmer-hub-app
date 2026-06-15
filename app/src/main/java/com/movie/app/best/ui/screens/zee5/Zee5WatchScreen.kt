@@ -107,7 +107,6 @@ fun Zee5WatchScreen(
         exoPlayer?.release()
         lowestQualityApplied = false
         zee5RetryCount = 0
-        isUsingFallback = false
         playerError = null
 
         val okClient = OkHttpClient.Builder()
