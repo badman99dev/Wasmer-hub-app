@@ -46,14 +46,8 @@ interface Zee5ApiService {
     ): Zee5DetailResponse
     
     // ─── Playback URL (with DRM bypass) ───
-    @GET("playback/{id}")
-    suspend fun getPlayback(
-        @Path("id") id: String
-    ): Zee5PlaybackResponse
-    
-    // ─── M3U8 (direct/proxied stream URL) ───
     @GET("m3u8/{id}")
-    suspend fun getM3u8(
+    suspend fun getPlayback(
         @Path("id") id: String
     ): Zee5PlaybackResponse
     
