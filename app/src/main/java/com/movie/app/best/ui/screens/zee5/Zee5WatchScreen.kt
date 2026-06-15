@@ -67,6 +67,7 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import coil.compose.AsyncImage
 import com.movie.app.best.data.debug.DebugInterceptor
+import com.movie.app.best.data.debug.Zee5False404Interceptor
 import com.movie.app.best.data.model.Zee5Item
 import com.movie.app.best.ui.screens.player.MediaPlayerScreen
 import com.movie.app.best.ui.theme.WasmerRed
@@ -92,15 +93,7 @@ fun Zee5WatchScreen(
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var lowestQualityApplied by remember { mutableStateOf(false) }
     var zee5RetryCount by remember { mutableStateOf(0) }
-    var isUsingFallback by remember { mutableStateOf(false) }
     var playerError by remember { mutableStateOf<String?>(null) }
-
-    val proxiedUrl = remember(state.currentM3u8) {
-        val url = state.currentM3u8 ?: return@remember null
-        if (url.contains("zee5vod.akamaized.net")) {
-            url.replace("https://zee5vod.akamaized.net", "https://zee5stream-proxy.badman993944.workers.dev/https://zee5vod.akamaized.net")
-        } else null
-    }
 
     LaunchedEffect(state.currentM3u8) {
         val m3u8 = state.currentM3u8
@@ -119,6 +112,7 @@ fun Zee5WatchScreen(
 
         val okClient = OkHttpClient.Builder()
             .followRedirects(true).followSslRedirects(true)
+            .addInterceptor(Zee5False404Interceptor())
             .addInterceptor(DebugInterceptor()).build()
 
         val okFactory = OkHttpDataSource.Factory(okClient)
@@ -183,14 +177,6 @@ fun Zee5WatchScreen(
                 if (zee5RetryCount < 2) {
                     zee5RetryCount++
                     player.setMediaItem(MediaItem.fromUri(state.currentM3u8 ?: return))
-                    player.prepare()
-                    player.playWhenReady = true
-                    return
-                }
-                if (!isUsingFallback && proxiedUrl != null) {
-                    isUsingFallback = true
-                    android.widget.Toast.makeText(context, "ZEE5 source se fallback par shift hua", android.widget.Toast.LENGTH_LONG).show()
-                    player.setMediaItem(MediaItem.fromUri(proxiedUrl))
                     player.prepare()
                     player.playWhenReady = true
                     return

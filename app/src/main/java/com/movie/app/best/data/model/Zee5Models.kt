@@ -273,8 +273,8 @@ data class Zee5PlaybackResponse(
     @SerializedName("asset_type") val assetType: Int? = null
 ) : Parcelable {
     val effectiveStreamUrl: String?
-        get() = proxied ?: direct ?: streamUrlHls ?: hls?.firstOrNull() ?: streamUrl
-    
+        get() = direct ?: streamUrlHls ?: hls?.firstOrNull() ?: streamUrl
+
     val hasProxiedUrl: Boolean
         get() = !proxied.isNullOrBlank()
     

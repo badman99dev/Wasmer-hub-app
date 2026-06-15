@@ -60,6 +60,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.movie.app.best.data.debug.DebugInterceptor
+import com.movie.app.best.data.debug.Zee5False404Interceptor
 import com.movie.app.best.ui.screens.player.MediaPlayerScreen
 import com.movie.app.best.ui.screens.serieswatch.components.EpisodeCard
 import com.movie.app.best.ui.screens.serieswatch.components.LanguageSelector
@@ -104,6 +105,7 @@ fun SeriesWatchScreen(
 
         val okClient = OkHttpClient.Builder()
             .followRedirects(true).followSslRedirects(true)
+            .addInterceptor(Zee5False404Interceptor())
             .addInterceptor(DebugInterceptor()).build()
 
         val okFactory = OkHttpDataSource.Factory(okClient)
