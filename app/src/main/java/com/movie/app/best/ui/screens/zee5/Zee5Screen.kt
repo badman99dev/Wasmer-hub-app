@@ -521,8 +521,7 @@ fun Zee5Card(
 
         // Genre/Language info
         val genreText = item.genres?.firstOrNull()?.value
-            ?: item.genre?.firstOrNull()
-            ?: item.languages?.firstOrNull()?.uppercase()
+            ?: item.genre?.firstOrNull()?.value
         if (genreText != null) {
             Text(
                 text = genreText,
