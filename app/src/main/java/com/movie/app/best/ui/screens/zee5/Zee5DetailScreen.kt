@@ -58,11 +58,17 @@ fun Zee5DetailScreen(
 
     val detail = (detailState as? Zee5DetailState.Success)?.detail
 
-    // Auto-load episodes if TV show
+    var selectedSeasonId by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(detail) {
         detail?.let {
             if (it.isTvShow && it.seasons?.isNotEmpty() == true) {
-                viewModel.loadEpisodes(it.seasons.first().id ?: "")
+                val latestSeason = it.seasons.last()
+                selectedSeasonId = latestSeason.id
+                viewModel.loadEpisodes(latestSeason.id ?: "")
+            } else if (it.isTvShow) {
+                selectedSeasonId = contentId
+                viewModel.loadEpisodes(contentId)
             }
         }
     }
@@ -111,7 +117,8 @@ fun Zee5DetailScreen(
                             detail = detail!!,
                             onPlayClick = {
                                 if (detail?.isTvShow == true) {
-                                    val firstEpisode = (episodesState as? Zee5EpisodesState.Success)?.episodes?.firstOrNull()
+                                    val episodes = (episodesState as? Zee5EpisodesState.Success)?.episodes
+                                    val firstEpisode = episodes?.firstOrNull()
                                     if (firstEpisode?.id != null) {
                                         viewModel.loadPlayback(firstEpisode.id!!)
                                     }
@@ -138,13 +145,17 @@ fun Zee5DetailScreen(
                         item {
                             Zee5SeasonSelector(
                                 seasons = detail.seasons!!,
+                                selectedSeasonId = selectedSeasonId,
                                 onSeasonSelect = { seasonId ->
+                                    selectedSeasonId = seasonId
                                     viewModel.loadEpisodes(seasonId)
                                 }
                             )
                         }
+                    }
 
-                        // Episodes List
+                    // Episodes List (always show for TV shows)
+                    if (detail?.isTvShow == true) {
                         item {
                             Zee5EpisodesSection(
                                 episodesState = episodesState,
@@ -154,7 +165,7 @@ fun Zee5DetailScreen(
                                     }
                                 },
                                 onLoadMore = { seasonId ->
-                                    viewModel.loadEpisodes(seasonId)
+                                    viewModel.loadEpisodes(seasonId, page = ((episodesState as? Zee5EpisodesState.Success)?.episodes?.size?.div(25) ?: 0) + 1)
                                 }
                             )
                         }
@@ -449,9 +460,10 @@ fun Zee5DetailDescription(detail: Zee5DetailResponse) {
 @Composable
 fun Zee5SeasonSelector(
     seasons: List<Zee5Season>,
+    selectedSeasonId: String?,
     onSeasonSelect: (String) -> Unit
 ) {
-    var selectedSeason by remember { mutableStateOf(seasons.firstOrNull()?.id ?: "") }
+    val selectedSeason = selectedSeasonId ?: seasons.lastOrNull()?.id ?: ""
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text(
@@ -477,7 +489,6 @@ fun Zee5SeasonSelector(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            selectedSeason = season.id ?: ""
                             season.id?.let { onSeasonSelect(it) }
                         }
                         .padding(horizontal = 16.dp, vertical = 8.dp)

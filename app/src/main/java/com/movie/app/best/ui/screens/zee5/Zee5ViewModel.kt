@@ -207,6 +207,8 @@ class Zee5ViewModel @Inject constructor(
     fun loadDetails(contentId: String) {
         viewModelScope.launch {
             _detailState.value = Zee5DetailState.Loading
+            seenItemIds.clear()
+            loadedEpisodes.clear()
             try {
                 val detail = apiService.getDetails(contentId)
                 _detailState.value = Zee5DetailState.Success(detail)
@@ -216,16 +218,19 @@ class Zee5ViewModel @Inject constructor(
         }
     }
 
+    private val loadedEpisodes = mutableListOf<Zee5Item>()
+
     fun loadEpisodes(seasonId: String, page: Int = 0) {
         viewModelScope.launch {
             if (page == 0) {
+                loadedEpisodes.clear()
+                seenItemIds.clear()
                 _episodesState.value = Zee5EpisodesState.Loading
             }
             try {
                 val response = apiService.getEpisodes(seasonId, page = page, limit = 25)
                 val items = response.buckets?.firstOrNull()?.items ?: response.items ?: emptyList()
 
-                // Filter duplicates
                 val newItems = items.filter { item ->
                     val id = item.id
                     if (id == null || seenItemIds.contains(id)) {
@@ -236,8 +241,9 @@ class Zee5ViewModel @Inject constructor(
                     }
                 }
 
+                loadedEpisodes.addAll(newItems)
                 val hasMore = newItems.size == 25
-                _episodesState.value = Zee5EpisodesState.Success(newItems, hasMore, seasonId)
+                _episodesState.value = Zee5EpisodesState.Success(loadedEpisodes.toList(), hasMore, seasonId)
             } catch (e: Exception) {
                 _episodesState.value = Zee5EpisodesState.Error(e.message ?: "Failed to load episodes")
             }
