@@ -226,7 +226,6 @@ fun Zee5DetailScreen(
                         )
                     viewModel.resetPlayback()
                 }
-            }
         }
     }
 }
