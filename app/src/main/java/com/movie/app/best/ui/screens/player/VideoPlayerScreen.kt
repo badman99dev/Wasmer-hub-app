@@ -30,7 +30,6 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -208,39 +207,8 @@ fun VideoPlayerScreen(
 
     val isZee5Content = contentSource == "zee5"
 
-    var lowestQualityApplied by remember { mutableStateOf(false) }
-
     DisposableEffect(exoPlayer) {
         val listener = object : Player.Listener {
-            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-                if (!lowestQualityApplied) {
-                    val heights = mutableSetOf<Int>()
-                    for (group in tracks.groups) {
-                        if (group.type != C.TRACK_TYPE_VIDEO) continue
-                        for (i in 0 until group.length) {
-                            val fmt = group.getTrackFormat(i)
-                            if (fmt.height > 0) heights.add(fmt.height)
-                        }
-                    }
-                    if (heights.isNotEmpty()) {
-                        lowestQualityApplied = true
-                        val lowest = heights.min()
-                        for (group in tracks.groups) {
-                            if (group.type != C.TRACK_TYPE_VIDEO) continue
-                            for (i in 0 until group.length) {
-                                val fmt = group.getTrackFormat(i)
-                                if (fmt.height == lowest) {
-                                    exoPlayer!!.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
-                                        .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
-                                        .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, listOf(i)))
-                                        .build()
-                                    break
-                                }
-                            }
-                        }
-                    }
-                }
-            }
             override fun onPlayerError(error: PlaybackException) {
                 if (isZee5Content && zee5RetryCount < 2) {
                     zee5RetryCount++

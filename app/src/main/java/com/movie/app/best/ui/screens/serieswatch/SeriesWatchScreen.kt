@@ -52,7 +52,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -88,7 +87,6 @@ fun SeriesWatchScreen(
         }
     }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
-    var lowestQualityApplied by remember { mutableStateOf(false) }
     var isFullscreen by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.currentM3u8) {
@@ -96,12 +94,10 @@ fun SeriesWatchScreen(
         if (m3u8 == null) {
             exoPlayer?.release()
             exoPlayer = null
-            lowestQualityApplied = false
             return@LaunchedEffect
         }
 
         exoPlayer?.release()
-        lowestQualityApplied = false
 
         val okClient = OkHttpClient.Builder()
             .followRedirects(true).followSslRedirects(true)
@@ -136,35 +132,6 @@ fun SeriesWatchScreen(
     DisposableEffect(exoPlayer) {
         val player = exoPlayer ?: return@DisposableEffect onDispose {}
         val listener = object : Player.Listener {
-            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-                if (!lowestQualityApplied) {
-                    val heights = mutableSetOf<Int>()
-                    for (group in tracks.groups) {
-                        if (group.type != C.TRACK_TYPE_VIDEO) continue
-                        for (i in 0 until group.length) {
-                            val fmt = group.getTrackFormat(i)
-                            if (fmt.height > 0) heights.add(fmt.height)
-                        }
-                    }
-                    if (heights.isNotEmpty()) {
-                        lowestQualityApplied = true
-                        val lowest = heights.min()
-                        for (group in tracks.groups) {
-                            if (group.type != C.TRACK_TYPE_VIDEO) continue
-                            for (i in 0 until group.length) {
-                                val fmt = group.getTrackFormat(i)
-                                if (fmt.height == lowest) {
-                                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                                        .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
-                                        .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, listOf(i)))
-                                        .build()
-                                    break
-                                }
-                            }
-                        }
-                    }
-                }
-            }
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 activity?.let {
                     val pState = player.playbackState
