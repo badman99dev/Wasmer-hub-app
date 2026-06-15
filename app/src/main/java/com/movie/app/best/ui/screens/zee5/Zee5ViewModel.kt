@@ -233,10 +233,10 @@ class Zee5ViewModel @Inject constructor(
                 val seasonId = latestSeason?.id ?: showId
                 loadedSeasonId = seasonId
                 
-                val eps = latestSeason?.episodes ?: latestSeason?.episode ?: emptyList()
+                val eps: List<com.movie.app.best.data.model.Zee5Item> = latestSeason?.episodes ?: latestSeason?.episode ?: emptyList()
                 loadedEpisodes.addAll(eps)
                 
-                _episodesState.value = Zee5EpisodesState.Success(loadedEpisodes.toList(), false, seasonId ?: "")
+                _episodesState.value = Zee5EpisodesState.Success(loadedEpisodes.toList(), false, seasonId)
             } catch (e: Exception) {
                 _episodesState.value = Zee5EpisodesState.Error(e.message ?: "Failed to load episodes")
             }
@@ -250,11 +250,10 @@ class Zee5ViewModel @Inject constructor(
             loadedSeasonId = seasonId
             _episodesState.value = Zee5EpisodesState.Loading
             try {
-                val seasonData = apiService.getSeasons(_detailState.let {
-                    (it as? Zee5DetailState.Success)?.detail?.id ?: ""
-                })
+                val showId = (detailState.value as? Zee5DetailState.Success)?.detail?.id ?: ""
+                val seasonData = apiService.getSeasons(showId)
                 val season = seasonData.seasons?.find { it.id == seasonId }
-                val eps = season?.episodes ?: season?.episode ?: emptyList()
+                val eps: List<com.movie.app.best.data.model.Zee5Item> = season?.episodes ?: season?.episode ?: emptyList()
                 loadedEpisodes.addAll(eps)
                 
                 _episodesState.value = Zee5EpisodesState.Success(loadedEpisodes.toList(), false, seasonId)
