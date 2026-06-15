@@ -43,6 +43,7 @@ sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Movies : Screen("movies")
     object Trending : Screen("trending")
+    object Zee5 : Screen("zee5")
     object LatestUploads : Screen("latest-uploads")
     object MyFeed : Screen("my-feed")
     object Categories : Screen("categories")
@@ -71,9 +72,9 @@ sealed class Screen(val route: String) {
             return "seriesWatch/${Uri.encode(imdbId)}/${Uri.encode(title)}/${Uri.encode(movieId)}/${Uri.encode(slug)}"
         }
     }
-    object VideoPlayer : Screen("videoPlayer?playerUrl={playerUrl}&streamUrl={streamUrl}&title={title}&youtubeId={youtubeId}&movieId={movieId}&slug={slug}&isLive={isLive}") {
-        fun createRoute(playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String = "", slug: String = "", isLive: Boolean = false): String {
-            return "videoPlayer?playerUrl=${URLEncoder.encode(playerUrl, "UTF-8")}&streamUrl=${URLEncoder.encode(streamUrl, "UTF-8")}&title=${URLEncoder.encode(title, "UTF-8")}&youtubeId=${URLEncoder.encode(youtubeId, "UTF-8")}&movieId=${URLEncoder.encode(movieId, "UTF-8")}&slug=${URLEncoder.encode(slug, "UTF-8")}&isLive=$isLive"
+    object VideoPlayer : Screen("videoPlayer?playerUrl={playerUrl}&streamUrl={streamUrl}&title={title}&youtubeId={youtubeId}&movieId={movieId}&slug={slug}&isLive={isLive}&contentSource={contentSource}") {
+        fun createRoute(playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String = "", slug: String = "", isLive: Boolean = false, contentSource: String = "wasmer"): String {
+            return "videoPlayer?playerUrl=${URLEncoder.encode(playerUrl, "UTF-8")}&streamUrl=${URLEncoder.encode(streamUrl, "UTF-8")}&title=${URLEncoder.encode(title, "UTF-8")}&youtubeId=${URLEncoder.encode(youtubeId, "UTF-8")}&movieId=${URLEncoder.encode(movieId, "UTF-8")}&slug=${URLEncoder.encode(slug, "UTF-8")}&isLive=$isLive&contentSource=${URLEncoder.encode(contentSource, "UTF-8")}"
         }
     }
 }
@@ -95,7 +96,7 @@ fun AppNavigation(
 
     val tabRoutes = listOf(
         Screen.Home.route,
-        Screen.Trending.route,
+        Screen.Zee5.route,
         Screen.Library.route,
         Screen.Downloads.route,
         Screen.Profile.route
@@ -291,7 +292,8 @@ fun AppNavigation(
                 navArgument("youtubeId") { type = NavType.StringType; defaultValue = "" },
                 navArgument("movieId") { type = NavType.StringType; defaultValue = "" },
                 navArgument("slug") { type = NavType.StringType; defaultValue = "" },
-                navArgument("isLive") { type = NavType.BoolType; defaultValue = false }
+                navArgument("isLive") { type = NavType.BoolType; defaultValue = false },
+                navArgument("contentSource") { type = NavType.StringType; defaultValue = "wasmer" }
             )
         ) { backStackEntry ->
             val playerUrl = backStackEntry.arguments?.getString("playerUrl") ?: ""
@@ -301,6 +303,7 @@ fun AppNavigation(
             val movieId = backStackEntry.arguments?.getString("movieId") ?: ""
             val slug = backStackEntry.arguments?.getString("slug") ?: ""
             val isLive = backStackEntry.arguments?.getBoolean("isLive") ?: false
+            val contentSource = backStackEntry.arguments?.getString("contentSource") ?: "wasmer"
 
             VideoPlayerScreen(
                 onBackClick = { navController.popBackStack() },
@@ -310,7 +313,8 @@ fun AppNavigation(
                 youtubeId = youtubeId,
                 movieId = movieId,
                 slug = slug,
-                isLive = isLive
+                isLive = isLive,
+                contentSource = contentSource
             )
         }
 
@@ -327,6 +331,29 @@ fun AppNavigation(
             TrendingScreen(
                 onContentClick = { slug, isSeries -> navigateToContent(slug, isSeries) },
                 navController = navController
+            )
+        }
+
+        composable(Screen.Zee5.route) {
+            com.movie.app.best.ui.screens.zee5.Zee5Screen(
+                navController = navController,
+                onSearchClick = { navController.navigate(Screen.Search.route) }
+            )
+        }
+
+        composable(
+            route = "zee5_detail/{contentId}",
+            arguments = listOf(navArgument("contentId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val contentId = backStackEntry.arguments?.getString("contentId") ?: ""
+            com.movie.app.best.ui.screens.zee5.Zee5DetailScreen(
+                contentId = contentId,
+                navController = navController,
+                onPlayClick = { playerUrl, streamUrl, title, youtubeId, movieId, slug, isLive, contentSource ->
+                    navController.navigate(
+                        Screen.VideoPlayer.createRoute(playerUrl, streamUrl, title, youtubeId, movieId, slug, isLive, contentSource)
+                    )
+                }
             )
         }
 

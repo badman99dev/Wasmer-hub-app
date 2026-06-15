@@ -152,4 +152,21 @@ object NetworkModule {
     fun provideImdbApiService(@Named("imdb") retrofit: Retrofit): ImdbApiService {
         return retrofit.create(ImdbApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    @Named("zee5")
+    fun provideZee5Retrofit(okHttpClient: OkHttpClient, gson: com.google.gson.Gson): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(com.movie.app.best.data.remote.Zee5ApiService.BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideZee5ApiService(@Named("zee5") retrofit: Retrofit): com.movie.app.best.data.remote.Zee5ApiService {
+        return retrofit.create(com.movie.app.best.data.remote.Zee5ApiService::class.java)
+    }
 }

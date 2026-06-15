@@ -151,7 +151,7 @@ fun MainContent() {
         Screen.TVShows.route,
         Screen.Categories.route,
         Screen.Library.route,
-        Screen.Trending.route,
+        Screen.Zee5.route,
         Screen.Downloads.route,
         Screen.Profile.route
     )
@@ -160,7 +160,7 @@ fun MainContent() {
         drawerState = drawerState,
         gesturesEnabled = currentRoute in listOf(
             Screen.Home.route,
-            Screen.Trending.route,
+            Screen.Zee5.route,
             Screen.Library.route,
             Screen.Downloads.route,
             Screen.Profile.route,

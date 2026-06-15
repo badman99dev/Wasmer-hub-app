@@ -38,7 +38,7 @@ sealed class BottomNavItem(
     val unselectedIcon: ImageVector
 ) {
     object Home      : BottomNavItem(Screen.Home.route,      "Home",      Icons.Filled.Home,                Icons.Outlined.Home)
-    object NewHot    : BottomNavItem(Screen.Trending.route,  "New & Hot", Icons.Filled.LocalFireDepartment, Icons.Outlined.LocalFireDepartment)
+    object Zee5      : BottomNavItem(Screen.Zee5.route,      "ZEE5",      Icons.Filled.PlayCircle,          Icons.Outlined.PlayCircle)
     object MyList    : BottomNavItem(Screen.Library.route,   "My List",   Icons.Filled.BookmarkAdded,       Icons.Outlined.BookmarkAdd)
     object Downloads : BottomNavItem(Screen.Downloads.route, "Downloads", Icons.Filled.Download,            Icons.Outlined.Download)
     object Profile   : BottomNavItem(Screen.Profile.route,   "Profile",   Icons.Filled.Person,              Icons.Outlined.Person)
@@ -51,7 +51,7 @@ fun BottomNavigationBar(
 ) {
     val items = listOf(
         BottomNavItem.Home,
-        BottomNavItem.NewHot,
+        BottomNavItem.Zee5,
         BottomNavItem.MyList,
         BottomNavItem.Downloads,
         BottomNavItem.Profile
@@ -64,6 +64,7 @@ fun BottomNavigationBar(
             || currentRoute?.startsWith("series/") == true
             || currentRoute?.startsWith("videoPlayer") == true
             || currentRoute?.startsWith("category/") == true
+            || currentRoute?.startsWith("zee5_detail/") == true
             || currentRoute == "login"
 
     if (isHiddenScreen) return

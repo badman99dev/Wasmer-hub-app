@@ -54,6 +54,7 @@ fun VideoPlayerScreen(
     movieId: String,
     slug: String = "",
     isLive: Boolean = false,
+    contentSource: String = "wasmer",
     viewModel: VideoPlayerViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -197,6 +198,18 @@ fun VideoPlayerScreen(
     }
 
     var playerError by remember { mutableStateOf<String?>(null) }
+    var zee5FallbackMessage by remember { mutableStateOf<String?>(null) }
+    var zee5RetryCount by remember { mutableStateOf(0) }
+    var isUsingFallback by remember { mutableStateOf(false) }
+
+    // ZEE5-specific: Check if URL is ZEE5 and extract proxied fallback
+    val isZee5Content = contentSource == "zee5"
+    val proxiedUrl = remember(streamUrl) {
+        if (isZee5Content && streamUrl.contains("zee5vod.akamaized.net")) {
+            // Convert direct URL to proxied URL
+            streamUrl.replace("https://zee5vod.akamaized.net", "https://zee5stream-proxy.badman993944.workers.dev/https://zee5vod.akamaized.net")
+        } else null
+    }
 
     var lowestQualityApplied by remember { mutableStateOf(false) }
 
@@ -232,10 +245,37 @@ fun VideoPlayerScreen(
                 }
             }
             override fun onPlayerError(error: PlaybackException) {
+                // ZEE5-specific: Handle false 404 errors with fallback
+                if (isZee5Content && zee5RetryCount < 2) {
+                    zee5RetryCount++
+                    // Retry with same URL first (ZEE5 CDN often fails on first few segments)
+                    exoPlayer?.let { player ->
+                        player.setMediaItem(MediaItem.fromUri(effectiveUrl))
+                        player.prepare()
+                        player.playWhenReady = true
+                    }
+                    return
+                }
+                
+                // After 2 retries, switch to proxied URL if available
+                if (isZee5Content && !isUsingFallback && proxiedUrl != null) {
+                    isUsingFallback = true
+                    zee5FallbackMessage = "ZEE5 source se fallback par shift hua"
+                    exoPlayer?.let { player ->
+                        player.setMediaItem(MediaItem.fromUri(proxiedUrl))
+                        player.prepare()
+                        player.playWhenReady = true
+                    }
+                    return
+                }
+                
                 playerError = error.message ?: "Playback error"
             }
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) playerError = null
+                if (isPlaying) {
+                    playerError = null
+                    zee5FallbackMessage = null
+                }
                 activity?.let {
                     val state = exoPlayer?.playbackState ?: Player.STATE_IDLE
                     ImmersiveMode.keepScreenOn(it, isPlaying || state == Player.STATE_BUFFERING)
@@ -288,6 +328,13 @@ fun VideoPlayerScreen(
         }
     }
 
+    // Show ZEE5 fallback toast
+    LaunchedEffect(zee5FallbackMessage) {
+        zee5FallbackMessage?.let { message ->
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
     BackHandler {
         activity?.let { ImmersiveMode.exit(it) }
         activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -317,6 +364,7 @@ fun VideoPlayerScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 TextButton(onClick = {
                     playerError = null
+                    zee5RetryCount = 0
                     exoPlayer?.let { player ->
                         player.setMediaItem(MediaItem.fromUri(effectiveUrl))
                         player.prepare()
