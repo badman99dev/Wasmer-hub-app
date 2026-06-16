@@ -723,9 +723,15 @@ private fun Zee5ShimmerContent() {
                                 shape = RoundedCornerShape(12.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            SkeletonLine(width = 140.dp, height = 12.dp)
+                            SkeletonBox(
+                                modifier = Modifier.width(140.dp).height(12.dp),
+                                shape = RoundedCornerShape(4.dp)
+                            )
                             Spacer(modifier = Modifier.height(3.dp))
-                            SkeletonLine(width = 90.dp, height = 10.dp)
+                            SkeletonBox(
+                                modifier = Modifier.width(90.dp).height(10.dp),
+                                shape = RoundedCornerShape(4.dp)
+                            )
                         }
                     }
                 }
