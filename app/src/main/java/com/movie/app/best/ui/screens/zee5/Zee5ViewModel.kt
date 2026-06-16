@@ -259,7 +259,7 @@ class Zee5ViewModel @Inject constructor(
         viewModelScope.launch {
             isLoadingEpisodes = true
             try {
-                episodePage++
+                episodePage = nextEpisodePage(episodePage)
                 loadEpisodesPage(seasonId, episodePage)
             } catch (e: Exception) {
                 hasMoreEpisodes = false
@@ -296,6 +296,10 @@ class Zee5ViewModel @Inject constructor(
         loadedEpisodes.addAll(newEpisodes)
         hasMoreEpisodes = newEpisodes.isNotEmpty() && loadedEpisodes.size < total
         _episodesState.value = Zee5EpisodesState.Success(loadedEpisodes.toList(), hasMoreEpisodes, seasonId)
+    }
+
+    private fun nextEpisodePage(current: Int): Int {
+        return if (current == 0) 2 else current + 1
     }
 
     fun search(query: String) {

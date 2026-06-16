@@ -78,7 +78,7 @@ class Zee5CollectionViewModel @Inject constructor(
             isLoadingMore = true
             _uiState.value = _uiState.value.copy(isLoadingMore = true)
             try {
-                currentPage++
+                currentPage = nextCollectionPage(currentPage)
                 val response = apiService.getCollection(
                     id = collectionId,
                     page = currentPage,
@@ -123,6 +123,10 @@ class Zee5CollectionViewModel @Inject constructor(
     private fun hasMoreItems(items: List<Zee5Item>, total: Int): Boolean {
         if (total <= 0) return false
         return items.size < total
+    }
+
+    private fun nextCollectionPage(current: Int): Int {
+        return if (current == 0) 2 else current + 1
     }
 
     companion object {

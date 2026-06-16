@@ -120,7 +120,7 @@ class Zee5WatchViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoadingMore = true) }
             try {
-                episodePage++
+                episodePage = nextEpisodePage(episodePage)
                 val response = apiService.getEpisodes(
                     seasonId = seasonId,
                     limit = 25,
@@ -155,6 +155,10 @@ class Zee5WatchViewModel @Inject constructor(
                 _state.update { it.copy(isLoadingMore = false, hasMoreEpisodes = false) }
             }
         }
+    }
+
+    private fun nextEpisodePage(current: Int): Int {
+        return if (current == 0) 2 else current + 1
     }
 
     fun onEpisodeClick(episode: Zee5Item) {
