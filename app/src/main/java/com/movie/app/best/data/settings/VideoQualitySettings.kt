@@ -35,7 +35,7 @@ object VideoQualitySettings {
     fun isHigh(): Boolean = cachedMode == MODE_HIGH
     fun isDataSaving(): Boolean = cachedMode == MODE_DATA_SAVING
 
-    fun applyTo(builder: DefaultTrackSelector.ParametersBuilder): DefaultTrackSelector.ParametersBuilder {
+    fun applyTo(builder: DefaultTrackSelector.Parameters.Builder): DefaultTrackSelector.Parameters.Builder {
         return when (cachedMode) {
             MODE_HIGH -> builder
                 .setMaxVideoSize(1920, 1080)
