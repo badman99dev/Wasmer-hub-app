@@ -17,11 +17,13 @@ import javax.inject.Inject
 
 data class Zee5WatchState(
     val isLoading: Boolean = true,
+    val isLoadingMore: Boolean = false,
     val error: String? = null,
     val detail: Zee5DetailResponse? = null,
     val seasons: List<Zee5Season> = emptyList(),
     val selectedSeasonId: String? = null,
     val episodes: List<Zee5Item> = emptyList(),
+    val hasMoreEpisodes: Boolean = true,
     val currentEpisode: Zee5Item? = null,
     val currentM3u8: String? = null,
     val isPlaying: Boolean = false
@@ -37,6 +39,8 @@ class Zee5WatchViewModel @Inject constructor(
     private val epId: String? = savedStateHandle["epId"]
 
     private val _state = MutableStateFlow(Zee5WatchState())
+    private val seenEpisodeIds = mutableSetOf<String>()
+    private var episodePage = 0
     val state: StateFlow<Zee5WatchState> = _state.asStateFlow()
 
     init {
@@ -46,6 +50,8 @@ class Zee5WatchViewModel @Inject constructor(
     private fun loadContent() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
+            seenEpisodeIds.clear()
+            episodePage = 0
             try {
                 val detail = apiService.getDetails(contentId)
                 _state.update { it.copy(detail = detail) }
@@ -55,12 +61,16 @@ class Zee5WatchViewModel @Inject constructor(
                     val seasons = seasonData.seasons ?: emptyList()
                     val latestSeason = seasons.lastOrNull()
                     val latestSeasonId = latestSeason?.id
+                    val eps = latestSeason?.episodes ?: latestSeason?.episode ?: emptyList()
+                    eps.mapNotNull { it.id }.forEach { seenEpisodeIds.add(it) }
+                    val hasMore = eps.size < (latestSeason?.totalEpisodes ?: eps.size)
 
                     _state.update {
                         it.copy(
                             seasons = seasons,
                             selectedSeasonId = latestSeasonId,
-                            episodes = latestSeason?.episodes ?: latestSeason?.episode ?: emptyList(),
+                            episodes = eps,
+                            hasMoreEpisodes = hasMore,
                             isLoading = false
                         )
                     }
@@ -96,7 +106,55 @@ class Zee5WatchViewModel @Inject constructor(
     fun selectSeason(seasonId: String) {
         val season = _state.value.seasons.find { it.id == seasonId } ?: return
         val eps = season.episodes ?: season.episode ?: emptyList()
-        _state.update { it.copy(selectedSeasonId = seasonId, episodes = eps) }
+        seenEpisodeIds.clear()
+        episodePage = 0
+        eps.mapNotNull { it.id }.forEach { seenEpisodeIds.add(it) }
+        val hasMore = eps.size < (season.totalEpisodes ?: eps.size)
+        _state.update { it.copy(selectedSeasonId = seasonId, episodes = eps, hasMoreEpisodes = hasMore, isLoadingMore = false) }
+    }
+
+    fun loadMoreEpisodes() {
+        val seasonId = _state.value.selectedSeasonId ?: return
+        if (_state.value.isLoadingMore || !_state.value.hasMoreEpisodes) return
+
+        viewModelScope.launch {
+            _state.update { it.copy(isLoadingMore = true) }
+            try {
+                episodePage++
+                val response = apiService.getEpisodes(
+                    seasonId = seasonId,
+                    limit = 25,
+                    page = episodePage
+                )
+                val eps = response.items
+                    ?: response.episode
+                    ?: response.buckets?.flatMap { it.items ?: emptyList() }
+                    ?: emptyList()
+                val total = response.total ?: 0
+
+                val newEpisodes = eps.filter { item ->
+                    val id = item.id
+                    if (id == null || seenEpisodeIds.contains(id)) {
+                        false
+                    } else {
+                        seenEpisodeIds.add(id)
+                        true
+                    }
+                }
+
+                val combinedEpisodes = _state.value.episodes + newEpisodes
+                val hasMore = newEpisodes.isNotEmpty() && combinedEpisodes.size < total
+                _state.update {
+                    it.copy(
+                        episodes = combinedEpisodes,
+                        hasMoreEpisodes = hasMore,
+                        isLoadingMore = false
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoadingMore = false, hasMoreEpisodes = false) }
+            }
+        }
     }
 
     fun onEpisodeClick(episode: Zee5Item) {

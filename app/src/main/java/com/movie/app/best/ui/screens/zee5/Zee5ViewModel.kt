@@ -289,7 +289,10 @@ class Zee5ViewModel @Inject constructor(
             limit = EPISODE_PAGE_LIMIT,
             page = page
         )
-        val eps = response.items ?: emptyList()
+        val eps = response.items
+            ?: response.episode
+            ?: response.buckets?.flatMap { it.items ?: emptyList() }
+            ?: emptyList()
         val total = response.total ?: 0
 
         val newEpisodes = eps.filter { item ->
@@ -303,7 +306,7 @@ class Zee5ViewModel @Inject constructor(
         }
 
         loadedEpisodes.addAll(newEpisodes)
-        hasMoreEpisodes = loadedEpisodes.size < total
+        hasMoreEpisodes = newEpisodes.isNotEmpty() && loadedEpisodes.size < total
         _episodesState.value = Zee5EpisodesState.Success(loadedEpisodes.toList(), hasMoreEpisodes, seasonId)
     }
 

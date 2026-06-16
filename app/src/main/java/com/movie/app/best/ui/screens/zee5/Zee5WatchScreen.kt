@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +71,7 @@ import com.movie.app.best.data.debug.DebugInterceptor
 import com.movie.app.best.data.debug.Zee5False404Interceptor
 import com.movie.app.best.data.model.Zee5Item
 import com.movie.app.best.data.settings.VideoQualitySettings
+import com.movie.app.best.ui.components.GlassBadge
 import com.movie.app.best.ui.screens.player.MediaPlayerScreen
 import com.movie.app.best.ui.theme.WasmerRed
 import com.movie.app.best.util.ImmersiveMode
@@ -84,6 +87,22 @@ fun Zee5WatchScreen(
     val activity = context as? android.app.Activity
     val lifecycleOwner = LocalLifecycleOwner.current
     var isFullscreen by remember { mutableStateOf(false) }
+    val episodeListState = rememberLazyListState()
+
+    val shouldLoadMoreEpisodes = remember {
+        derivedStateOf {
+            val layoutInfo = episodeListState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItem >= totalItems - 3
+        }
+    }
+
+    LaunchedEffect(shouldLoadMoreEpisodes.value) {
+        if (shouldLoadMoreEpisodes.value) {
+            viewModel.loadMoreEpisodes()
+        }
+    }
 
     val trackSelector = remember {
         DefaultTrackSelector(context).apply {
@@ -405,6 +424,7 @@ fun Zee5WatchScreen(
             }
         } else {
             LazyColumn(
+                state = episodeListState,
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
@@ -415,6 +435,33 @@ fun Zee5WatchScreen(
                         onPlayClick = { viewModel.onEpisodeClick(episode) }
                     )
                 }
+
+                if (state.isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
+
+                if (!state.hasMoreEpisodes && state.episodes.isNotEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            GlassBadge(text = "Reached to bottom")
+                        }
+                    }
+                }
+
                 item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
