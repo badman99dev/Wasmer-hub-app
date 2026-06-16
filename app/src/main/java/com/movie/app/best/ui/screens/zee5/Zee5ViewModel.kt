@@ -201,8 +201,11 @@ class Zee5ViewModel @Inject constructor(
             _detailState.value = Zee5DetailState.Loading
             seenItemIds.clear()
             loadedEpisodes.clear()
+            currentLoadedShowId = null
+            currentShowOnAir = false
             try {
                 val detail = apiService.getDetails(contentId)
+                currentShowOnAir = detail.onAir?.toString()?.equals("true", ignoreCase = true) ?: false
                 _detailState.value = Zee5DetailState.Success(detail)
             } catch (e: Exception) {
                 _detailState.value = Zee5DetailState.Error(e.message ?: "Failed to load details")
@@ -212,11 +215,17 @@ class Zee5ViewModel @Inject constructor(
 
     private val loadedEpisodes = mutableListOf<Zee5Item>()
     private var loadedSeasonId: String? = null
+    private var currentLoadedShowId: String? = null
+    private var currentShowOnAir = false
     private var episodePage = 0
     private var isLoadingEpisodes = false
     private var hasMoreEpisodes = true
 
     fun loadEpisodesFromSeasons(showId: String) {
+        // Guard against re-loading the same show when navigating back from player
+        if (showId == currentLoadedShowId && _episodesState.value is Zee5EpisodesState.Success) return
+        currentLoadedShowId = showId
+
         viewModelScope.launch {
             loadedEpisodes.clear()
             seenItemIds.clear()
@@ -294,8 +303,22 @@ class Zee5ViewModel @Inject constructor(
         }
 
         loadedEpisodes.addAll(newEpisodes)
-        hasMoreEpisodes = newEpisodes.isNotEmpty() && loadedEpisodes.size < total
+        val sortedEpisodes = sortEpisodes(loadedEpisodes)
+        loadedEpisodes.clear()
+        loadedEpisodes.addAll(sortedEpisodes)
+
+        // If API returns total=0/null, infer hasMore from page fullness
+        val effectiveTotal = if (total > 0) total else if (newEpisodes.size >= EPISODE_PAGE_LIMIT) Int.MAX_VALUE else loadedEpisodes.size
+        hasMoreEpisodes = newEpisodes.isNotEmpty() && loadedEpisodes.size < effectiveTotal
         _episodesState.value = Zee5EpisodesState.Success(loadedEpisodes.toList(), hasMoreEpisodes, seasonId)
+    }
+
+    private fun sortEpisodes(episodes: List<Zee5Item>): List<Zee5Item> {
+        return if (currentShowOnAir) {
+            episodes.sortedByDescending { it.episodeNumber ?: 0 }
+        } else {
+            episodes.sortedBy { it.episodeNumber ?: 0 }
+        }
     }
 
     private fun nextEpisodePage(current: Int): Int {

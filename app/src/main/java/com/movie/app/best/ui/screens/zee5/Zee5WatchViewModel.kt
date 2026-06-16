@@ -1,5 +1,6 @@
 package com.movie.app.best.ui.screens.zee5
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -41,6 +42,7 @@ class Zee5WatchViewModel @Inject constructor(
     private val _state = MutableStateFlow(Zee5WatchState())
     private val seenEpisodeIds = mutableSetOf<String>()
     private var episodePage = 0
+    private var isOnAir = false
     val state: StateFlow<Zee5WatchState> = _state.asStateFlow()
 
     init {
@@ -54,7 +56,9 @@ class Zee5WatchViewModel @Inject constructor(
             episodePage = 0
             try {
                 val detail = apiService.getDetails(contentId)
+                isOnAir = detail.onAir?.toString()?.equals("true", ignoreCase = true) ?: false
                 _state.update { it.copy(detail = detail) }
+                Log.d("Zee5Watch", "loadContent contentId=$contentId isTvShow=${detail.isTvShow} onAir=$isOnAir")
 
                 if (detail.isTvShow) {
                     val seasonData = apiService.getSeasons(contentId)
@@ -64,33 +68,45 @@ class Zee5WatchViewModel @Inject constructor(
                     val eps = latestSeason?.episodes ?: latestSeason?.episode ?: emptyList()
                     eps.mapNotNull { it.id }.forEach { seenEpisodeIds.add(it) }
                     val hasMore = eps.size < (latestSeason?.totalEpisodes ?: eps.size)
+                    val sortedEps = sortEpisodes(eps)
 
                     _state.update {
                         it.copy(
                             seasons = seasons,
                             selectedSeasonId = latestSeasonId,
-                            episodes = eps,
+                            episodes = sortedEps,
                             hasMoreEpisodes = hasMore,
                             isLoading = false
                         )
                     }
+                    Log.d("Zee5Watch", "episodes loaded: ${sortedEps.size}, hasMore=$hasMore, first=${sortedEps.firstOrNull()?.episodeNumber}, last=${sortedEps.lastOrNull()?.episodeNumber}")
 
                     if (epId != null) {
                         val ep = _state.value.episodes.find { it.id == epId }
                         if (ep != null) {
                             onEpisodeClick(ep)
                         } else {
+                            var foundInSeason: com.movie.app.best.data.model.Zee5Season? = null
+                            var foundEpisode: Zee5Item? = null
                             for (season in seasons) {
-                                val found = (season.episodes ?: season.episode ?: emptyList()).find { it.id == epId }
-                                if (found != null) {
-                                    selectSeason(season.id ?: latestSeasonId ?: "")
-                                    onEpisodeClick(found)
+                                foundEpisode = (season.episodes ?: season.episode ?: emptyList()).find { it.id == epId }
+                                if (foundEpisode != null) {
+                                    foundInSeason = season
                                     break
                                 }
+                            }
+                            if (foundEpisode != null && foundInSeason != null) {
+                                selectSeason(foundInSeason.id ?: latestSeasonId ?: "")
+                                onEpisodeClick(foundEpisode)
+                            } else {
+                                Log.w("Zee5Watch", "epId=$epId not found in any season, falling back to first")
+                                val firstEp = _state.value.episodes.firstOrNull()
+                                if (firstEp != null) onEpisodeClick(firstEp)
                             }
                         }
                     } else {
                         val firstEp = _state.value.episodes.firstOrNull()
+                        Log.d("Zee5Watch", "auto-play firstEp=${firstEp?.id} epNum=${firstEp?.episodeNumber}")
                         if (firstEp != null) onEpisodeClick(firstEp)
                     }
                 } else {
@@ -98,6 +114,7 @@ class Zee5WatchViewModel @Inject constructor(
                     playContent(contentId)
                 }
             } catch (e: Exception) {
+                Log.e("Zee5Watch", "loadContent failed", e)
                 _state.update { it.copy(isLoading = false, error = e.message ?: "Failed to load") }
             }
         }
@@ -110,7 +127,8 @@ class Zee5WatchViewModel @Inject constructor(
         episodePage = 0
         eps.mapNotNull { it.id }.forEach { seenEpisodeIds.add(it) }
         val hasMore = eps.size < (season.totalEpisodes ?: eps.size)
-        _state.update { it.copy(selectedSeasonId = seasonId, episodes = eps, hasMoreEpisodes = hasMore, isLoadingMore = false) }
+        val sortedEps = sortEpisodes(eps)
+        _state.update { it.copy(selectedSeasonId = seasonId, episodes = sortedEps, hasMoreEpisodes = hasMore, isLoadingMore = false) }
     }
 
     fun loadMoreEpisodes() {
@@ -142,8 +160,9 @@ class Zee5WatchViewModel @Inject constructor(
                     }
                 }
 
-                val combinedEpisodes = _state.value.episodes + newEpisodes
-                val hasMore = newEpisodes.isNotEmpty() && combinedEpisodes.size < total
+                val combinedEpisodes = sortEpisodes(_state.value.episodes + newEpisodes)
+                val effectiveTotal = if (total > 0) total else if (newEpisodes.size >= 25) Int.MAX_VALUE else combinedEpisodes.size
+                val hasMore = newEpisodes.isNotEmpty() && combinedEpisodes.size < effectiveTotal
                 _state.update {
                     it.copy(
                         episodes = combinedEpisodes,
@@ -151,7 +170,9 @@ class Zee5WatchViewModel @Inject constructor(
                         isLoadingMore = false
                     )
                 }
+                Log.d("Zee5Watch", "loadMoreEpisodes page=$episodePage new=${newEpisodes.size} totalLoaded=${combinedEpisodes.size} hasMore=$hasMore")
             } catch (e: Exception) {
+                Log.e("Zee5Watch", "loadMoreEpisodes failed page=$episodePage", e)
                 _state.update { it.copy(isLoadingMore = false, hasMoreEpisodes = false) }
             }
         }
@@ -159,6 +180,14 @@ class Zee5WatchViewModel @Inject constructor(
 
     private fun nextEpisodePage(current: Int): Int {
         return if (current == 0) 2 else current + 1
+    }
+
+    private fun sortEpisodes(episodes: List<Zee5Item>): List<Zee5Item> {
+        return if (isOnAir) {
+            episodes.sortedByDescending { it.episodeNumber ?: 0 }
+        } else {
+            episodes.sortedBy { it.episodeNumber ?: 0 }
+        }
     }
 
     fun onEpisodeClick(episode: Zee5Item) {
@@ -171,14 +200,17 @@ class Zee5WatchViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(currentM3u8 = null) }
             try {
+                Log.d("Zee5Watch", "playContent id=$id")
                 val playback = apiService.getPlayback(id)
                 val url = playback.effectiveStreamUrl
+                Log.d("Zee5Watch", "playback url=${url != null} isDrm=${playback.isDrm}")
                 if (url != null) {
                     _state.update { it.copy(currentM3u8 = url, isPlaying = true) }
                 } else {
                     _state.update { it.copy(error = "No stream URL available") }
                 }
             } catch (e: Exception) {
+                Log.e("Zee5Watch", "playContent failed id=$id", e)
                 _state.update { it.copy(error = e.message ?: "Failed to load stream") }
             }
         }

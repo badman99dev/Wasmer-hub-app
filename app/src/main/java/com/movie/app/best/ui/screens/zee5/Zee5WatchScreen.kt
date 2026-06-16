@@ -314,10 +314,15 @@ fun Zee5WatchScreen(
                         Text("Loading...", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
                     }
                 }
-            } else if (playerError != null) {
+            } else if (playerError != null || (state.error != null && state.currentM3u8 == null)) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(playerError ?: "Error", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Text(
+                            playerError ?: state.error ?: "Error",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 13.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         TextButton(onClick = {
                             playerError = null
@@ -326,7 +331,7 @@ fun Zee5WatchScreen(
                                 exoPlayer?.setMediaItem(MediaItem.fromUri(url))
                                 exoPlayer?.prepare()
                                 exoPlayer?.playWhenReady = true
-                            }
+                            } ?: state.currentEpisode?.let { viewModel.onEpisodeClick(it) }
                         }) { Text("Retry", color = WasmerRed) }
                     }
                 }
@@ -402,20 +407,7 @@ fun Zee5WatchScreen(
             }
         }
 
-        if (state.error != null && state.currentM3u8 == null) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(state.error ?: "Unknown error", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    TextButton(onClick = { viewModel.onEpisodeClick(state.currentEpisode ?: return@TextButton) }) {
-                        Text("Retry", color = WasmerRed)
-                    }
-                }
-            }
-        } else if (state.episodes.isEmpty() && !state.isLoading) {
+        if (state.episodes.isEmpty() && !state.isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(32.dp),
                 contentAlignment = Alignment.Center
