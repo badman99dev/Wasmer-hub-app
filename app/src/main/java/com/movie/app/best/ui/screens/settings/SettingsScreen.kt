@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -65,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.movie.app.best.data.debug.NetworkLogger
 import com.movie.app.best.data.settings.ModerationSettings
+import com.movie.app.best.data.settings.VideoQualitySettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -87,6 +89,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     var moderationEnabled by remember { mutableStateOf(ModerationSettings.isEnabled(context)) }
     var moderationMode by remember { mutableStateOf(ModerationSettings.getMode(context)) }
+    var videoQualityMode by remember { mutableStateOf(VideoQualitySettings.getMode(context)) }
 
     LaunchedEffect(debugEnabled) {
         NetworkLogger.setEnabled(debugEnabled)
@@ -273,6 +276,67 @@ fun SettingsScreen(
                         moderationMode = ModerationSettings.MODE_HIDE
                         ModerationSettings.setMode(context, ModerationSettings.MODE_HIDE)
                     }
+                }
+            }
+
+            SettingsSectionTitle("Video Quality")
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 3.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.04f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Videocam,
+                        contentDescription = null,
+                        tint = Color(0xFFE50914),
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
+                        Text(
+                            text = "Video Quality",
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            text = when (videoQualityMode) {
+                                VideoQualitySettings.MODE_HIGH -> "Up to 1080p for best quality"
+                                VideoQualitySettings.MODE_DATA_SAVING -> "Lowest quality to save data"
+                                else -> "Adaptive quality based on network"
+                            },
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                PlayerOptionChip("Auto", videoQualityMode == VideoQualitySettings.MODE_AUTO) {
+                    videoQualityMode = VideoQualitySettings.MODE_AUTO
+                    VideoQualitySettings.setMode(context, VideoQualitySettings.MODE_AUTO)
+                }
+                PlayerOptionChip("High", videoQualityMode == VideoQualitySettings.MODE_HIGH) {
+                    videoQualityMode = VideoQualitySettings.MODE_HIGH
+                    VideoQualitySettings.setMode(context, VideoQualitySettings.MODE_HIGH)
+                }
+                PlayerOptionChip("Data Saving", videoQualityMode == VideoQualitySettings.MODE_DATA_SAVING) {
+                    videoQualityMode = VideoQualitySettings.MODE_DATA_SAVING
+                    VideoQualitySettings.setMode(context, VideoQualitySettings.MODE_DATA_SAVING)
                 }
             }
 

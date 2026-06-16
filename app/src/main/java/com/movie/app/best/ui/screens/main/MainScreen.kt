@@ -98,8 +98,6 @@ fun MainContent() {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    val hasNetworkError by NetworkMonitor.hasNetworkError.collectAsState()
-
     val connectivityManager = remember {
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     }
@@ -199,7 +197,7 @@ fun MainContent() {
                 )
 
                 AnimatedVisibility(
-                    visible = hasNetworkError,
+                    visible = !isConnected,
                     enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(tween(300)),
                     exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(tween(200))
                 ) {

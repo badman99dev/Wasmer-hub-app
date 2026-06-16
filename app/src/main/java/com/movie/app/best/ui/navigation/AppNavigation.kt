@@ -353,6 +353,18 @@ fun AppNavigation(
         }
 
         composable(
+            route = "zee5_collection/{collectionId}?title={title}",
+            arguments = listOf(
+                navArgument("collectionId") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
+        ) { backStackEntry ->
+            com.movie.app.best.ui.screens.zee5.Zee5CollectionScreen(
+                navController = navController
+            )
+        }
+
+        composable(
             route = "zee5_watch/{contentId}?epId={epId}",
             arguments = listOf(
                 navArgument("contentId") { type = NavType.StringType },

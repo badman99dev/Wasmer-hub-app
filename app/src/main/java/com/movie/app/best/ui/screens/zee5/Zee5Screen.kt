@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -172,23 +173,42 @@ fun Zee5Screen(
                                     item.id?.let { id ->
                                         navController.navigate("zee5_detail/${id}")
                                     }
+                                },
+                                onSeeAllClick = {
+                                    val collectionId = bucket.id ?: bucket.collectionId
+                                    if (!collectionId.isNullOrBlank()) {
+                                        navController.navigate(
+                                            "zee5_collection/${collectionId}?title=${bucket.title ?: ""}"
+                                        )
+                                    }
                                 }
                             )
                         }
 
-                        // Load more indicator at bottom
-                        item {
-                            if (currentTab == Zee5Tab.FREE && state.isLoadMore) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = WasmerRed,
-                                        modifier = Modifier.size(24.dp)
-                                    )
+                        // Load more / end indicator at bottom
+                        if (currentTab == Zee5Tab.FREE) {
+                            item {
+                                if (state.isLoadMore) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            color = WasmerRed,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                } else if (!state.hasMore && state.buckets.isNotEmpty()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        GlassBadge(text = "Reached to bottom")
+                                    }
                                 }
                             }
                         }
@@ -463,8 +483,12 @@ fun Zee5HeroCarousel(
 @Composable
 fun Zee5Rail(
     bucket: Zee5Bucket,
-    onItemClick: (Zee5Item) -> Unit
+    onItemClick: (Zee5Item) -> Unit,
+    onSeeAllClick: () -> Unit = {}
 ) {
+    val items = bucket.items ?: emptyList()
+    val showSeeAll = (bucket.totalItems ?: 0) > items.size
+
     Column(modifier = Modifier.padding(vertical = 10.dp)) {
         // Rail title with See All
         Row(
@@ -481,27 +505,29 @@ fun Zee5Rail(
                 fontWeight = FontWeight.Bold
             )
 
-            Row(
-                modifier = Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {}
-                ),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "See All",
-                    color = WasmerRed,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.width(2.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = WasmerRed,
-                    modifier = Modifier.size(16.dp)
-                )
+            if (showSeeAll) {
+                Row(
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onSeeAllClick
+                    ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "See All",
+                        color = WasmerRed,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = WasmerRed,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
 
@@ -511,7 +537,7 @@ fun Zee5Rail(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(bucket.items ?: emptyList()) { item ->
+            items(items) { item ->
                 Zee5Card(item = item, onClick = { onItemClick(item) })
             }
         }
@@ -521,9 +547,10 @@ fun Zee5Rail(
 @Composable
 fun Zee5Card(
     item: Zee5Item,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    width: Dp? = 160.dp
 ) {
-    val cardWidth = 160.dp
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -538,9 +565,11 @@ fun Zee5Card(
         else -> null
     }
 
+    val sizeModifier = if (width != null) Modifier.width(width) else Modifier.fillMaxWidth()
+
     Column(
-        modifier = Modifier
-            .width(cardWidth)
+        modifier = modifier
+            .then(sizeModifier)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -553,7 +582,7 @@ fun Zee5Card(
     ) {
         Box(
             modifier = Modifier
-                .width(cardWidth)
+                .then(sizeModifier)
                 .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(12.dp))
                 .background(WasmerCardDark)
@@ -638,7 +667,7 @@ fun Zee5Card(
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(cardWidth)
+            modifier = Modifier.then(sizeModifier)
         )
 
         val genreText = item.genres?.firstOrNull()?.value
@@ -651,7 +680,7 @@ fun Zee5Card(
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.width(cardWidth)
+                modifier = Modifier.then(sizeModifier)
             )
         }
     }

@@ -60,6 +60,7 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.movie.app.best.data.debug.DebugInterceptor
 import com.movie.app.best.data.debug.Zee5False404Interceptor
+import com.movie.app.best.data.settings.VideoQualitySettings
 import com.movie.app.best.ui.screens.player.MediaPlayerScreen
 import com.movie.app.best.ui.screens.serieswatch.components.EpisodeCard
 import com.movie.app.best.ui.screens.serieswatch.components.LanguageSelector
@@ -83,7 +84,9 @@ fun SeriesWatchScreen(
 
     val trackSelector = remember {
         DefaultTrackSelector(context).apply {
-            setParameters(buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true))
+            val params = buildUponParameters()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            setParameters(VideoQualitySettings.applyTo(params).build())
         }
     }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }

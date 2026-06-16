@@ -28,10 +28,6 @@ class DebugInterceptor : Interceptor {
 
             NetworkLogger.logResponse(response.code, url, respHeaders, bodyPreview, tookMs)
 
-            if (!response.isSuccessful && response.code >= 500) {
-                NetworkMonitor.reportFailure()
-            }
-
             response
         } catch (e: Exception) {
             NetworkLogger.logError(url, "${e.javaClass.simpleName}: ${e.message}")

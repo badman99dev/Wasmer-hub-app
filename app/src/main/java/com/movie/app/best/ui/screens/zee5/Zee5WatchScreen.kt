@@ -68,6 +68,7 @@ import coil.compose.AsyncImage
 import com.movie.app.best.data.debug.DebugInterceptor
 import com.movie.app.best.data.debug.Zee5False404Interceptor
 import com.movie.app.best.data.model.Zee5Item
+import com.movie.app.best.data.settings.VideoQualitySettings
 import com.movie.app.best.ui.screens.player.MediaPlayerScreen
 import com.movie.app.best.ui.theme.WasmerRed
 import com.movie.app.best.util.ImmersiveMode
@@ -86,7 +87,9 @@ fun Zee5WatchScreen(
 
     val trackSelector = remember {
         DefaultTrackSelector(context).apply {
-            setParameters(buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true))
+            val params = buildUponParameters()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            setParameters(VideoQualitySettings.applyTo(params).build())
         }
     }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }

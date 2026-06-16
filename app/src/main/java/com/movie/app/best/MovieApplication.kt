@@ -1,6 +1,7 @@
 package com.movie.app.best
 
 import android.app.Application
+import com.movie.app.best.data.settings.VideoQualitySettings
 import dagger.hilt.android.HiltAndroidApp
 import org.acra.config.toast
 import org.acra.config.dialog
@@ -11,6 +12,8 @@ import org.acra.data.StringFormat
 class MovieApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+
+        VideoQualitySettings.initCache(this)
 
         Thread { CrashPasteManager.ensurePasteExists(this) }.start()
 

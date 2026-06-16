@@ -39,6 +39,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.movie.app.best.data.debug.DebugInterceptor
 import com.movie.app.best.data.debug.Zee5False404Interceptor
+import com.movie.app.best.data.settings.VideoQualitySettings
 import com.movie.app.best.util.ImmersiveMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -84,7 +85,9 @@ fun VideoPlayerScreen(
 
     val trackSelector = remember {
         DefaultTrackSelector(context).apply {
-            setParameters(buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true))
+            val params = buildUponParameters()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            setParameters(VideoQualitySettings.applyTo(params).build())
         }
     }
 

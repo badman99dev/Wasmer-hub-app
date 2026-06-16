@@ -33,6 +33,7 @@ import coil.request.ImageRequest
 import com.movie.app.best.data.model.Zee5DetailResponse
 import com.movie.app.best.data.model.Zee5Item
 import com.movie.app.best.data.model.Zee5Season
+import com.movie.app.best.ui.components.GlassBadge
 import com.movie.app.best.ui.theme.WasmerBlack
 import com.movie.app.best.ui.theme.WasmerCardDark
 import com.movie.app.best.ui.theme.WasmerRed
@@ -52,6 +53,16 @@ fun Zee5DetailScreen(
 
     var selectedSeasonId by remember { mutableStateOf<String?>(null) }
     val seasonsList = remember { mutableStateOf<List<com.movie.app.best.data.model.Zee5Season>>(emptyList()) }
+    val listState = rememberLazyListState()
+
+    val shouldLoadMoreEpisodes = remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItem >= totalItems - 3
+        }
+    }
 
     LaunchedEffect(contentId) {
         viewModel.loadDetails(contentId)
@@ -72,6 +83,15 @@ fun Zee5DetailScreen(
                         selectedSeasonId = seasonData.seasons.last()?.id
                     }
                 } catch(_: Exception) {}
+            }
+        }
+    }
+
+    LaunchedEffect(shouldLoadMoreEpisodes.value) {
+        if (shouldLoadMoreEpisodes.value) {
+            val state = episodesState
+            if (state is Zee5EpisodesState.Success && state.hasMore) {
+                viewModel.loadMoreEpisodes()
             }
         }
     }
@@ -112,6 +132,7 @@ fun Zee5DetailScreen(
             }
             is Zee5DetailState.Success -> {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize()
                 ) {
                     // Hero/Poster Section
@@ -161,26 +182,58 @@ fun Zee5DetailScreen(
                     // Episodes List (always show for TV shows)
                     if (detail?.isTvShow == true) {
                         item {
-                            when (episodesState) {
-                                is Zee5EpisodesState.Loading -> {
+                            Text(
+                                text = "Episodes",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        when (episodesState) {
+                            is Zee5EpisodesState.Loading -> {
+                                item {
                                     Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                                         CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(24.dp))
                                     }
                                 }
-                                is Zee5EpisodesState.Error -> {
+                            }
+                            is Zee5EpisodesState.Error -> {
+                                item {
                                     Text(text = (episodesState as Zee5EpisodesState.Error).message, color = WasmerSubText, fontSize = 12.sp, modifier = Modifier.padding(16.dp))
                                 }
-                                is Zee5EpisodesState.Success -> {
-                                    val episodes = (episodesState as Zee5EpisodesState.Success).episodes
-                                    if (episodes.isNotEmpty()) {
-                                        Zee5EpisodesList(
-                                            episodes = episodes,
-                                            onEpisodeClick = { episode ->
-                                                episode.id?.let { epId ->
-                                                    navController.navigate("zee5_watch/${contentId}?epId=${epId}")
-                                                }
+                            }
+                            is Zee5EpisodesState.Success -> {
+                                val episodes = (episodesState as Zee5EpisodesState.Success).episodes
+                                val hasMore = (episodesState as Zee5EpisodesState.Success).hasMore
+                                items(episodes, key = { it.id ?: it.hashCode() }) { episode ->
+                                    Zee5EpisodeCard(
+                                        episode = episode,
+                                        onClick = {
+                                            episode.id?.let { epId ->
+                                                navController.navigate("zee5_watch/${contentId}?epId=${epId}")
                                             }
-                                        )
+                                        }
+                                    )
+                                }
+                                if (hasMore) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(24.dp))
+                                        }
+                                    }
+                                }
+                                if (!hasMore && episodes.isNotEmpty()) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            GlassBadge(text = "Reached to bottom")
+                                        }
                                     }
                                 }
                             }
