@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.C
 import androidx.media3.common.Player
-import androidx.media3.common.TrackSelectionOverride
 
 @Composable
 fun BoxScope.QualitySelectorView(
@@ -28,6 +27,18 @@ fun BoxScope.QualitySelectorView(
     var selectedHeight by rememberSaveable { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
+        // Detect if player is in auto mode
+        val params = player.trackSelectionParameters
+        val hasVideoOverride = params.overrides.values.any { it.type == C.TRACK_TYPE_VIDEO }
+        val isAuto = !hasVideoOverride &&
+                !params.disabledTrackTypes.contains(C.TRACK_TYPE_VIDEO) &&
+                params.maxVideoHeight == Int.MAX_VALUE &&
+                params.minVideoHeight == 0
+        if (isAuto) {
+            selectedHeight = 0
+            return@LaunchedEffect
+        }
+
         // Detect currently selected quality from player
         val groups = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
         for (group in groups) {
@@ -91,23 +102,16 @@ private fun setAutoMode(player: Player) {
     player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
         .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
         .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
+        .setMinVideoSize(0, 0)
+        .setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE)
         .build()
 }
 
 private fun setQualityByOverride(player: Player, height: Int) {
-    val videoGroups = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
-    for (group in videoGroups) {
-        for (i in 0 until group.length) {
-            val fmt = group.getTrackFormat(i)
-            if (fmt.height == height) {
-                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                    .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
-                    .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, listOf(i)))
-                    .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
-                    .build()
-                player.seekTo(player.currentPosition)
-                return
-            }
-        }
-    }
+    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+        .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+        .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
+        .setMinVideoSize(0, height)
+        .setMaxVideoSize(Int.MAX_VALUE, height)
+        .build()
 }
