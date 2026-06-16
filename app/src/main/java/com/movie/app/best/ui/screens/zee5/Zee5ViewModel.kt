@@ -38,7 +38,7 @@ sealed class Zee5EpisodesState {
 }
 
 enum class Zee5Tab {
-    ALL, TV_SHOWS, MOVIES, FREE
+    ALL, TV_SHOWS, MOVIES
 }
 
 @HiltViewModel
@@ -58,16 +58,19 @@ class Zee5ViewModel @Inject constructor(
     private val _currentTab = MutableStateFlow(Zee5Tab.ALL)
     val currentTab: StateFlow<Zee5Tab> = _currentTab.asStateFlow()
 
-    // Pagination state
-    private var free5Page = 0
-    private var isLoadingMore = false
-    private var hasMoreFree5 = true
+    // Pagination state for merged ALL tab (homepage + free5)
     private val loadedBuckets = mutableListOf<Zee5Bucket>()
+    private val seenBucketIds = mutableSetOf<String>()
     private val seenItemIds = mutableSetOf<String>()
+    private var isLoadingMore = false
+    private var hasMoreBuckets = true
+    private var homePageIndex = 0
+    private var free5PageIndex = 0
+    private val homePageQueue = listOf(0, 2)
+    private val free5PageQueue = listOf(0, 2)
 
     // Collection IDs for different tabs
     companion object {
-        const val FREE5_COLLECTION = "0-8-5011"
         const val MOVIES_COLLECTION = "0-8-5016"
         const val TV_SHOWS_COLLECTION = "0-8-5794"
         const val HOME_COLLECTION = "0-8-homepage"
@@ -81,12 +84,18 @@ class Zee5ViewModel @Inject constructor(
     fun switchTab(tab: Zee5Tab) {
         if (_currentTab.value == tab) return
         _currentTab.value = tab
-        free5Page = 0
-        hasMoreFree5 = true
-        isLoadingMore = false
-        loadedBuckets.clear()
-        seenItemIds.clear()
+        resetPagination()
         loadTab(tab)
+    }
+
+    private fun resetPagination() {
+        isLoadingMore = false
+        hasMoreBuckets = true
+        homePageIndex = 0
+        free5PageIndex = 0
+        loadedBuckets.clear()
+        seenBucketIds.clear()
+        seenItemIds.clear()
     }
 
     fun loadTab(tab: Zee5Tab) {
@@ -94,14 +103,16 @@ class Zee5ViewModel @Inject constructor(
             _uiState.value = Zee5UiState.Loading
             try {
                 val result = when (tab) {
-                    Zee5Tab.ALL -> loadAllTab()
+                    Zee5Tab.ALL -> loadAllBuckets()
                     Zee5Tab.TV_SHOWS -> loadCollection(TV_SHOWS_COLLECTION)
                     Zee5Tab.MOVIES -> loadCollection(MOVIES_COLLECTION)
-                    Zee5Tab.FREE -> loadFree5()
                 }
                 loadedBuckets.clear()
                 loadedBuckets.addAll(result)
-                _uiState.value = Zee5UiState.Success(result, hasMore = tab == Zee5Tab.FREE)
+                _uiState.value = Zee5UiState.Success(
+                    buckets = result,
+                    hasMore = tab == Zee5Tab.ALL && hasMoreBuckets
+                )
             } catch (e: Exception) {
                 _uiState.value = Zee5UiState.Error(e.message ?: "Failed to load")
             }
@@ -109,8 +120,8 @@ class Zee5ViewModel @Inject constructor(
     }
 
     fun loadMore() {
-        if (isLoadingMore || !hasMoreFree5) return
-        if (_currentTab.value != Zee5Tab.FREE) return
+        if (isLoadingMore || !hasMoreBuckets) return
+        if (_currentTab.value != Zee5Tab.ALL) return
 
         viewModelScope.launch {
             isLoadingMore = true
@@ -120,92 +131,69 @@ class Zee5ViewModel @Inject constructor(
                 hasMore = true
             )
             try {
-                free5Page++
-                val response = apiService.getFree5(page = free5Page)
-                val buckets = response.buckets ?: emptyList()
-
-                // Filter out duplicate items using seen IDs
-                val newBuckets = buckets.map { bucket ->
-                    val newItems = bucket.items?.filter { item ->
-                        val id = item.id
-                        if (id == null || seenItemIds.contains(id)) {
-                            false
-                        } else {
-                            seenItemIds.add(id)
-                            true
-                        }
-                    } ?: emptyList()
-                    bucket.copy(items = newItems)
-                }.filter { it.items?.isNotEmpty() == true }
-
-                if (newBuckets.isEmpty()) {
-                    hasMoreFree5 = false
-                } else {
+                val newBuckets = loadNextPage()
+                if (newBuckets.isNotEmpty()) {
                     loadedBuckets.addAll(newBuckets)
                 }
+                hasMoreBuckets = homePageIndex < homePageQueue.size || free5PageIndex < free5PageQueue.size
             } catch (e: Exception) {
-                hasMoreFree5 = false
+                hasMoreBuckets = false
             } finally {
                 isLoadingMore = false
                 _uiState.value = Zee5UiState.Success(
                     loadedBuckets.toList(),
                     isLoadMore = false,
-                    hasMore = hasMoreFree5
+                    hasMore = hasMoreBuckets
                 )
             }
         }
     }
 
-    private suspend fun loadAllTab(): List<Zee5Bucket> {
-        // Load homepage collection for mixed content
-        val homepage = apiService.getCollection(HOME_COLLECTION, page = 0, limit = 20)
-        val buckets = mutableListOf<Zee5Bucket>()
+    private suspend fun loadAllBuckets(): List<Zee5Bucket> {
+        // Start with first homepage page
+        val page = homePageQueue[homePageIndex]
+        homePageIndex++
+        val response = apiService.getCollection(HOME_COLLECTION, page = page, limit = 25)
+        val buckets = response.buckets?.filter { addBucket(it) } ?: emptyList()
+        hasMoreBuckets = homePageIndex < homePageQueue.size || free5PageIndex < free5PageQueue.size
+        return buckets
+    }
 
-        homepage.buckets?.let { buckets.addAll(it) }
-
-        // Also add FREE5 buckets as a rail
-        val free5 = apiService.getFree5(page = 0)
-        free5.buckets?.firstOrNull()?.let { firstBucket ->
-            buckets.add(0, firstBucket)
-        }
-
-        // Track seen items
-        buckets.forEach { bucket ->
-            bucket.items?.forEach { item ->
-                item.id?.let { seenItemIds.add(it) }
+    private suspend fun loadNextPage(): List<Zee5Bucket> {
+        return when {
+            homePageIndex < homePageQueue.size -> {
+                val page = homePageQueue[homePageIndex]
+                homePageIndex++
+                val response = apiService.getCollection(HOME_COLLECTION, page = page, limit = 25)
+                response.buckets?.filter { addBucket(it) } ?: emptyList()
+            }
+            free5PageIndex < free5PageQueue.size -> {
+                val page = free5PageQueue[free5PageIndex]
+                free5PageIndex++
+                val response = apiService.getFree5(page = page)
+                response.buckets?.filter { addBucket(it) } ?: emptyList()
+            }
+            else -> {
+                hasMoreBuckets = false
+                emptyList()
             }
         }
-
-        return buckets
     }
 
     private suspend fun loadCollection(id: String): List<Zee5Bucket> {
-        val response = apiService.getCollection(id, page = 0, limit = 20)
-        val buckets = response.buckets ?: emptyList()
-
-        // Track seen items
-        buckets.forEach { bucket ->
-            bucket.items?.forEach { item ->
-                item.id?.let { seenItemIds.add(it) }
-            }
-        }
-
+        val response = apiService.getCollection(id, page = 0, limit = 25)
+        val buckets = response.buckets?.filter { addBucket(it) } ?: emptyList()
         return buckets
     }
 
-    private suspend fun loadFree5(): List<Zee5Bucket> {
-        free5Page = 0
-        val response = apiService.getFree5(page = 0)
-        val buckets = response.buckets ?: emptyList()
-
-        // Track seen items
-        buckets.forEach { bucket ->
-            bucket.items?.forEach { item ->
-                item.id?.let { seenItemIds.add(it) }
-            }
+    private fun addBucket(bucket: Zee5Bucket): Boolean {
+        val id = bucket.id ?: bucket.collectionId ?: return false
+        return if (seenBucketIds.contains(id)) {
+            false
+        } else {
+            seenBucketIds.add(id)
+            true
         }
-
-        return buckets
     }
 
     fun loadDetails(contentId: String) {

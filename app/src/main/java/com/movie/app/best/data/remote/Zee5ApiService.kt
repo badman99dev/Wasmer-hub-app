@@ -12,7 +12,7 @@ interface Zee5ApiService {
     
     companion object {
         const val BASE_URL = "https://zee5-no-ads.vercel.app/"
-        const val DEFAULT_LANGS = "hi,bh"
+        const val DEFAULT_LANGS = "hi,hr"
     }
     
     // ─── FREE5 Paginated Buckets ───

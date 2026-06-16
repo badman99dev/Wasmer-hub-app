@@ -186,7 +186,7 @@ fun Zee5Screen(
                         }
 
                         // Load more / end indicator at bottom
-                        if (currentTab == Zee5Tab.FREE) {
+                        if (currentTab == Zee5Tab.ALL) {
                             item {
                                 if (state.isLoadMore) {
                                     Box(
@@ -291,8 +291,7 @@ fun Zee5TabBar(
     val tabs = listOf(
         Zee5Tab.ALL to "All",
         Zee5Tab.TV_SHOWS to "TV Shows",
-        Zee5Tab.MOVIES to "Movies",
-        Zee5Tab.FREE to "FREE"
+        Zee5Tab.MOVIES to "Movies"
     )
 
     LazyRow(
@@ -487,7 +486,8 @@ fun Zee5Rail(
     onSeeAllClick: () -> Unit = {}
 ) {
     val items = bucket.items ?: emptyList()
-    val showSeeAll = (bucket.totalItems ?: 0) > items.size
+    val collectionId = bucket.id ?: bucket.collectionId
+    val showSeeAll = !collectionId.isNullOrBlank() && items.isNotEmpty()
 
     Column(modifier = Modifier.padding(vertical = 10.dp)) {
         // Rail title with See All

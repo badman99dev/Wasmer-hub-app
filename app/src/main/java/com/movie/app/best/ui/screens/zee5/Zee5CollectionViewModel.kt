@@ -126,6 +126,6 @@ class Zee5CollectionViewModel @Inject constructor(
     }
 
     companion object {
-        private const val PAGE_LIMIT = 20
+        private const val PAGE_LIMIT = 25
     }
 }
