@@ -37,6 +37,7 @@ import com.movie.app.best.ui.theme.WasmerBlack
 import com.movie.app.best.ui.theme.WasmerCardDark
 import com.movie.app.best.ui.theme.WasmerRed
 import com.movie.app.best.ui.theme.WasmerSubText
+import com.movie.app.best.util.formatDurationSeconds
 
 @Composable
 fun Zee5DetailScreen(
@@ -130,7 +131,12 @@ fun Zee5DetailScreen(
 
                     // Meta Info
                     item {
-                        Zee5DetailMeta(detail = detail!!)
+                        Zee5DetailMeta(
+                            detail = detail!!,
+                            onPlayClick = {
+                                navController.navigate("zee5_watch/${contentId}")
+                            }
+                        )
                     }
 
                     // Description
@@ -314,7 +320,7 @@ fun Zee5DetailHero(
                 detail.duration?.let {
                     if (it > 0) {
                         Text(
-                            text = "${it}m",
+                            text = it.formatDurationSeconds(),
                             color = WasmerSubText,
                             fontSize = 12.sp
                         )
@@ -336,7 +342,10 @@ fun Zee5DetailHero(
 }
 
 @Composable
-fun Zee5DetailMeta(detail: Zee5DetailResponse) {
+fun Zee5DetailMeta(
+    detail: Zee5DetailResponse,
+    onPlayClick: () -> Unit
+) {
     Column(modifier = Modifier.padding(16.dp)) {
         // Action buttons
         Row(
@@ -344,7 +353,7 @@ fun Zee5DetailMeta(detail: Zee5DetailResponse) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Button(
-                onClick = { /* Play action handled by hero */ },
+                onClick = onPlayClick,
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(containerColor = WasmerRed),
                 shape = RoundedCornerShape(8.dp)

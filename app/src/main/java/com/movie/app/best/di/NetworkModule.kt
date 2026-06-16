@@ -32,6 +32,10 @@ object NetworkModule {
     @Singleton
     fun provideGson() = GsonBuilder()
         .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+        .registerTypeAdapter(
+            com.movie.app.best.data.model.Zee5SearchContent::class.java,
+            com.movie.app.best.data.model.Zee5SearchContentDeserializer()
+        )
         .create()
 
     @Provides
