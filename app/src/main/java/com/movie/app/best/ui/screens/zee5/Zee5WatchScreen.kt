@@ -8,8 +8,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,8 +22,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Share
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MoreVert
@@ -422,7 +425,7 @@ fun Zee5WatchScreen(
             ) {
                 ActionButton(icon = Icons.Filled.Add, label = "My List", onClick = { })
                 ActionButton(icon = Icons.Filled.Star, label = "Rate", onClick = { })
-                ActionButton(icon = Icons.AutoMirrored.Filled.Share, label = "Share", onClick = { })
+                ActionButton(icon = Icons.Filled.Share, label = "Share", onClick = { })
                 ActionButton(icon = Icons.Filled.Download, label = "Download", onClick = { })
             }
 
