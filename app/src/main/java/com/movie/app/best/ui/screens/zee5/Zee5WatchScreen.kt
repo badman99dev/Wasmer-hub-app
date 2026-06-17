@@ -2,11 +2,7 @@ package com.movie.app.best.ui.screens.zee5
 
 import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,15 +14,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -197,15 +188,13 @@ fun Zee5WatchScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            activity?.let { ImmersiveMode.exit(it) }
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 
     val exitFullscreen = {
         isFullscreen = false
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        activity?.let { ImmersiveMode.exit(it) }
+        activity?.let { ImmersiveMode.enter(it) }
     }
 
     val enterFullscreen = {
@@ -218,9 +207,16 @@ fun Zee5WatchScreen(
         if (isFullscreen) {
             exitFullscreen()
         } else {
-            activity?.let { ImmersiveMode.exit(it) }
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             onBackClick()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        activity?.let { ImmersiveMode.enter(it) }
+        onDispose {
+            activity?.let { ImmersiveMode.exit(it) }
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 
@@ -248,41 +244,6 @@ fun Zee5WatchScreen(
             .fillMaxSize()
             .background(WasmerBlack)
     ) {
-        TopAppBar(
-            title = {
-                Text(
-                    text = state.detail?.title ?: "Loading...",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = {
-                    activity?.let { ImmersiveMode.exit(it) }
-                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                    onBackClick()
-                }) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        "Back",
-                        tint = Color.White
-                    )
-                }
-            },
-            actions = {
-                IconButton(onClick = { }) {
-                    Icon(Icons.Filled.Cast, "Cast", tint = Color.White)
-                }
-                IconButton(onClick = { }) {
-                    Icon(Icons.Filled.MoreVert, "More", tint = Color.White)
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = WasmerBlack)
-        )
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -301,7 +262,7 @@ fun Zee5WatchScreen(
                 onPlayInBackgroundClick = {},
                 onFullscreenClick = { enterFullscreen() },
                 isInline = true,
-                title = state.currentEpisode?.title ?: state.detail?.title ?: ""
+                title = state.detail?.title ?: state.currentEpisode?.title ?: ""
             )
 
             if (state.isFetchingStream || state.error != null || playerError != null) {
@@ -573,6 +534,8 @@ fun Zee5WatchEpisodeCard(
         label = "watch_ep_press"
     )
 
+    val titleColor = if (isPlaying) WasmerRed else Color.White
+
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -584,11 +547,12 @@ fun Zee5WatchEpisodeCard(
                     onClick = onPlayClick
                 )
                 .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .width(160.dp)
+                    .width(140.dp)
                     .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(10.dp))
                     .background(WasmerCardDark)
@@ -617,34 +581,13 @@ fun Zee5WatchEpisodeCard(
                     }
                 }
 
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(if (isPlaying) Color(0xFF4CAF50) else WasmerRed.copy(alpha = 0.9f))
-                            .clickable(onClick = onPlayClick),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.PlayArrow,
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-
                 if (isPlaying) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(6.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFF4CAF50))
+                            .background(WasmerRed)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text("NOW PLAYING", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black)
@@ -672,9 +615,10 @@ fun Zee5WatchEpisodeCard(
             }
 
             Column(modifier = Modifier.weight(1f)) {
+                val titleText = episode.episodeNumber?.let { "$it. ${episode.title ?: "Untitled"}" } ?: (episode.title ?: "Untitled")
                 Text(
-                    text = episode.title ?: "Untitled",
-                    color = Color.White,
+                    text = titleText,
+                    color = titleColor,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
@@ -698,11 +642,18 @@ fun Zee5WatchEpisodeCard(
                         text = episode.description,
                         color = Color.White.copy(alpha = 0.65f),
                         fontSize = 13.sp,
-                        maxLines = 3,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
+
+            Icon(
+                imageVector = Icons.Filled.Download,
+                contentDescription = "Download",
+                tint = WasmerSubText,
+                modifier = Modifier.size(22.dp)
+            )
         }
 
         HorizontalDivider(

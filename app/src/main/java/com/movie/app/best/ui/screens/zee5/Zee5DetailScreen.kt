@@ -1,15 +1,10 @@
 package com.movie.app.best.ui.screens.zee5
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,7 +31,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -59,7 +53,6 @@ import com.movie.app.best.ui.theme.WasmerBlack
 import com.movie.app.best.ui.theme.WasmerCardDark
 import com.movie.app.best.ui.theme.WasmerRed
 import com.movie.app.best.ui.theme.WasmerSubText
-import com.movie.app.best.util.formatDurationSeconds
 
 @Composable
 fun Zee5DetailScreen(
@@ -164,9 +157,15 @@ fun Zee5DetailScreen(
                         )
                     }
 
+                    val hasEpisodes = when (episodesState) {
+                        is Zee5EpisodesState.Success -> (episodesState as Zee5EpisodesState.Success).episodes.isNotEmpty()
+                        else -> false
+                    }
+
                     item {
                         Zee5DetailActions(
                             detail = detail!!,
+                            hasEpisodes = hasEpisodes,
                             onPlayClick = {
                                 navController.navigate("zee5_watch/${contentId}")
                             }
@@ -422,6 +421,7 @@ fun Zee5DetailHero(
 @Composable
 fun Zee5DetailActions(
     detail: Zee5DetailResponse,
+    hasEpisodes: Boolean,
     onPlayClick: () -> Unit
 ) {
     Column(
@@ -429,7 +429,7 @@ fun Zee5DetailActions(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        if (detail.isTvShow) {
+        if (detail.isTvShow && hasEpisodes) {
             Button(
                 onClick = onPlayClick,
                 modifier = Modifier.fillMaxWidth(),
@@ -463,6 +463,23 @@ fun Zee5DetailActions(
             }
 
             Spacer(modifier = Modifier.height(14.dp))
+        } else {
+            Button(
+                onClick = onPlayClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = WasmerRed),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Watch Now",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
         }
 
         Row(
@@ -472,9 +489,7 @@ fun Zee5DetailActions(
             ActionButton(icon = Icons.Filled.Add, label = "My List", onClick = { })
             ActionButton(icon = Icons.Filled.Star, label = "Rate", onClick = { })
             ActionButton(icon = Icons.Filled.Share, label = "Share", onClick = { })
-            if (!detail.isTvShow) {
-                ActionButton(icon = Icons.Filled.Download, label = "Download", onClick = { })
-            }
+            ActionButton(icon = Icons.Filled.Download, label = "Download", onClick = { })
         }
     }
 }
