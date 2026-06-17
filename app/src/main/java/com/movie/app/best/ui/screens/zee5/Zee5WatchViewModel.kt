@@ -173,8 +173,8 @@ class Zee5WatchViewModel @Inject constructor(
 
     private suspend fun loadEpisodesPage(seasonId: String, page: Int) {
         if (page < 1 || loadedPages.contains(page)) {
-            hasMoreEpisodes = computeHasMore()
-            _state.update { it.copy(isLoadingMore = false, hasMoreEpisodes = hasMoreEpisodes) }
+            val hasMore = computeHasMore()
+            _state.update { it.copy(isLoadingMore = false, hasMoreEpisodes = hasMore) }
             return
         }
 
@@ -209,16 +209,16 @@ class Zee5WatchViewModel @Inject constructor(
         advancePage()
 
         if (total > 0) totalEpisodes = total
-        hasMoreEpisodes = computeHasMore()
+        val hasMore = computeHasMore()
         _state.update {
             it.copy(
                 episodes = combinedEpisodes,
-                hasMoreEpisodes = hasMoreEpisodes,
+                hasMoreEpisodes = hasMore,
                 isLoadingMore = false,
                 isLoading = false
             )
         }
-        Log.d("Zee5Watch", "loadEpisodesPage page=$page new=${newEpisodes.size} totalLoaded=${combinedEpisodes.size} hasMore=$hasMoreEpisodes onAir=$isOnAir")
+        Log.d("Zee5Watch", "loadEpisodesPage page=$page new=${newEpisodes.size} totalLoaded=${combinedEpisodes.size} hasMore=$hasMore onAir=$isOnAir")
     }
 
     fun onEpisodeClick(episode: Zee5Item) {
