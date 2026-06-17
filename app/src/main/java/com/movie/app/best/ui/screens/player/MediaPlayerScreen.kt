@@ -131,8 +131,8 @@ fun MediaPlayerScreen(
     val videoZoomAndContentScaleState = rememberVideoZoomAndContentScaleState(
         player = player,
         initialContentScale = VideoContentScale.BEST_FIT,
-        enableZoomGesture = true,
-        enablePanGesture = true,
+        enableZoomGesture = !isInline,
+        enablePanGesture = !isInline,
     )
     val brightnessState = rememberBrightnessState()
     val volumeAndBrightnessGestureState = rememberVolumeAndBrightnessGestureState(

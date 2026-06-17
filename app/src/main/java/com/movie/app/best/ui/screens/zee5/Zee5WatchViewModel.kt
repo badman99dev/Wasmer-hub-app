@@ -27,6 +27,7 @@ data class Zee5WatchState(
     val hasMoreEpisodes: Boolean = true,
     val currentEpisode: Zee5Item? = null,
     val currentM3u8: String? = null,
+    val isFetchingStream: Boolean = false,
     val isPlaying: Boolean = false
 )
 
@@ -229,21 +230,27 @@ class Zee5WatchViewModel @Inject constructor(
 
     private fun playContent(id: String) {
         viewModelScope.launch {
-            _state.update { it.copy(currentM3u8 = null) }
-            try {
-                Log.d("Zee5Watch", "playContent id=$id")
-                val playback = apiService.getPlayback(id)
-                val url = playback.effectiveStreamUrl
-                Log.d("Zee5Watch", "playback url=${url != null} isDrm=${playback.isDrm}")
-                if (url != null) {
-                    _state.update { it.copy(currentM3u8 = url, isPlaying = true) }
-                } else {
-                    _state.update { it.copy(error = "No stream URL available") }
+            _state.update { it.copy(currentM3u8 = null, isFetchingStream = true, error = null) }
+            var lastError: Throwable? = null
+            repeat(3) { attempt ->
+                try {
+                    Log.d("Zee5Watch", "playContent id=$id attempt=${attempt + 1}")
+                    val playback = apiService.getPlayback(id)
+                    val url = playback.effectiveStreamUrl
+                    Log.d("Zee5Watch", "playback url=${url != null} isDrm=${playback.isDrm}")
+                    if (url != null) {
+                        _state.update { it.copy(currentM3u8 = url, isFetchingStream = false, isPlaying = true) }
+                        return@launch
+                    } else {
+                        lastError = Exception("No stream URL available")
+                    }
+                } catch (e: Exception) {
+                    lastError = e
+                    Log.e("Zee5Watch", "playContent failed id=$id attempt=${attempt + 1}", e)
+                    if (attempt < 2) kotlinx.coroutines.delay(800)
                 }
-            } catch (e: Exception) {
-                Log.e("Zee5Watch", "playContent failed id=$id", e)
-                _state.update { it.copy(error = e.message ?: "Failed to load stream") }
             }
+            _state.update { it.copy(isFetchingStream = false, error = lastError?.message ?: "Failed to load stream after 3 retries") }
         }
     }
 

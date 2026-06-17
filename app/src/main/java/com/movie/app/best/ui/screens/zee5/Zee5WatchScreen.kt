@@ -2,21 +2,15 @@ package com.movie.app.best.ui.screens.zee5
 
 import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -24,28 +18,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Share
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -67,13 +55,17 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.movie.app.best.data.debug.DebugInterceptor
 import com.movie.app.best.data.debug.Zee5False404Interceptor
 import com.movie.app.best.data.model.Zee5Item
 import com.movie.app.best.data.settings.VideoQualitySettings
 import com.movie.app.best.ui.components.GlassBadge
 import com.movie.app.best.ui.screens.player.MediaPlayerScreen
+import com.movie.app.best.ui.theme.WasmerBlack
+import com.movie.app.best.ui.theme.WasmerCardDark
 import com.movie.app.best.ui.theme.WasmerRed
+import com.movie.app.best.ui.theme.WasmerSubText
 import com.movie.app.best.util.ImmersiveMode
 import okhttp3.OkHttpClient
 
@@ -88,6 +80,8 @@ fun Zee5WatchScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     var isFullscreen by remember { mutableStateOf(false) }
     val episodeListState = rememberLazyListState()
+    var playerError by remember { mutableStateOf<String?>(null) }
+    var zee5PlayerErrorRetryCount by remember { mutableStateOf(0) }
 
     val shouldLoadMoreEpisodes = remember {
         derivedStateOf {
@@ -111,23 +105,8 @@ fun Zee5WatchScreen(
             setParameters(VideoQualitySettings.applyTo(params).build())
         }
     }
-    var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
-    var playerError by remember { mutableStateOf<String?>(null) }
 
-    var zee5RetryCount by remember { mutableStateOf(0) }
-
-    LaunchedEffect(state.currentM3u8) {
-        val m3u8 = state.currentM3u8
-        if (m3u8 == null) {
-            exoPlayer?.release()
-            exoPlayer = null
-            return@LaunchedEffect
-        }
-
-        exoPlayer?.release()
-        zee5RetryCount = 0
-        playerError = null
-
+    val exoPlayer = remember {
         val okClient = OkHttpClient.Builder()
             .followRedirects(true).followSslRedirects(true)
             .addInterceptor(Zee5False404Interceptor())
@@ -143,7 +122,7 @@ fun Zee5WatchScreen(
         val dsFactory = DefaultDataSource.Factory(context, okFactory)
         val hlsFactory = HlsMediaSource.Factory(dsFactory)
 
-        val player = ExoPlayer.Builder(context)
+        ExoPlayer.Builder(context)
             .setTrackSelector(trackSelector)
             .setMediaSourceFactory(hlsFactory)
             .setLoadControl(
@@ -151,23 +130,33 @@ fun Zee5WatchScreen(
                     .setBufferDurationsMs(5000, 30000, DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS, DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS)
                     .setBackBuffer(300000, true).build()
             ).build()
+    }
 
-        player.setMediaItem(MediaItem.fromUri(m3u8))
-        player.prepare()
-        player.playWhenReady = true
-        exoPlayer = player
-        viewModel.onPlaybackReady()
+    LaunchedEffect(state.currentM3u8) {
+        val m3u8 = state.currentM3u8
+        playerError = null
+        zee5PlayerErrorRetryCount = 0
+        if (m3u8 != null) {
+            exoPlayer.setMediaItem(MediaItem.fromUri(m3u8))
+            exoPlayer.prepare()
+            exoPlayer.playWhenReady = true
+        } else {
+            exoPlayer.stop()
+            exoPlayer.clearMediaItems()
+        }
     }
 
     DisposableEffect(exoPlayer) {
-        val player = exoPlayer ?: return@DisposableEffect onDispose {}
         val listener = object : Player.Listener {
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                if (zee5RetryCount < 2) {
-                    zee5RetryCount++
-                    player.setMediaItem(MediaItem.fromUri(state.currentM3u8 ?: return))
-                    player.prepare()
-                    player.playWhenReady = true
+                if (zee5PlayerErrorRetryCount < 2) {
+                    zee5PlayerErrorRetryCount++
+                    val url = state.currentM3u8
+                    if (url != null) {
+                        exoPlayer.setMediaItem(MediaItem.fromUri(url))
+                        exoPlayer.prepare()
+                        exoPlayer.playWhenReady = true
+                    }
                     return
                 }
                 playerError = error.message ?: "Playback error"
@@ -175,20 +164,21 @@ fun Zee5WatchScreen(
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isPlaying) playerError = null
                 activity?.let {
-                    val pState = player.playbackState
+                    val pState = exoPlayer.playbackState
                     ImmersiveMode.keepScreenOn(it, isPlaying || pState == Player.STATE_BUFFERING)
                 }
             }
             override fun onPlaybackStateChanged(playbackState: Int) {
                 activity?.let {
-                    val playing = player.isPlaying
+                    val playing = exoPlayer.isPlaying
                     ImmersiveMode.keepScreenOn(it, playing || playbackState == Player.STATE_BUFFERING)
                 }
             }
         }
-        player.addListener(listener)
+        exoPlayer.addListener(listener)
         onDispose {
-            player.removeListener(listener)
+            exoPlayer.removeListener(listener)
+            exoPlayer.release()
             activity?.let { ImmersiveMode.keepScreenOn(it, false) }
         }
     }
@@ -196,16 +186,14 @@ fun Zee5WatchScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> exoPlayer?.pause()
-                Lifecycle.Event.ON_RESUME -> { if (exoPlayer?.playbackState == Player.STATE_READY) exoPlayer?.play() }
+                Lifecycle.Event.ON_PAUSE -> exoPlayer.pause()
+                Lifecycle.Event.ON_RESUME -> { if (exoPlayer.playbackState == Player.STATE_READY) exoPlayer.play() }
                 else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            exoPlayer?.release()
-            exoPlayer = null
             activity?.let { ImmersiveMode.exit(it) }
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
@@ -233,7 +221,7 @@ fun Zee5WatchScreen(
         }
     }
 
-    if (isFullscreen && exoPlayer != null) {
+    if (isFullscreen) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -255,35 +243,42 @@ fun Zee5WatchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0A0A0F))
+            .background(WasmerBlack)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF111119))
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = {
+        TopAppBar(
+            title = {
+                Text(
+                    text = state.detail?.title ?: "Loading...",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = {
                     activity?.let { ImmersiveMode.exit(it) }
                     activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                     onBackClick()
-                },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(Icons.Default.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(20.dp))
-            }
-            Text(
-                text = state.detail?.title ?: "Loading...",
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-            )
-        }
+                }) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        "Back",
+                        tint = Color.White
+                    )
+                }
+            },
+            actions = {
+                IconButton(onClick = { }) {
+                    Icon(Icons.Filled.Cast, "Cast", tint = Color.White)
+                }
+                IconButton(onClick = { }) {
+                    Icon(Icons.Filled.MoreVert, "More", tint = Color.White)
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = WasmerBlack)
+        )
 
         Box(
             modifier = Modifier
@@ -292,55 +287,74 @@ fun Zee5WatchScreen(
                 .background(Color.Black)
                 .zIndex(1f)
         ) {
-            if (exoPlayer != null && playerError == null) {
-                MediaPlayerScreen(
-                    player = exoPlayer,
+            MediaPlayerScreen(
+                player = exoPlayer,
+                modifier = Modifier.fillMaxSize(),
+                onBackClick = {
+                    activity?.let { ImmersiveMode.exit(it) }
+                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                    onBackClick()
+                },
+                onPlayInBackgroundClick = {},
+                onFullscreenClick = { enterFullscreen() },
+                isInline = true,
+                title = state.currentEpisode?.title ?: state.detail?.title ?: ""
+            )
+
+            if (state.isFetchingStream || state.error != null || playerError != null) {
+                Box(
                     modifier = Modifier.fillMaxSize(),
-                    onBackClick = {
-                        activity?.let { ImmersiveMode.exit(it) }
-                        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                        onBackClick()
-                    },
-                    onPlayInBackgroundClick = {},
-                    onFullscreenClick = { enterFullscreen() },
-                    isInline = true,
-                    title = state.currentEpisode?.title ?: state.detail?.title ?: ""
-                )
-            } else if (state.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(40.dp))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Loading...", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
-                    }
-                }
-            } else if (playerError != null || (state.error != null && state.currentM3u8 == null)) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            playerError ?: state.error ?: "Error",
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 13.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    contentAlignment = Alignment.Center
+                ) {
+                    val thumbUrl = state.currentEpisode?.effectiveLandscapeUrl
+                        ?: state.currentEpisode?.effectiveImageUrl
+                        ?: state.detail?.effectiveLandscapeUrl
+                        ?: state.detail?.effectiveImageUrl
+                    thumbUrl?.let { url ->
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(url)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = state.currentEpisode?.title ?: state.detail?.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TextButton(onClick = {
-                            playerError = null
-                            zee5RetryCount = 0
-                            state.currentM3u8?.let { url ->
-                                exoPlayer?.setMediaItem(MediaItem.fromUri(url))
-                                exoPlayer?.prepare()
-                                exoPlayer?.playWhenReady = true
-                            } ?: state.currentEpisode?.let { viewModel.onEpisodeClick(it) }
-                        }) { Text("Retry", color = WasmerRed) }
                     }
-                }
-            } else {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("🎬", fontSize = 40.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Select an episode to play", color = Color.White.copy(alpha = 0.4f), fontSize = 14.sp)
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.55f))
+                    )
+
+                    if (state.isFetchingStream) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(48.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Loading...",
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontSize = 14.sp
+                            )
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = state.error ?: playerError ?: "Playback error",
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontSize = 13.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextButton(onClick = {
+                                playerError = null
+                                zee5PlayerErrorRetryCount = 0
+                                state.currentEpisode?.let { viewModel.onEpisodeClick(it) }
+                            }) {
+                                Text("Retry", color = WasmerRed)
+                            }
+                        }
                     }
                 }
             }
@@ -349,31 +363,79 @@ fun Zee5WatchScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF111119))
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .background(WasmerBlack)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            if (state.currentEpisode != null) {
+            state.currentEpisode?.let { episode ->
                 Text(
-                    text = state.currentEpisode?.title ?: "",
+                    text = episode.title ?: "",
                     color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                val epMeta = buildList {
-                    state.currentEpisode?.episodeNumber?.let { add("Episode $it") }
-                    state.currentEpisode?.duration?.let { if (it > 0) add("${it / 60} min") }
-                }.joinToString(" · ")
-                if (epMeta.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(epMeta, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    state.detail?.releaseDate?.let {
+                        Text(
+                            text = it.take(4),
+                            color = WasmerSubText,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    state.detail?.ageRating?.let {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .border(0.5.dp, WasmerSubText, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = it,
+                                color = Color.White,
+                                fontSize = 11.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    episode.episodeNumber?.let {
+                        Text(
+                            text = "Episode $it",
+                            color = WasmerSubText,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    GlassBadge(text = "HD", tint = Color.White)
                 }
-            } else {
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ActionButton(icon = Icons.Filled.Add, label = "My List", onClick = { })
+                ActionButton(icon = Icons.Filled.Star, label = "Rate", onClick = { })
+                ActionButton(icon = Icons.AutoMirrored.Filled.Share, label = "Share", onClick = { })
+                ActionButton(icon = Icons.Filled.Download, label = "Download", onClick = { })
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            state.currentEpisode?.description?.let { desc ->
                 Text(
-                    text = "Select an episode to play",
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 14.sp
+                    text = desc,
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontSize = 13.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 19.sp
                 )
             }
         }
@@ -382,8 +444,8 @@ fun Zee5WatchScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF111119))
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .background(WasmerBlack)
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -392,13 +454,13 @@ fun Zee5WatchScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) WasmerRed else Color.White.copy(alpha = 0.1f))
+                            .background(if (isSelected) WasmerRed else WasmerCardDark)
                             .clickable { season.id?.let { viewModel.selectSeason(it) } }
                             .padding(horizontal = 16.dp, vertical = 6.dp)
                     ) {
                         Text(
                             text = season.title ?: "Season ${season.seasonNumber}",
-                            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f),
+                            color = if (isSelected) Color.White else WasmerSubText,
                             fontSize = 13.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                         )
@@ -407,12 +469,20 @@ fun Zee5WatchScreen(
             }
         }
 
+        Text(
+            text = "Episodes",
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+
         if (state.episodes.isEmpty() && !state.isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(32.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No episodes available", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+                Text("No episodes available", color = WasmerSubText, fontSize = 14.sp)
             }
         } else {
             LazyColumn(
@@ -461,16 +531,55 @@ fun Zee5WatchScreen(
 }
 
 @Composable
+private fun ActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
 fun Zee5WatchEpisodeCard(
     episode: Zee5Item,
     isPlaying: Boolean,
     onPlayClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        label = "watch_ep_press"
+    )
+
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .graphicsLayer { scaleX = scale; scaleY = scale }
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onPlayClick
+                )
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -479,6 +588,7 @@ fun Zee5WatchEpisodeCard(
                     .width(160.dp)
                     .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(10.dp))
+                    .background(WasmerCardDark)
             ) {
                 val thumbUrl = episode.effectiveLandscapeUrl ?: episode.effectiveImageUrl
                 if (thumbUrl != null) {
@@ -505,21 +615,19 @@ fun Zee5WatchEpisodeCard(
                 }
 
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.25f))
-                        .clickable(onClick = onPlayClick),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    val playBg = if (isPlaying) Color(0xFF4CAF50) else WasmerRed
-                    IconButton(
-                        onClick = onPlayClick,
+                    Box(
                         modifier = Modifier
                             .size(44.dp)
-                            .background(playBg.copy(alpha = 0.9f), CircleShape)
+                            .clip(CircleShape)
+                            .background(if (isPlaying) Color(0xFF4CAF50) else WasmerRed.copy(alpha = 0.9f))
+                            .clickable(onClick = onPlayClick),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
+                            imageVector = Icons.Filled.PlayArrow,
                             contentDescription = "Play",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
@@ -532,10 +640,30 @@ fun Zee5WatchEpisodeCard(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(6.dp)
-                            .background(Color(0xFF4CAF50), RoundedCornerShape(4.dp))
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFF4CAF50))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text("NOW PLAYING", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                    }
+                }
+
+                episode.duration?.let { duration ->
+                    if (duration > 0) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color.Black.copy(alpha = 0.7f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "${duration / 60} min",
+                                color = Color.White,
+                                fontSize = 10.sp
+                            )
+                        }
                     }
                 }
             }
@@ -558,7 +686,7 @@ fun Zee5WatchEpisodeCard(
 
                 if (meta.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
-                    Text(meta, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                    Text(meta, color = WasmerSubText, fontSize = 12.sp)
                 }
 
                 if (!episode.description.isNullOrBlank()) {
@@ -581,3 +709,5 @@ fun Zee5WatchEpisodeCard(
         )
     }
 }
+
+

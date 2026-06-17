@@ -1,6 +1,17 @@
 package com.movie.app.best.ui.screens.zee5
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -8,24 +19,33 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Share
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -52,8 +72,9 @@ fun Zee5DetailScreen(
     val detail = (detailState as? Zee5DetailState.Success)?.detail
 
     var selectedSeasonId by remember { mutableStateOf<String?>(null) }
-    val seasonsList = remember { mutableStateOf<List<com.movie.app.best.data.model.Zee5Season>>(emptyList()) }
+    val seasonsList = remember { mutableStateOf<List<Zee5Season>>(emptyList()) }
     val listState = rememberLazyListState()
+    var selectedTab by remember { mutableStateOf(DetailTab.EPISODES) }
 
     val shouldLoadMoreEpisodes = remember {
         derivedStateOf {
@@ -135,24 +156,15 @@ fun Zee5DetailScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Hero/Poster Section
                     item {
                         Zee5DetailHero(
                             detail = detail!!,
-                            onPlayClick = {
-                                if (detail?.isTvShow == true) {
-                                    navController.navigate("zee5_watch/${contentId}")
-                                } else {
-                                    navController.navigate("zee5_watch/${contentId}")
-                                }
-                            },
                             onBackClick = { navController.popBackStack() }
                         )
                     }
 
-                    // Meta Info
                     item {
-                        Zee5DetailMeta(
+                        Zee5DetailActions(
                             detail = detail!!,
                             onPlayClick = {
                                 navController.navigate("zee5_watch/${contentId}")
@@ -160,80 +172,77 @@ fun Zee5DetailScreen(
                         )
                     }
 
-                    // Description
                     item {
                         Zee5DetailDescription(detail = detail!!)
                     }
 
-                    // Season Selector (for TV shows)
-                    if (detail?.isTvShow == true && seasonsList.value.isNotEmpty()) {
-                        item {
-                            Zee5SeasonSelector(
-                                seasons = seasonsList.value,
-                                selectedSeasonId = selectedSeasonId,
-                                onSeasonSelect = { seasonId ->
-                                    selectedSeasonId = seasonId
-                                    viewModel.loadEpisodesForSeason(seasonId)
-                                }
-                            )
-                        }
-                    }
-
-                    // Episodes List (always show for TV shows)
                     if (detail?.isTvShow == true) {
                         item {
-                            Text(
-                                text = "Episodes",
-                                color = Color.White,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            DetailTabRow(
+                                selectedTab = selectedTab,
+                                onTabSelected = { selectedTab = it }
                             )
                         }
-                        when (episodesState) {
-                            is Zee5EpisodesState.Loading -> {
+
+                        if (selectedTab == DetailTab.EPISODES) {
+                            if (seasonsList.value.isNotEmpty()) {
                                 item {
-                                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                        CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(24.dp))
-                                    }
-                                }
-                            }
-                            is Zee5EpisodesState.Error -> {
-                                item {
-                                    Text(text = (episodesState as Zee5EpisodesState.Error).message, color = WasmerSubText, fontSize = 12.sp, modifier = Modifier.padding(16.dp))
-                                }
-                            }
-                            is Zee5EpisodesState.Success -> {
-                                val episodes = (episodesState as Zee5EpisodesState.Success).episodes
-                                val hasMore = (episodesState as Zee5EpisodesState.Success).hasMore
-                                items(episodes, key = { it.id ?: it.hashCode() }) { episode ->
-                                    Zee5EpisodeCard(
-                                        episode = episode,
-                                        onClick = {
-                                episode.id?.let { epId ->
-                                    val epNum = episode.episodeNumber ?: -1
-                                    navController.navigate("zee5_watch/${contentId}?epId=${epId}&epNum=${epNum}")
-                                }
+                                    Zee5SeasonSelector(
+                                        seasons = seasonsList.value,
+                                        selectedSeasonId = selectedSeasonId,
+                                        onSeasonSelect = { seasonId ->
+                                            selectedSeasonId = seasonId
+                                            viewModel.loadEpisodesForSeason(seasonId)
                                         }
                                     )
                                 }
-                                if (hasMore) {
+                            }
+
+                            when (episodesState) {
+                                is Zee5EpisodesState.Loading -> {
                                     item {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
+                                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                                             CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(24.dp))
                                         }
                                     }
                                 }
-                                if (!hasMore && episodes.isNotEmpty()) {
+                                is Zee5EpisodesState.Error -> {
                                     item {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            GlassBadge(text = "Reached to bottom")
+                                        Text(text = (episodesState as Zee5EpisodesState.Error).message, color = WasmerSubText, fontSize = 12.sp, modifier = Modifier.padding(16.dp))
+                                    }
+                                }
+                                is Zee5EpisodesState.Success -> {
+                                    val episodes = (episodesState as Zee5EpisodesState.Success).episodes
+                                    val hasMore = (episodesState as Zee5EpisodesState.Success).hasMore
+                                    items(episodes, key = { it.id ?: it.hashCode() }) { episode ->
+                                        Zee5EpisodeRow(
+                                            episode = episode,
+                                            onClick = {
+                                                episode.id?.let { epId ->
+                                                    val epNum = episode.episodeNumber ?: -1
+                                                    navController.navigate("zee5_watch/${contentId}?epId=${epId}&epNum=${epNum}")
+                                                }
+                                            }
+                                        )
+                                    }
+                                    if (hasMore) {
+                                        item {
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(24.dp))
+                                            }
+                                        }
+                                    }
+                                    if (!hasMore && episodes.isNotEmpty()) {
+                                        item {
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                GlassBadge(text = "Reached to bottom")
+                                            }
                                         }
                                     }
                                 }
@@ -241,8 +250,7 @@ fun Zee5DetailScreen(
                         }
                     }
 
-                    // Related Content
-                    if (detail?.related?.isNotEmpty() == true) {
+                    if (detail?.related?.isNotEmpty() == true && (selectedTab == DetailTab.MORE_LIKE_THIS || detail?.isTvShow != true)) {
                         item {
                             Zee5RelatedSection(
                                 related = detail.related!!,
@@ -260,18 +268,69 @@ fun Zee5DetailScreen(
     }
 }
 
+enum class DetailTab { EPISODES, MORE_LIKE_THIS }
+
+@Composable
+private fun DetailTabRow(
+    selectedTab: DetailTab,
+    onTabSelected: (DetailTab) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        DetailTabItem(
+            text = "Episodes",
+            selected = selectedTab == DetailTab.EPISODES,
+            onClick = { onTabSelected(DetailTab.EPISODES) }
+        )
+        DetailTabItem(
+            text = "More Like This",
+            selected = selectedTab == DetailTab.MORE_LIKE_THIS,
+            onClick = { onTabSelected(DetailTab.MORE_LIKE_THIS) }
+        )
+    }
+}
+
+@Composable
+private fun DetailTabItem(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Column {
+        Text(
+            text = text,
+            color = if (selected) WasmerRed else WasmerSubText,
+            fontSize = 15.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            modifier = Modifier.clickable(onClick = onClick)
+        )
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .width(24.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(WasmerRed)
+            )
+        }
+    }
+}
+
 @Composable
 fun Zee5DetailHero(
     detail: Zee5DetailResponse,
-    onPlayClick: () -> Unit,
     onBackClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(280.dp)
+            .height(320.dp)
     ) {
-        // Background image
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(detail.effectiveLandscapeUrl ?: detail.effectiveImageUrl)
@@ -282,60 +341,35 @@ fun Zee5DetailHero(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Gradient overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            WasmerBlack.copy(alpha = 0.3f),
-                            WasmerBlack.copy(alpha = 0.6f),
+                            WasmerBlack.copy(alpha = 0.4f),
+                            WasmerBlack.copy(alpha = 0.65f),
                             WasmerBlack.copy(alpha = 0.95f)
                         )
                     )
                 )
         )
 
-        // Back button
         IconButton(
             onClick = onBackClick,
             modifier = Modifier
                 .padding(16.dp)
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.5f))
+                .background(Color.Black.copy(alpha = 0.45f))
         ) {
             Icon(
-                imageVector = Icons.Filled.ArrowBack,
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
                 tint = Color.White
             )
         }
 
-        // Play button (centered)
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(WasmerRed.copy(alpha = 0.9f))
-                    .clickable { onPlayClick() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = "Play",
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-        }
-
-        // Title at bottom
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -344,21 +378,28 @@ fun Zee5DetailHero(
             Text(
                 text = detail.title ?: "",
                 color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.ExtraBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Age rating
+                detail.releaseDate?.let {
+                    Text(
+                        text = it.take(4),
+                        color = WasmerSubText,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 detail.ageRating?.let {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
-                            .background(Color.White.copy(alpha = 0.2f))
+                            .border(0.5.dp, WasmerSubText, RoundedCornerShape(4.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
@@ -369,26 +410,8 @@ fun Zee5DetailHero(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-
-                // Duration
-                detail.duration?.let {
-                    if (it > 0) {
-                        Text(
-                            text = it.formatDurationSeconds(),
-                            color = WasmerSubText,
-                            fontSize = 12.sp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                }
-
-                // Release year
-                detail.releaseDate?.let {
-                    Text(
-                        text = it.take(4),
-                        color = WasmerSubText,
-                        fontSize = 12.sp
-                    )
+                if (detail.assetSubtype?.contains("HD", ignoreCase = true) == true || detail.assetSubtype?.contains("HDR", ignoreCase = true) == true) {
+                    GlassBadge(text = "HD", tint = Color.White)
                 }
             }
         }
@@ -396,58 +419,124 @@ fun Zee5DetailHero(
 }
 
 @Composable
-fun Zee5DetailMeta(
+fun Zee5DetailActions(
     detail: Zee5DetailResponse,
     onPlayClick: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        // Action buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        if (detail.isTvShow) {
             Button(
                 onClick = onPlayClick,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = WasmerRed),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(Icons.Filled.PlayArrow, "Play", tint = Color.White)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Watch Now", color = Color.White)
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Resume Episode ${detail.episodeNumber ?: 1}",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = { },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = WasmerCardDark),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Filled.Download, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Download Season 1",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            ActionButton(icon = Icons.Filled.Add, label = "My List", onClick = { })
+            ActionButton(icon = Icons.Filled.Star, label = "Rate", onClick = { })
+            ActionButton(icon = Icons.AutoMirrored.Filled.Share, label = "Share", onClick = { })
+            if (!detail.isTvShow) {
+                ActionButton(icon = Icons.Filled.Download, label = "Download", onClick = { })
+            }
+        }
+    }
+}
 
-        // Genres
-        detail.genres?.let { genres ->
-            if (genres.isNotEmpty()) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(genres) { genre ->
-                        genre.value?.let { value ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(WasmerCardDark)
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Text(
-                                    text = value,
-                                    color = WasmerSubText,
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
-                    }
+@Composable
+private fun ActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+fun Zee5DetailDescription(detail: Zee5DetailResponse) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        detail.description?.let { desc ->
+            Text(
+                text = desc,
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 13.sp,
+                maxLines = if (expanded) Int.MAX_VALUE else 3,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 19.sp
+            )
+
+            if (desc.length > 120) {
+                TextButton(
+                    onClick = { expanded = !expanded },
+                    colors = ButtonDefaults.textButtonColors(contentColor = WasmerRed),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text(
+                        text = if (expanded) "Show Less" else "Show More",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
             }
         }
 
-        // Cast
         detail.actors?.let { actors ->
             if (actors.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Cast: ${actors.joinToString(", ")}",
                     color = WasmerSubText,
@@ -455,13 +544,12 @@ fun Zee5DetailMeta(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
             }
         }
 
-        // Directors
         detail.directors?.let { directors ->
             if (directors.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Director: ${directors.joinToString(", ")}",
                     color = WasmerSubText,
@@ -475,106 +563,59 @@ fun Zee5DetailMeta(
 }
 
 @Composable
-fun Zee5DetailDescription(detail: Zee5DetailResponse) {
-    var expanded by remember { mutableStateOf(false) }
-
-    detail.description?.let { desc ->
-        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            Text(
-                text = desc,
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 13.sp,
-                maxLines = if (expanded) Int.MAX_VALUE else 3,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            if (desc.length > 150) {
-                TextButton(
-                    onClick = { expanded = !expanded },
-                    colors = ButtonDefaults.textButtonColors(contentColor = WasmerRed)
-                ) {
-                    Text(
-                        text = if (expanded) "Show Less" else "Show More",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun Zee5SeasonSelector(
     seasons: List<Zee5Season>,
     selectedSeasonId: String?,
     onSeasonSelect: (String) -> Unit
 ) {
+    var expanded by remember { mutableStateOf(false) }
     val selectedSeason = selectedSeasonId ?: seasons.lastOrNull()?.id ?: ""
+    val selectedTitle = seasons.find { it.id == selectedSeason }?.title ?: "Season 1"
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = "Seasons",
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(seasons) { season ->
-                val isSelected = selectedSeason == season.id
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            if (isSelected) WasmerRed
-                            else WasmerCardDark
-                        )
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) {
-                            season.id?.let { onSeasonSelect(it) }
-                        }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = season.title ?: "Season ${season.seasonNumber}",
-                        color = if (isSelected) Color.White else WasmerSubText,
-                        fontSize = 13.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                    )
-                }
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(WasmerCardDark)
+                .clickable { expanded = true }
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = selectedTitle,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = "Select season",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
-    }
-}
 
-@Composable
-fun Zee5EpisodesList(
-    episodes: List<Zee5Item>,
-    onEpisodeClick: (Zee5Item) -> Unit
-) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = "Episodes",
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        LazyColumn(
-            modifier = Modifier.heightIn(max = 600.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(WasmerCardDark)
         ) {
-            items(episodes) { episode ->
-                Zee5EpisodeCard(
-                    episode = episode,
-                    onClick = { onEpisodeClick(episode) }
+            seasons.forEach { season ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = season.title ?: "Season ${season.seasonNumber}",
+                            color = if (season.id == selectedSeason) WasmerRed else Color.White
+                        )
+                    },
+                    onClick = {
+                        season.id?.let { onSeasonSelect(it) }
+                        expanded = false
+                    }
                 )
             }
         }
@@ -582,26 +623,36 @@ fun Zee5EpisodesList(
 }
 
 @Composable
-fun Zee5EpisodeCard(
+fun Zee5EpisodeRow(
     episode: Zee5Item,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        label = "ep_press"
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(WasmerCardDark)
-            .clickable { onClick() }
-            .padding(8.dp),
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Episode thumbnail (16:9 aspect ratio)
         Box(
             modifier = Modifier
-                .width(120.dp)
-                .height(68.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(WasmerBlack)
+                .width(140.dp)
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(10.dp))
+                .background(WasmerCardDark)
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -613,63 +664,85 @@ fun Zee5EpisodeCard(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Play icon overlay
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = "Play",
-                    tint = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            // Episode number badge
-            episode.episodeNumber?.let { epNum ->
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(4.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color.Black.copy(alpha = 0.7f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(WasmerRed.copy(alpha = 0.9f))
+                        .clickable { onClick() },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Ep $epNum",
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = "Play",
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
                     )
+                }
+            }
+
+            episode.duration?.let { duration ->
+                if (duration > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(6.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color.Black.copy(alpha = 0.7f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "${duration / 60} min",
+                            color = Color.White,
+                            fontSize = 10.sp
+                        )
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Episode info
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = episode.title ?: "",
+            episode.episodeNumber?.let { epNum ->
+                Text(
+                    text = "$epNum. ${episode.title ?: "Untitled"}",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } ?: Text(
+                text = episode.title ?: "Untitled",
                 color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
-            episode.duration?.let { duration ->
-                if (duration > 0) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "${duration}m",
-                        color = WasmerSubText,
-                        fontSize = 11.sp
-                    )
-                }
+            episode.description?.let { desc ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = desc,
+                    color = WasmerSubText,
+                    fontSize = 12.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 17.sp
+                )
             }
         }
+
+        Icon(
+            imageVector = Icons.Filled.Download,
+            contentDescription = "Download",
+            tint = WasmerSubText,
+            modifier = Modifier.size(22.dp)
+        )
     }
 }
 
@@ -683,7 +756,7 @@ fun Zee5RelatedSection(
             text = "More Like This",
             color = Color.White,
             fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
