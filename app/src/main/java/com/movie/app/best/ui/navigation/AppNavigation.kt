@@ -365,10 +365,11 @@ fun AppNavigation(
         }
 
         composable(
-            route = "zee5_watch/{contentId}?epId={epId}",
+            route = "zee5_watch/{contentId}?epId={epId}&epNum={epNum}",
             arguments = listOf(
                 navArgument("contentId") { type = NavType.StringType },
-                navArgument("epId") { type = NavType.StringType; nullable = true; defaultValue = null }
+                navArgument("epId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("epNum") { type = NavType.IntType; defaultValue = -1 }
             )
         ) { backStackEntry ->
             com.movie.app.best.ui.screens.zee5.Zee5WatchScreen(

@@ -58,11 +58,11 @@ interface Zee5ApiService {
     ): Zee5DetailResponse
     
     // ─── Episodes for a Season ───
+    // Note: page is 1-indexed. page=0 and page=1 return the same first page.
     @GET("episodes/{seasonId}")
     suspend fun getEpisodes(
         @Path("seasonId") seasonId: String,
         @Query("limit") limit: Int = 25,
-        @Query("page") page: Int = 0,
-        @Query("on_air") onAir: String = "false"
+        @Query("page") page: Int = 1
     ): Zee5CollectionResponse
 }

@@ -74,8 +74,8 @@ fun Zee5DetailScreen(
                 val seasonId = it.firstSeasonId
                 if (seasonId != null) {
                     selectedSeasonId = seasonId
-                    viewModel.loadEpisodesFromSeasons(it.id ?: "")
                 }
+                viewModel.loadEpisodes(it.id ?: "")
                 try {
                     val seasonData = viewModel.apiService.getSeasons(it.id ?: "")
                     seasonsList.value = seasonData.seasons ?: emptyList()
@@ -210,9 +210,10 @@ fun Zee5DetailScreen(
                                     Zee5EpisodeCard(
                                         episode = episode,
                                         onClick = {
-                                            episode.id?.let { epId ->
-                                                navController.navigate("zee5_watch/${contentId}?epId=${epId}")
-                                            }
+                                episode.id?.let { epId ->
+                                    val epNum = episode.episodeNumber ?: -1
+                                    navController.navigate("zee5_watch/${contentId}?epId=${epId}&epNum=${epNum}")
+                                }
                                         }
                                     )
                                 }
