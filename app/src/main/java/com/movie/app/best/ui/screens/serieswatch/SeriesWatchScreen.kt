@@ -301,6 +301,7 @@ fun SeriesWatchScreen(
             } else {
                 val thumbUrl = state.currentEpisode?.stillImageUrl?.takeIf { it.isNotEmpty() }
                     ?: state.titleDetails?.posterUrl?.takeIf { it.isNotEmpty() }
+                val isAvailable = state.currentEpisode?.available == true
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -321,22 +322,38 @@ fun SeriesWatchScreen(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.clickable(
-                            enabled = state.currentEpisode != null,
+                            enabled = state.currentEpisode != null && isAvailable,
                             onClick = { state.currentEpisode?.let { viewModel.onEpisodeClick(it) } }
                         )
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = if (state.currentEpisode != null) "Tap to play" else "Select an episode to play",
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 14.sp
-                        )
+                        if (state.currentEpisode != null && !isAvailable) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Available soon",
+                                tint = Color.White,
+                                modifier = Modifier.size(40.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Available soon",
+                                color = Color.White.copy(alpha = 0.9f),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Play",
+                                tint = Color.White,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (state.currentEpisode != null) "Tap to play" else "Select an episode to play",
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
             }

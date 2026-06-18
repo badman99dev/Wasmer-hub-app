@@ -63,26 +63,51 @@ data class ExtractionState(
 ) {
     val mergedEpisodes: List<WatchEpisode>
         get() {
-            val gemmaSeason = result?.seasons?.get(selectedSeason) ?: return emptyList()
+            val gemmaSeason = result?.seasons?.get(selectedSeason)
             val imdbEps = imdbEpisodes[selectedSeason] ?: emptyList()
             val imdbMap = imdbEps.associateBy { it.episodeNumber }
 
-            return gemmaSeason.episodes.map { (epNo, gemmaEp) ->
-                val imdb = imdbMap[epNo]
-                WatchEpisode(
-                    episodeNo = epNo,
-                    seasonNo = selectedSeason,
-                    title = imdb?.title ?: gemmaEp.title.replaceAfterLast(" - ", "").trim().ifBlank { "Episode $epNo" },
-                    stillImageUrl = imdb?.stillImageUrl ?: "",
-                    runtimeMinutes = imdb?.runtimeMinutes ?: 0,
-                    rating = imdb?.ratingValue ?: 0.0,
-                    releaseDate = imdb?.formattedDate ?: "",
-                    plot = imdb?.plot ?: "",
-                    languages = gemmaEp.languages
-                )
-            }.sortedBy { it.episodeNo }
+            if (gemmaSeason != null) {
+                return gemmaSeason.episodes.map { (epNo, gemmaEp) ->
+                    val imdb = imdbMap[epNo]
+                    WatchEpisode(
+                        episodeNo = epNo,
+                        seasonNo = selectedSeason,
+                        title = imdb?.title ?: gemmaEp.title.replaceAfterLast(" - ", "").trim().ifBlank { "Episode $epNo" },
+                        stillImageUrl = imdb?.stillImageUrl ?: "",
+                        runtimeMinutes = imdb?.runtimeMinutes ?: 0,
+                        rating = imdb?.ratingValue ?: 0.0,
+                        releaseDate = imdb?.formattedDate ?: "",
+                        plot = imdb?.plot ?: "",
+                        languages = gemmaEp.languages,
+                        available = true
+                    )
+                }.sortedBy { it.episodeNo }
+            }
+
+            if (imdbEps.isNotEmpty()) {
+                return imdbEps.map { imdb ->
+                    WatchEpisode(
+                        episodeNo = imdb.episodeNumber,
+                        seasonNo = selectedSeason,
+                        title = imdb.title,
+                        stillImageUrl = imdb.stillImageUrl,
+                        runtimeMinutes = imdb.runtimeMinutes,
+                        rating = imdb.ratingValue,
+                        releaseDate = imdb.formattedDate,
+                        plot = imdb.plot,
+                        languages = emptyMap(),
+                        available = false
+                    )
+                }.sortedBy { it.episodeNo }
+            }
+
+            return emptyList()
         }
 
     val seasonKeys: List<Int>
-        get() = result?.seasons?.keys?.sorted() ?: emptyList()
+        get() = ((result?.seasons?.keys ?: emptySet()) + imdbEpisodes.keys).toSortedSet().toList()
+
+    val isSelectedSeasonAvailable: Boolean
+        get() = result?.seasons?.containsKey(selectedSeason) == true
 }

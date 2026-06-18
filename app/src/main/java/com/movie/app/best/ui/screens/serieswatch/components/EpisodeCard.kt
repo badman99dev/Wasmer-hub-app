@@ -44,13 +44,20 @@ fun EpisodeCard(
     onPlayClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val titleColor = if (isPlaying) WasmerRed else Color.White
+    val titleColor = when {
+        isPlaying -> WasmerRed
+        !episode.available -> WasmerSubText
+        else -> Color.White
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onPlayClick)
+                .clickable(
+                    enabled = episode.available,
+                    onClick = onPlayClick
+                )
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -89,7 +96,7 @@ fun EpisodeCard(
                     }
                 }
 
-                if (isPlaying) {
+                if (isPlaying && episode.available) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -100,6 +107,24 @@ fun EpisodeCard(
                     ) {
                         Text(
                             "NOW PLAYING",
+                            color = Color.White,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+
+                if (!episode.available) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(6.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color.Gray.copy(alpha = 0.85f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            "AVAILABLE SOON",
                             color = Color.White,
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Black
@@ -163,12 +188,14 @@ fun EpisodeCard(
                 }
             }
 
-            Icon(
-                imageVector = Icons.Filled.Download,
-                contentDescription = "Download",
-                tint = WasmerSubText,
-                modifier = Modifier.size(22.dp)
-            )
+            if (episode.available) {
+                Icon(
+                    imageVector = Icons.Filled.Download,
+                    contentDescription = "Download",
+                    tint = WasmerSubText,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
 
         HorizontalDivider(

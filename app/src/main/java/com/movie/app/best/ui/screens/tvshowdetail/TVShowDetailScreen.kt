@@ -99,7 +99,7 @@ fun TVShowDetailScreen(
     slug: String,
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String) -> Unit,
-    onWatchNow: (imdbId: String, title: String, movieId: String, slug: String) -> Unit = { _, _, _, _ -> },
+    onWatchNow: (imdbId: String, title: String, movieId: String, slug: String, targetSeason: Int) -> Unit = { _, _, _, _, _ -> },
     onMovieClick: (String) -> Unit = {},
     onSeriesClick: (String) -> Unit = {},
     viewModel: TVShowDetailViewModel = hiltViewModel()
@@ -230,7 +230,7 @@ private fun TVShowDetailContent(
     uiState: TVShowDetailUiState,
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String) -> Unit,
-    onWatchNow: (imdbId: String, title: String, movieId: String, slug: String) -> Unit,
+    onWatchNow: (imdbId: String, title: String, movieId: String, slug: String, targetSeason: Int) -> Unit,
     onPostComment: (name: String, msg: String) -> Unit,
     onRequestStream: () -> Unit,
     onStartDownload: (linkUrl: String) -> Unit,
@@ -244,7 +244,8 @@ private fun TVShowDetailContent(
     val isContentHidden = ModerationSettings.shouldHideDetail(context, series.contentModeration)
     val shouldBlurPoster = ModerationSettings.shouldBlurDetail(context, series.contentModeration)
     val seasonKeys = uiState.episodesBySeason.keys.sorted()
-    var selectedSeason by remember { mutableStateOf(seasonKeys.firstOrNull() ?: 1) }
+    val defaultSeason = series.seasonLabel.filter { it.isDigit() }.toIntOrNull()
+    var selectedSeason by remember { mutableStateOf(defaultSeason?.takeIf { it in seasonKeys } ?: seasonKeys.firstOrNull() ?: 1) }
 
     if (isContentHidden) {
         Column(
@@ -505,7 +506,7 @@ private fun TVShowDetailContent(
                     isLiked = uiState.isLiked,
                     isSeries = true,
                     onPlayClick = {
-                        onWatchNow(series.imdbId, series.title, series.id.toString(), series.slug)
+                        onWatchNow(series.imdbId, series.title, series.id.toString(), series.slug, selectedSeason)
                     },
                     onDownloadClick = { },
                     onMyListClick = onToggleBookmark,
@@ -583,7 +584,7 @@ private fun TVShowDetailContent(
                     episode = episode,
                     downloadLinks = uiState.linksByEpisode[episode.id] ?: emptyList(),
                     onPlayClick = {
-                        onWatchNow(series.imdbId, series.title, series.id.toString(), series.slug)
+                        onWatchNow(series.imdbId, series.title, series.id.toString(), series.slug, selectedSeason)
                     }
                 )
                 HorizontalDivider(

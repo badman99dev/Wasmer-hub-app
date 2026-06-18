@@ -67,9 +67,9 @@ sealed class Screen(val route: String) {
     object SeriesDetail : Screen("series/{slug}") {
         fun createRoute(slug: String) = "series/${Uri.encode(slug)}"
     }
-    object SeriesWatch : Screen("seriesWatch/{imdbId}/{title}/{movieId}/{slug}") {
-        fun createRoute(imdbId: String, title: String, movieId: String, slug: String): String {
-            return "seriesWatch/${Uri.encode(imdbId)}/${Uri.encode(title)}/${Uri.encode(movieId)}/${Uri.encode(slug)}"
+    object SeriesWatch : Screen("seriesWatch/{imdbId}/{title}/{movieId}/{slug}/{targetSeason}") {
+        fun createRoute(imdbId: String, title: String, movieId: String, slug: String, targetSeason: Int = -1): String {
+            return "seriesWatch/${Uri.encode(imdbId)}/${Uri.encode(title)}/${Uri.encode(movieId)}/${Uri.encode(slug)}/${targetSeason}"
         }
     }
     object VideoPlayer : Screen("videoPlayer?playerUrl={playerUrl}&streamUrl={streamUrl}&title={title}&youtubeId={youtubeId}&movieId={movieId}&slug={slug}&isLive={isLive}&contentSource={contentSource}") {
@@ -211,8 +211,8 @@ fun AppNavigation(
                 onPlayClick = { playerUrl, streamUrl, title, youtubeId, movieId, slug ->
                     navController.navigate(Screen.VideoPlayer.createRoute(playerUrl, streamUrl, title, youtubeId, movieId, slug))
                 },
-                onWatchNow = { imdbId, title, movieId, slug ->
-                    navController.navigate(Screen.SeriesWatch.createRoute(imdbId, title, movieId, slug))
+                onWatchNow = { imdbId, title, movieId, slug, targetSeason ->
+                    navController.navigate(Screen.SeriesWatch.createRoute(imdbId, title, movieId, slug, targetSeason))
                 },
                 onMovieClick = { movieSlug ->
                     navController.navigate(Screen.MovieDetail.createRoute(movieSlug))
@@ -231,7 +231,11 @@ fun AppNavigation(
                 navArgument("imdbId") { type = NavType.StringType },
                 navArgument("title") { type = NavType.StringType },
                 navArgument("movieId") { type = NavType.StringType },
-                navArgument("slug") { type = NavType.StringType }
+                navArgument("slug") { type = NavType.StringType },
+                navArgument("targetSeason") {
+                    type = NavType.IntType
+                    defaultValue = -1
+                }
             )
         ) { backStackEntry ->
             SeriesWatchScreen(

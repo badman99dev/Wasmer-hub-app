@@ -30,6 +30,7 @@ class SeriesWatchViewModel @Inject constructor(
     private val seriesTitle: String = savedStateHandle["title"] ?: ""
     private val movieId: String = savedStateHandle["movieId"] ?: ""
     private val slug: String = savedStateHandle["slug"] ?: ""
+    private val targetSeason: Int = savedStateHandle["targetSeason"] ?: -1
 
     private val _state = MutableStateFlow(ExtractionState())
     val state: StateFlow<ExtractionState> = _state.asStateFlow()
@@ -69,50 +70,97 @@ class SeriesWatchViewModel @Inject constructor(
 
             val gemmaResult = gemmaExtractor.extract(imdbId)
 
-            if (gemmaResult.error != null && gemmaResult.seasons.isEmpty()) {
-                _state.update { it.copy(isLoading = false, error = gemmaResult.error) }
+            if (gemmaResult.seasons.isEmpty()) {
+                _state.update { it.copy(isLoading = false, error = "Source not found") }
                 return@launch
             }
 
-            val firstSeason = gemmaResult.seasons.keys.minOrNull() ?: 1
+            val availableSeasons = gemmaResult.seasons.keys
 
-            // Start first-season episodes; observer updates cache/state when it arrives
-            val episodesDeferred = viewModelScope.async {
-                try { imdbApi.getEpisodes(imdbId, firstSeason) } catch (_: Exception) { null }
+            // If target season is not in the backend, try IMDb to confirm it exists
+            var targetImdbEpisodes: List<ImdbEpisode>? = null
+            if (targetSeason != -1 && targetSeason !in availableSeasons) {
+                val targetDeferred = viewModelScope.async {
+                    try { imdbApi.getEpisodes(imdbId, targetSeason) } catch (_: Exception) { null }
+                }
+                viewModelScope.launch {
+                    try {
+                        val resp = targetDeferred.await()
+                        if (resp != null) {
+                            imdbCache[targetSeason] = resp.episodes
+                            _state.update { it.copy(imdbEpisodes = it.imdbEpisodes.toMutableMap().apply { put(targetSeason, resp.episodes) }) }
+                        }
+                    } catch (_: Exception) {}
+                }
+                val targetResponse = withTimeoutOrNull(2000) { targetDeferred.await() }
+                targetImdbEpisodes = targetResponse?.episodes?.takeIf { it.isNotEmpty() }
+                targetImdbEpisodes?.let { imdbCache[targetSeason] = it }
             }
-            viewModelScope.launch {
-                try {
-                    val resp = episodesDeferred.await()
-                    if (resp != null) {
-                        imdbCache[firstSeason] = resp.episodes
-                        _state.update { it.copy(imdbEpisodes = it.imdbEpisodes.toMutableMap().apply { put(firstSeason, resp.episodes) }) }
-                    }
-                } catch (_: Exception) {}
+
+            val selectedSeason = when {
+                targetSeason != -1 && (targetSeason in availableSeasons || targetImdbEpisodes?.isNotEmpty() == true) -> targetSeason
+                targetSeason != -1 && availableSeasons.isNotEmpty() -> availableSeasons.maxOrNull() ?: availableSeasons.firstOrNull() ?: 1
+                availableSeasons.isNotEmpty() -> availableSeasons.maxOrNull() ?: availableSeasons.firstOrNull() ?: 1
+                else -> {
+                    _state.update { it.copy(isLoading = false, error = "Source not found") }
+                    return@launch
+                }
+            }
+
+            // Start IMDb episodes for the selected season; observer updates cache/state when it arrives
+            val episodesDeferred = if (imdbCache[selectedSeason] == null) {
+                viewModelScope.async {
+                    try { imdbApi.getEpisodes(imdbId, selectedSeason) } catch (_: Exception) { null }
+                }
+            } else null
+
+            episodesDeferred?.let { deferred ->
+                viewModelScope.launch {
+                    try {
+                        val resp = deferred.await()
+                        if (resp != null) {
+                            imdbCache[selectedSeason] = resp.episodes
+                            _state.update { it.copy(imdbEpisodes = it.imdbEpisodes.toMutableMap().apply { put(selectedSeason, resp.episodes) }) }
+                        }
+                    } catch (_: Exception) {}
+                }
             }
 
             // Wait up to 2 seconds for the IMDb requests (not cancelling them)
             val titleDetails = withTimeoutOrNull(2000) { titleDetailsDeferred.await() }
             val certificates = withTimeoutOrNull(2000) { certificatesDeferred.await() }
-            val episodesResponse = withTimeoutOrNull(2000) { episodesDeferred.await() }
+            val episodesResponse = withTimeoutOrNull(2000) { episodesDeferred?.await() }
 
             episodesResponse?.let { resp ->
-                imdbCache[firstSeason] = resp.episodes
+                imdbCache[selectedSeason] = resp.episodes
             }
 
             collectAvailableLanguages(gemmaResult)
+
+            val imdbEpisodesMap = mutableMapOf<Int, List<ImdbEpisode>>()
+            imdbCache[selectedSeason]?.let { imdbEpisodesMap[selectedSeason] = it }
+            targetImdbEpisodes?.let { imdbEpisodesMap[targetSeason] = it }
 
             _state.update {
                 it.copy(
                     isLoading = false,
                     result = gemmaResult,
-                    selectedSeason = firstSeason,
+                    selectedSeason = selectedSeason,
                     error = null,
-                    imdbEpisodes = if (episodesResponse != null) {
-                        it.imdbEpisodes.toMutableMap().apply { put(firstSeason, episodesResponse.episodes) }
-                    } else it.imdbEpisodes,
+                    imdbEpisodes = imdbEpisodesMap,
                     titleDetails = titleDetails,
                     ageRating = certificates?.let { extractAgeRating(it) } ?: ""
                 )
+            }
+
+            // Auto-select the first episode of the selected season
+            val episodes = _state.value.mergedEpisodes
+            if (episodes.isNotEmpty()) {
+                val first = episodes.first()
+                _state.update { it.copy(currentEpisode = first) }
+                if (first.available) {
+                    onEpisodeClick(first)
+                }
             }
         }
     }
@@ -135,9 +183,11 @@ class SeriesWatchViewModel @Inject constructor(
         _state.update { it.copy(availableLanguages = sorted, selectedLanguage = default) }
     }
 
-    fun loadImdbEpisodes(seasonNo: Int) {
+    fun loadImdbEpisodes(seasonNo: Int, onLoaded: ((List<ImdbEpisode>) -> Unit)? = null) {
         if (imdbCache.containsKey(seasonNo)) {
-            _state.update { it.copy(imdbEpisodes = it.imdbEpisodes.toMutableMap().apply { put(seasonNo, imdbCache[seasonNo]!!) }) }
+            val cached = imdbCache[seasonNo]!!
+            _state.update { it.copy(imdbEpisodes = it.imdbEpisodes.toMutableMap().apply { put(seasonNo, cached) }) }
+            onLoaded?.invoke(cached)
             return
         }
         viewModelScope.launch {
@@ -146,13 +196,25 @@ class SeriesWatchViewModel @Inject constructor(
                 val eps = resp.episodes
                 imdbCache[seasonNo] = eps
                 _state.update { it.copy(imdbEpisodes = it.imdbEpisodes.toMutableMap().apply { put(seasonNo, eps) }) }
-            } catch (_: Exception) { }
+                onLoaded?.invoke(eps)
+            } catch (_: Exception) { onLoaded?.invoke(emptyList()) }
         }
     }
 
     fun selectSeason(seasonNo: Int) {
         _state.update { it.copy(selectedSeason = seasonNo) }
-        loadImdbEpisodes(seasonNo)
+        loadImdbEpisodes(seasonNo) { episodes ->
+            if (episodes.isNotEmpty()) {
+                val merged = _state.value.mergedEpisodes
+                if (merged.isNotEmpty()) {
+                    val first = merged.first()
+                    _state.update { it.copy(currentEpisode = first) }
+                    if (first.available) {
+                        onEpisodeClick(first)
+                    }
+                }
+            }
+        }
     }
 
     fun selectLanguage(lang: String) {
@@ -167,6 +229,10 @@ class SeriesWatchViewModel @Inject constructor(
     }
 
     fun onEpisodeClick(episode: WatchEpisode) {
+        if (!episode.available) {
+            _state.update { it.copy(currentEpisode = episode) }
+            return
+        }
         val lang = _state.value.selectedLanguage
         val file = episode.languages[lang] ?: episode.languages.values.firstOrNull() ?: return
         _state.update { it.copy(currentEpisode = episode) }
