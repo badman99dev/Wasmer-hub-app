@@ -9,13 +9,13 @@ data class ImdbEpisodeResponse(
 data class ImdbEpisode(
     val id: String = "",
     val title: String = "",
-    val primaryImage: ImdbImage? = null,
+    @SerializedName("primaryImage") val primaryImage: ImdbImage? = null,
     val season: String = "",
     @SerializedName("episodeNumber") val episodeNumber: Int = 0,
     @SerializedName("runtimeSeconds") val runtimeSeconds: Int = 0,
     val plot: String = "",
     val rating: ImdbRating? = null,
-    val releaseDate: ImdbReleaseDate? = null
+    @SerializedName("releaseDate") val releaseDate: ImdbReleaseDate? = null
 ) {
     val stillImageUrl: String get() = primaryImage?.url ?: ""
     val runtimeMinutes: Int get() = runtimeSeconds / 60
@@ -48,10 +48,10 @@ data class ImdbReleaseDate(
 data class ImdbTitleDetails(
     val id: String = "",
     val type: String = "",
-    val primaryTitle: String = "",
-    val primaryImage: ImdbImage? = null,
-    val startYear: Int = 0,
-    val endYear: Int? = null,
+    @SerializedName("primaryTitle") val primaryTitle: String = "",
+    @SerializedName("primaryImage") val primaryImage: ImdbImage? = null,
+    @SerializedName("startYear") val startYear: Int = 0,
+    @SerializedName("endYear") val endYear: Int? = null,
     @SerializedName("runtimeSeconds") val runtimeSeconds: Int = 0,
     val genres: List<String> = emptyList(),
     val rating: ImdbRating? = null,
