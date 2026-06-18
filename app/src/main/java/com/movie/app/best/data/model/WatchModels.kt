@@ -23,11 +23,13 @@ data class WatchEpisode(
         if (releaseDate.isNotBlank()) parts.add(releaseDate)
         return parts.joinToString(" · ")
     }
-    val releaseYear: String get() = try {
-        SimpleDateFormat("yyyy", Locale.US).format(
-            SimpleDateFormat("dd MMM yyyy", Locale.US).parse(releaseDate) ?: return ""
-        )
-    } catch (_: Exception) { "" }
+    val releaseYear: String get() {
+        if (releaseDate.isBlank()) return ""
+        return try {
+            val parsed = SimpleDateFormat("dd MMM yyyy", Locale.US).parse(releaseDate) ?: return ""
+            SimpleDateFormat("yyyy", Locale.US).format(parsed)
+        } catch (_: Exception) { "" }
+    }
 }
 
 data class GemmaExtractionResult(
