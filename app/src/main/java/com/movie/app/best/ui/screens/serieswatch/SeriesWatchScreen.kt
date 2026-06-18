@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -500,9 +501,19 @@ fun SeriesWatchScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("⚠️", fontSize = 40.sp)
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Error",
+                        tint = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.size(40.dp)
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(state.error ?: "Unknown error", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp, textAlign = TextAlign.Center)
+                    Text(
+                        text = "Source not found",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                     TextButton(onClick = { viewModel.selectSeason(state.selectedSeason) }) {
                         Text("Retry", color = WasmerRed)
