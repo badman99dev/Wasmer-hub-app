@@ -18,7 +18,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun rememberControlsVisibilityState(player: Player, hideAfter: Duration): ControlsVisibilityState {
+fun rememberControlsVisibilityState(
+    player: Player,
+    hideAfter: Duration,
+    autoToggleSystemBars: Boolean = true,
+): ControlsVisibilityState {
     val activity = LocalActivity.current
     val coroutineScope = rememberCoroutineScope()
     val controlsVisibilityState = remember { ControlsVisibilityState(player, hideAfter, coroutineScope) }
@@ -39,6 +43,7 @@ fun rememberControlsVisibilityState(player: Player, hideAfter: Duration): Contro
         }
     }
     LaunchedEffect(controlsVisibilityState.controlsVisible, controlsVisibilityState.controlsLocked) {
+        if (!autoToggleSystemBars) return@LaunchedEffect
         if (controlsVisibilityState.controlsLocked) {
             activity?.toggleSystemBars(showBars = false)
             return@LaunchedEffect

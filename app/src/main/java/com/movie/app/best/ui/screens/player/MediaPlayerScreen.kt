@@ -115,6 +115,7 @@ fun MediaPlayerScreen(
     val controlsVisibilityState = rememberControlsVisibilityState(
         player = player,
         hideAfter = 4.seconds,
+        autoToggleSystemBars = !isInline,
     )
     val tapGestureState = rememberTapGestureState(
         player = player,
