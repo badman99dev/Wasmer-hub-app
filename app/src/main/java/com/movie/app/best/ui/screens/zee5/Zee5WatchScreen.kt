@@ -81,6 +81,9 @@ fun Zee5WatchScreen(
 
     LaunchedEffect(isFullscreen) {
         FullscreenPlayerState.isActive = isFullscreen
+        activity?.let {
+            if (isFullscreen) ImmersiveMode.enter(it) else ImmersiveMode.exit(it)
+        }
     }
     DisposableEffect(Unit) {
         onDispose { FullscreenPlayerState.isActive = false }
@@ -203,7 +206,7 @@ fun Zee5WatchScreen(
     val exitFullscreen = {
         isFullscreen = false
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        activity?.let { ImmersiveMode.enter(it) }
+        activity?.let { ImmersiveMode.exit(it) }
     }
 
     val enterFullscreen = {
@@ -216,13 +219,13 @@ fun Zee5WatchScreen(
         if (isFullscreen) {
             exitFullscreen()
         } else {
+            activity?.let { ImmersiveMode.exit(it) }
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             onBackClick()
         }
     }
 
     DisposableEffect(Unit) {
-        activity?.let { ImmersiveMode.enter(it) }
         onDispose {
             activity?.let { ImmersiveMode.exit(it) }
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT

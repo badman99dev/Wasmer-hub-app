@@ -95,6 +95,9 @@ fun SeriesWatchScreen(
 
     LaunchedEffect(isFullscreen) {
         FullscreenPlayerState.isActive = isFullscreen
+        activity?.let {
+            if (isFullscreen) ImmersiveMode.enter(it) else ImmersiveMode.exit(it)
+        }
     }
     DisposableEffect(Unit) {
         onDispose { FullscreenPlayerState.isActive = false }
