@@ -40,6 +40,7 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.movie.app.best.data.debug.DebugInterceptor
 import com.movie.app.best.data.debug.Zee5False404Interceptor
 import com.movie.app.best.data.settings.VideoQualitySettings
+import com.movie.app.best.util.FullscreenPlayerState
 import com.movie.app.best.util.ImmersiveMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -61,6 +62,11 @@ fun VideoPlayerScreen(
     val context = LocalContext.current
     val activity = context as? android.app.Activity
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(Unit) {
+        FullscreenPlayerState.isActive = true
+        onDispose { FullscreenPlayerState.isActive = false }
+    }
 
     val effectiveUrl = remember(streamUrl, playerUrl) {
         val url = when {

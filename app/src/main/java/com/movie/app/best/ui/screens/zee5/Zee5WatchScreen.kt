@@ -61,6 +61,7 @@ import com.movie.app.best.ui.theme.WasmerBlack
 import com.movie.app.best.ui.theme.WasmerCardDark
 import com.movie.app.best.ui.theme.WasmerRed
 import com.movie.app.best.ui.theme.WasmerSubText
+import com.movie.app.best.util.FullscreenPlayerState
 import com.movie.app.best.util.ImmersiveMode
 import okhttp3.OkHttpClient
 
@@ -77,6 +78,13 @@ fun Zee5WatchScreen(
     val episodeListState = rememberLazyListState()
     var playerError by remember { mutableStateOf<String?>(null) }
     var zee5PlayerErrorRetryCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(isFullscreen) {
+        FullscreenPlayerState.isActive = isFullscreen
+    }
+    DisposableEffect(Unit) {
+        onDispose { FullscreenPlayerState.isActive = false }
+    }
 
     val shouldLoadMoreEpisodes = remember {
         derivedStateOf {

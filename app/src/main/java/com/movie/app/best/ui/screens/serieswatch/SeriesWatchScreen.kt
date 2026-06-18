@@ -65,6 +65,7 @@ import com.movie.app.best.ui.screens.player.MediaPlayerScreen
 import com.movie.app.best.ui.screens.serieswatch.components.EpisodeCard
 import com.movie.app.best.ui.screens.serieswatch.components.LanguageSelector
 import com.movie.app.best.ui.screens.serieswatch.components.SeasonChips
+import com.movie.app.best.util.FullscreenPlayerState
 import com.movie.app.best.util.ImmersiveMode
 import okhttp3.OkHttpClient
 
@@ -91,6 +92,13 @@ fun SeriesWatchScreen(
     }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var isFullscreen by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isFullscreen) {
+        FullscreenPlayerState.isActive = isFullscreen
+    }
+    DisposableEffect(Unit) {
+        onDispose { FullscreenPlayerState.isActive = false }
+    }
 
     LaunchedEffect(state.currentM3u8) {
         val m3u8 = state.currentM3u8
