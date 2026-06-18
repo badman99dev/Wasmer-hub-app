@@ -1,5 +1,8 @@
 package com.movie.app.best.data.model
 
+import java.text.SimpleDateFormat
+import java.util.Locale
+
 data class WatchEpisode(
     val episodeNo: Int,
     val seasonNo: Int,
@@ -20,6 +23,11 @@ data class WatchEpisode(
         if (releaseDate.isNotBlank()) parts.add(releaseDate)
         return parts.joinToString(" · ")
     }
+    val releaseYear: String get() = try {
+        SimpleDateFormat("yyyy", Locale.US).format(
+            SimpleDateFormat("dd MMM yyyy", Locale.US).parse(releaseDate) ?: return ""
+        )
+    } catch (_: Exception) { "" }
 }
 
 data class GemmaExtractionResult(
@@ -47,6 +55,8 @@ data class ExtractionState(
     val availableLanguages: List<String> = emptyList(),
     val currentM3u8: String? = null,
     val currentEpisode: WatchEpisode? = null,
+    val titleDetails: ImdbTitleDetails? = null,
+    val ageRating: String = "",
     val error: String? = null
 ) {
     val mergedEpisodes: List<WatchEpisode>

@@ -1,6 +1,5 @@
 package com.movie.app.best.ui.screens.serieswatch.components
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,21 +14,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.WatchEpisode
+import com.movie.app.best.ui.theme.WasmerCardDark
+import com.movie.app.best.ui.theme.WasmerRed
+import com.movie.app.best.ui.theme.WasmerSubText
 
 @Composable
 fun EpisodeCard(
@@ -50,24 +44,23 @@ fun EpisodeCard(
     onPlayClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    val titleColor = if (isPlaying) WasmerRed else Color.White
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .animateContentSize()
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable(onClick = onPlayClick)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .width(160.dp)
+                    .width(140.dp)
                     .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(10.dp))
+                    .background(WasmerCardDark)
             ) {
                 if (episode.stillImageUrl.isNotEmpty()) {
                     AsyncImage(
@@ -96,57 +89,64 @@ fun EpisodeCard(
                     }
                 }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.25f))
-                        .clickable(onClick = onPlayClick),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val playBg = if (isPlaying) Color(0xFF4CAF50) else Color(0xFFE50914)
-                    IconButton(
-                        onClick = onPlayClick,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(playBg.copy(alpha = 0.9f), CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-
                 if (isPlaying) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(6.dp)
-                            .background(Color(0xFF4CAF50), RoundedCornerShape(4.dp))
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(WasmerRed)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text("NOW PLAYING", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                        Text(
+                            "NOW PLAYING",
+                            color = Color.White,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+
+                if (episode.runtimeMinutes > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(6.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color.Black.copy(alpha = 0.7f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "${episode.runtimeMinutes} min",
+                            color = Color.White,
+                            fontSize = 10.sp
+                        )
                     }
                 }
             }
 
             Column(modifier = Modifier.weight(1f)) {
+                val titleText = episode.episodeNo.let { "$it. ${episode.title}" }
                 Text(
-                    text = episode.displayTitle,
-                    color = Color.White,
+                    text = titleText,
+                    color = titleColor,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (episode.displayMeta.isNotBlank()) {
+                val meta = buildList {
+                    add("Episode ${episode.episodeNo}")
+                    if (episode.runtimeMinutes > 0) add("${episode.runtimeMinutes} min")
+                    if (episode.releaseYear.isNotBlank()) add(episode.releaseYear)
+                }.joinToString(" · ")
+
+                if (meta.isNotBlank()) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = episode.displayMeta,
-                        color = Color.White.copy(alpha = 0.5f),
+                        text = meta,
+                        color = WasmerSubText,
                         fontSize = 12.sp
                     )
                 }
@@ -157,21 +157,18 @@ fun EpisodeCard(
                         text = episode.plot,
                         color = Color.White.copy(alpha = 0.65f),
                         fontSize = 13.sp,
-                        maxLines = if (expanded) Int.MAX_VALUE else 3,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (episode.plot.length > 120) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = if (expanded) "Show less" else "Read more",
-                            color = Color(0xFFE50914),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clickable { expanded = !expanded }
-                        )
-                    }
                 }
             }
+
+            Icon(
+                imageVector = Icons.Filled.Download,
+                contentDescription = "Download",
+                tint = WasmerSubText,
+                modifier = Modifier.size(22.dp)
+            )
         }
 
         HorizontalDivider(

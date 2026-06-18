@@ -1,6 +1,8 @@
 package com.movie.app.best.data.remote
 
+import com.movie.app.best.data.model.ImdbCertificatesResponse
 import com.movie.app.best.data.model.ImdbEpisodeResponse
+import com.movie.app.best.data.model.ImdbTitleDetails
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -11,4 +13,14 @@ interface ImdbApiService {
         @Path("titleId") titleId: String,
         @Query("season") season: Int? = null
     ): ImdbEpisodeResponse
+
+    @GET("titles/{titleId}")
+    suspend fun getTitleDetails(
+        @Path("titleId") titleId: String
+    ): ImdbTitleDetails
+
+    @GET("titles/{titleId}/certificates")
+    suspend fun getCertificates(
+        @Path("titleId") titleId: String
+    ): ImdbCertificatesResponse
 }

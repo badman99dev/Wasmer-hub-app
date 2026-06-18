@@ -10,11 +10,13 @@ import com.movie.app.best.data.model.WatchEpisode
 import com.movie.app.best.data.remote.GemmaExtractorService
 import com.movie.app.best.data.remote.ImdbApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 @HiltViewModel
@@ -42,6 +44,29 @@ class SeriesWatchViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
+            // Start IMDb title & certificate requests in viewModelScope so they survive
+            // the 2-second wait and keep running in the background until they finish.
+            val titleDetailsDeferred = viewModelScope.async {
+                try { imdbApi.getTitleDetails(imdbId) } catch (_: Exception) { null }
+            }
+            val certificatesDeferred = viewModelScope.async {
+                try { imdbApi.getCertificates(imdbId) } catch (_: Exception) { null }
+            }
+
+            // Later-arrival observers: update state when the responses finally come in
+            viewModelScope.launch {
+                try {
+                    val details = titleDetailsDeferred.await()
+                    if (details != null) _state.update { it.copy(titleDetails = details) }
+                } catch (_: Exception) {}
+            }
+            viewModelScope.launch {
+                try {
+                    val certs = certificatesDeferred.await()
+                    if (certs != null) _state.update { it.copy(ageRating = extractAgeRating(certs)) }
+                } catch (_: Exception) {}
+            }
+
             val gemmaResult = gemmaExtractor.extract(imdbId)
 
             if (gemmaResult.error != null && gemmaResult.seasons.isEmpty()) {
@@ -50,17 +75,45 @@ class SeriesWatchViewModel @Inject constructor(
             }
 
             val firstSeason = gemmaResult.seasons.keys.minOrNull() ?: 1
+
+            // Start first-season episodes; observer updates cache/state when it arrives
+            val episodesDeferred = viewModelScope.async {
+                try { imdbApi.getEpisodes(imdbId, firstSeason) } catch (_: Exception) { null }
+            }
+            viewModelScope.launch {
+                try {
+                    val resp = episodesDeferred.await()
+                    if (resp != null) {
+                        imdbCache[firstSeason] = resp.episodes
+                        _state.update { it.copy(imdbEpisodes = it.imdbEpisodes.toMutableMap().apply { put(firstSeason, resp.episodes) }) }
+                    }
+                } catch (_: Exception) {}
+            }
+
+            // Wait up to 2 seconds for the IMDb requests (not cancelling them)
+            val titleDetails = withTimeoutOrNull(2000) { titleDetailsDeferred.await() }
+            val certificates = withTimeoutOrNull(2000) { certificatesDeferred.await() }
+            val episodesResponse = withTimeoutOrNull(2000) { episodesDeferred.await() }
+
+            episodesResponse?.let { resp ->
+                imdbCache[firstSeason] = resp.episodes
+            }
+
+            collectAvailableLanguages(gemmaResult)
+
             _state.update {
                 it.copy(
                     isLoading = false,
                     result = gemmaResult,
                     selectedSeason = firstSeason,
-                    error = null
+                    error = null,
+                    imdbEpisodes = if (episodesResponse != null) {
+                        it.imdbEpisodes.toMutableMap().apply { put(firstSeason, episodesResponse.episodes) }
+                    } else it.imdbEpisodes,
+                    titleDetails = titleDetails,
+                    ageRating = certificates?.let { extractAgeRating(it) } ?: ""
                 )
             }
-
-            collectAvailableLanguages(gemmaResult)
-            loadImdbEpisodes(firstSeason)
         }
     }
 
@@ -129,5 +182,11 @@ class SeriesWatchViewModel @Inject constructor(
                 _state.update { it.copy(currentM3u8 = m3u8) }
             }
         }
+    }
+
+    private fun extractAgeRating(response: com.movie.app.best.data.model.ImdbCertificatesResponse): String {
+        return response.certificates.find { it.country?.code == "IN" }?.rating
+            ?: response.certificates.find { it.country?.code == "US" }?.rating
+            ?: ""
     }
 }

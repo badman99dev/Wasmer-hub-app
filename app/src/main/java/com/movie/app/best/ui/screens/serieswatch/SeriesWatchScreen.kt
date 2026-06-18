@@ -3,6 +3,7 @@ package com.movie.app.best.ui.screens.serieswatch
 import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,16 +16,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -36,7 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -61,10 +67,14 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.movie.app.best.data.debug.DebugInterceptor
 import com.movie.app.best.data.debug.Zee5False404Interceptor
 import com.movie.app.best.data.settings.VideoQualitySettings
+import com.movie.app.best.ui.components.GlassBadge
 import com.movie.app.best.ui.screens.player.MediaPlayerScreen
 import com.movie.app.best.ui.screens.serieswatch.components.EpisodeCard
 import com.movie.app.best.ui.screens.serieswatch.components.LanguageSelector
-import com.movie.app.best.ui.screens.serieswatch.components.SeasonChips
+import com.movie.app.best.ui.theme.WasmerBlack
+import com.movie.app.best.ui.theme.WasmerCardDark
+import com.movie.app.best.ui.theme.WasmerRed
+import com.movie.app.best.ui.theme.WasmerSubText
 import com.movie.app.best.util.FullscreenPlayerState
 import com.movie.app.best.util.ImmersiveMode
 import okhttp3.OkHttpClient
@@ -101,6 +111,12 @@ fun SeriesWatchScreen(
     }
     DisposableEffect(Unit) {
         onDispose { FullscreenPlayerState.isActive = false }
+    }
+
+    LaunchedEffect(state.isLoading, state.currentEpisode, state.mergedEpisodes) {
+        if (!state.isLoading && state.currentEpisode == null && state.mergedEpisodes.isNotEmpty()) {
+            viewModel.onEpisodeClick(state.mergedEpisodes.first())
+        }
     }
 
     LaunchedEffect(state.currentM3u8) {
@@ -237,21 +253,24 @@ fun SeriesWatchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0A0A0F))
+            .background(WasmerBlack)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF111119))
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = onBackClick,
-                modifier = Modifier.size(36.dp)
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(20.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Loading...",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 14.sp
+                    )
+                }
             }
+            return
         }
 
         Box(
@@ -292,55 +311,144 @@ fun SeriesWatchScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF111119))
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .background(WasmerBlack)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            if (state.currentEpisode != null) {
+            val headerTitle = state.currentEpisode?.title ?: state.titleDetails?.primaryTitle ?: ""
+            if (headerTitle.isNotBlank()) {
                 Text(
-                    text = state.currentEpisode?.displayTitle ?: "",
+                    text = headerTitle,
                     color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-            } else {
-                Text(
-                    text = "Select an episode to play",
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 14.sp
-                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val year = state.currentEpisode?.releaseYear?.takeIf { it.isNotBlank() }
+                        ?: state.titleDetails?.startYear?.takeIf { it > 0 }?.toString()
+                    year?.let {
+                        Text(
+                            text = it,
+                            color = WasmerSubText,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    state.ageRating.takeIf { it.isNotBlank() }?.let {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .border(0.5.dp, WasmerSubText, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = it,
+                                color = Color.White,
+                                fontSize = 11.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    state.currentEpisode?.episodeNo?.let {
+                        Text(
+                            text = "Episode $it",
+                            color = WasmerSubText,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    GlassBadge(text = "HD", tint = Color.White)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    if (state.availableLanguages.size > 1) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.1f))
+                                .clickable { showLangSheet = true }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Language, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.padding(horizontal = 3.dp))
+                            Text(
+                                text = state.selectedLanguage,
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
             }
 
-            if (state.availableLanguages.size > 1) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.1f))
-                        .clickable { showLangSheet = true }
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Language, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.padding(horizontal = 3.dp))
-                    Text(
-                        text = state.selectedLanguage,
-                        color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ActionButton(icon = Icons.Filled.Add, label = "My List", onClick = { })
+                ActionButton(icon = Icons.Filled.Star, label = "Rate", onClick = { })
+                ActionButton(icon = Icons.Filled.Share, label = "Share", onClick = { })
+                ActionButton(icon = Icons.Filled.Download, label = "Download", onClick = { })
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val description = state.currentEpisode?.plot?.takeIf { it.isNotBlank() }
+                ?: state.titleDetails?.plot?.takeIf { it.isNotBlank() }
+            description?.let { desc ->
+                Text(
+                    text = desc,
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontSize = 13.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 19.sp
+                )
             }
         }
 
         if (state.seasonKeys.isNotEmpty()) {
-            SeasonChips(
-                seasons = state.seasonKeys,
-                selectedSeason = state.selectedSeason,
-                onSeasonSelect = { viewModel.selectSeason(it) }
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(WasmerBlack)
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                state.seasonKeys.forEach { seasonNo ->
+                    val isSelected = seasonNo == state.selectedSeason
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (isSelected) WasmerRed else WasmerCardDark)
+                            .clickable { viewModel.selectSeason(seasonNo) }
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "Season $seasonNo",
+                            color = if (isSelected) Color.White else WasmerSubText,
+                            fontSize = 13.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
         }
+
+        Text(
+            text = "Episodes",
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
 
         if (state.isLoading) {
             Box(
@@ -348,7 +456,7 @@ fun SeriesWatchScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = Color(0xFFE50914), modifier = Modifier.size(40.dp))
+                    CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(40.dp))
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Fetching episodes...", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
                 }
@@ -363,8 +471,8 @@ fun SeriesWatchScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(state.error ?: "Unknown error", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp, textAlign = TextAlign.Center)
                     Spacer(modifier = Modifier.height(16.dp))
-                    androidx.compose.material3.TextButton(onClick = { viewModel.selectSeason(state.selectedSeason) }) {
-                        Text("Retry", color = Color(0xFFE50914))
+                    TextButton(onClick = { viewModel.selectSeason(state.selectedSeason) }) {
+                        Text("Retry", color = WasmerRed)
                     }
                 }
             }
@@ -393,5 +501,31 @@ fun SeriesWatchScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
