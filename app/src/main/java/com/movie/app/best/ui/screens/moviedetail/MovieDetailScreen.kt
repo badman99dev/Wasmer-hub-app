@@ -34,6 +34,7 @@ fun MovieDetailScreen(
     slug: String,
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String) -> Unit,
+    onWatchClick: (imdbId: String, title: String, movieId: String, slug: String, hasStream: Boolean, playerUrl: String, posterUrl: String) -> Unit = { _, _, _, _, _, _, _ -> },
     onSeriesClick: (slug: String) -> Unit,
     onMovieClick: (slug: String) -> Unit = {},
     onDownloadClick: (linkUrl: String) -> Unit = { },
@@ -110,6 +111,7 @@ fun MovieDetailScreen(
                     uiState            = uiState,
                     onBackClick        = onBackClick,
                     onPlayClick        = onPlayClick,
+                    onWatchClick       = onWatchClick,
                     onDownloadClick    = { showDownloadSheet = true },
                     onPostComment      = viewModel::postComment,
                     onRequestStream    = viewModel::requestStream,
@@ -198,32 +200,6 @@ fun MovieDetailScreen(
                 )
             }
         }
-
-        if (uiState.isStreamRequesting) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.8f)),
-                contentAlignment = Alignment.Center
-            ) {
-                StreamRequestWaitingPopup()
-            }
-        }
-
-        if (uiState.showStreamRequestResult && uiState.streamRequestResult != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.85f)),
-                contentAlignment = Alignment.Center
-            ) {
-                StreamRequestResultModal(
-                    result = uiState.streamRequestResult!!,
-                    isModerator = uiState.isModerator,
-                    onDismiss = viewModel::dismissStreamRequestResult
-                )
-            }
-        }
     }
 }
 
@@ -236,6 +212,7 @@ private fun MovieDetailContent(
     uiState: MovieDetailUiState,
     onBackClick: () -> Unit,
     onPlayClick: (String, String, String, String, String, String) -> Unit,
+    onWatchClick: (String, String, String, String, Boolean, String, String) -> Unit,
     onDownloadClick: () -> Unit,
     onPostComment: (String, String) -> Unit,
     onRequestStream: () -> Unit,
@@ -310,9 +287,9 @@ private fun MovieDetailContent(
                 isInMyList      = uiState.isBookmarked,
                 isLiked         = uiState.isLiked,
                 hasDownloadLinks = uiState.downloadLinks.isNotEmpty(),
+                alwaysShowWatch = true,
                 onPlayClick     = {
-                    val workerUrl = "https://sparkling-breeze-1ad6.badman993944.workers.dev/?id=${movie.id}"
-                    onPlayClick("", workerUrl, movie.title, "", movie.id.toString(), movie.slug)
+                    onWatchClick(movie.imdbId, movie.title, movie.id.toString(), movie.slug, movie.hasStream, movie.playerUrl, movie.posterUrl)
                 },
                 onDownloadClick = onDownloadClick,
                 onMyListClick   = onToggleBookmark,
