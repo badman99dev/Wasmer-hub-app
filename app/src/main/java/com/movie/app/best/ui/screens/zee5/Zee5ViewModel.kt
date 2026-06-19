@@ -354,7 +354,6 @@ class Zee5ViewModel @Inject constructor(
     fun search(query: String) {
         viewModelScope.launch {
             _uiState.value = Zee5UiState.Loading
-            _suggestions.value = emptyList()
             try {
                 val response = apiService.search(query, limit = 20)
                 val rails = response.data?.hybridSearchResults?.rails ?: emptyList()

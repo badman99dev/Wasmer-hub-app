@@ -11,7 +11,7 @@ import com.movie.app.best.data.model.Zee5SuggestionInput
 import com.movie.app.best.data.model.Zee5SuggestionRequest
 import com.movie.app.best.data.model.Zee5SuggestionVariables
 import com.movie.app.best.data.remote.ImdbApiService
-import com.movie.app.best.data.remote.MeiliSearchRepository
+import com.movie.app.best.data.repository.MeiliSearchRepository
 import com.movie.app.best.data.remote.Zee5ApiService
 import com.movie.app.best.data.remote.Zee5SuggestionApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
