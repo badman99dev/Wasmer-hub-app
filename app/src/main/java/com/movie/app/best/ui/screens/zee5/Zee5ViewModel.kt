@@ -7,7 +7,11 @@ import com.movie.app.best.data.model.Zee5CollectionResponse
 import com.movie.app.best.data.model.Zee5DetailResponse
 import com.movie.app.best.data.model.Zee5Item
 import com.movie.app.best.data.model.Zee5Season
+import com.movie.app.best.data.model.Zee5SuggestionInput
+import com.movie.app.best.data.model.Zee5SuggestionRequest
+import com.movie.app.best.data.model.Zee5SuggestionVariables
 import com.movie.app.best.data.remote.Zee5ApiService
+import com.movie.app.best.data.remote.Zee5SuggestionApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,7 +47,8 @@ enum class Zee5Tab {
 
 @HiltViewModel
 class Zee5ViewModel @Inject constructor(
-    val apiService: Zee5ApiService
+    val apiService: Zee5ApiService,
+    private val suggestionApiService: Zee5SuggestionApiService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<Zee5UiState>(Zee5UiState.Loading)
@@ -54,6 +59,12 @@ class Zee5ViewModel @Inject constructor(
 
     private val _episodesState = MutableStateFlow<Zee5EpisodesState>(Zee5EpisodesState.Loading)
     val episodesState: StateFlow<Zee5EpisodesState> = _episodesState.asStateFlow()
+
+    private val _suggestions = MutableStateFlow<List<String>>(emptyList())
+    val suggestions: StateFlow<List<String>> = _suggestions.asStateFlow()
+
+    private val _isSuggestionsLoading = MutableStateFlow(false)
+    val isSuggestionsLoading: StateFlow<Boolean> = _isSuggestionsLoading.asStateFlow()
 
     private val _currentTab = MutableStateFlow(Zee5Tab.ALL)
     val currentTab: StateFlow<Zee5Tab> = _currentTab.asStateFlow()
@@ -354,6 +365,7 @@ class Zee5ViewModel @Inject constructor(
     fun search(query: String) {
         viewModelScope.launch {
             _uiState.value = Zee5UiState.Loading
+            _suggestions.value = emptyList()
             try {
                 val response = apiService.search(query, limit = 20)
                 val rails = response.data?.hybridSearchResults?.rails ?: emptyList()
@@ -373,6 +385,43 @@ class Zee5ViewModel @Inject constructor(
                 _uiState.value = Zee5UiState.Error(e.message ?: "Search failed")
             }
         }
+    }
+
+    fun getSuggestions(query: String) {
+        if (query.isBlank()) {
+            _suggestions.value = emptyList()
+            return
+        }
+        viewModelScope.launch {
+            _isSuggestionsLoading.value = true
+            try {
+                val request = Zee5SuggestionRequest(
+                    variables = Zee5SuggestionVariables(
+                        input = Zee5SuggestionInput(query = query)
+                    )
+                )
+                val response = suggestionApiService.getSuggestions(body = request)
+                _suggestions.value = response.data?.searchSuggestions?.suggestions
+                    ?.map { it.text }
+                    ?.filter { it.isNotBlank() }
+                    ?: emptyList()
+            } catch (_: Exception) {
+                _suggestions.value = emptyList()
+            } finally {
+                _isSuggestionsLoading.value = false
+            }
+        }
+    }
+
+    fun clearSuggestions() {
+        _suggestions.value = emptyList()
+    }
+
+    fun firstSuggestion(): String? = _suggestions.value.firstOrNull()
+
+    fun searchWithAutocorrect(query: String) {
+        val corrected = firstSuggestion() ?: query
+        search(corrected)
     }
 
     fun resetDetail() {

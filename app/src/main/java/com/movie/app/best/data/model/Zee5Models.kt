@@ -280,3 +280,37 @@ data class Zee5PlaybackResponse(
     
     val isZee5Content: Boolean = true
 }
+
+// ─── ZEE5 Suggestion (direct GraphQL, no tokens) ───
+
+data class Zee5SuggestionRequest(
+    val operationName: String = "GetSearchSuggestions",
+    val query: String = GQL_SUGGESTION_QUERY,
+    val variables: Zee5SuggestionVariables
+)
+
+data class Zee5SuggestionVariables(
+    val input: Zee5SuggestionInput
+)
+
+data class Zee5SuggestionInput(
+    val query: String
+)
+
+data class Zee5SuggestionResponse(
+    val data: Zee5SuggestionData? = null
+)
+
+data class Zee5SuggestionData(
+    val searchSuggestions: Zee5SearchSuggestions? = null
+)
+
+data class Zee5SearchSuggestions(
+    val suggestions: List<Zee5SuggestionItem> = emptyList()
+)
+
+data class Zee5SuggestionItem(
+    val text: String = ""
+)
+
+const val GQL_SUGGESTION_QUERY = "query GetSearchSuggestions(\$input: SearchSuggestionInput!) { searchSuggestions(searchSuggestionInput: \$input) { suggestions { text } } }"

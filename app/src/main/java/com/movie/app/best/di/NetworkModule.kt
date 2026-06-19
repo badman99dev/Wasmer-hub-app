@@ -173,4 +173,25 @@ object NetworkModule {
     fun provideZee5ApiService(@Named("zee5") retrofit: Retrofit): com.movie.app.best.data.remote.Zee5ApiService {
         return retrofit.create(com.movie.app.best.data.remote.Zee5ApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    @Named("zee5suggest")
+    fun provideZee5SuggestionRetrofit(gson: com.google.gson.Gson): Retrofit {
+        val plainClient = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .build()
+        return Retrofit.Builder()
+            .baseUrl("https://artemis.zee5.com/")
+            .client(plainClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideZee5SuggestionApiService(@Named("zee5suggest") retrofit: Retrofit): com.movie.app.best.data.remote.Zee5SuggestionApiService {
+        return retrofit.create(com.movie.app.best.data.remote.Zee5SuggestionApiService::class.java)
+    }
 }
