@@ -276,7 +276,8 @@ fun AppNavigation(
 
         composable(Screen.Search.route) {
             SearchScreen(
-                onContentClick = { slug, isSeries -> navigateToContent(slug, isSeries) }
+                onContentClick = { slug, isSeries -> navigateToContent(slug, isSeries) },
+                onZee5Click = { id -> navController.navigate("zee5_detail/$id") }
             )
         }
 

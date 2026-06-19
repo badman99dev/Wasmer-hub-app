@@ -2,11 +2,22 @@ package com.movie.app.best.ui.screens.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.movie.app.best.data.model.Resource
-import com.movie.app.best.data.model.WasmerMovie
-import com.movie.app.best.data.repository.MovieRepository
+import com.movie.app.best.data.model.ImdbSearchResponse
+import com.movie.app.best.data.model.ImdbTitleDetails
+import com.movie.app.best.data.model.MeiliHit
+import com.movie.app.best.data.model.MeiliSearchResponse
+import com.movie.app.best.data.model.Zee5Item
+import com.movie.app.best.data.model.Zee5SuggestionInput
+import com.movie.app.best.data.model.Zee5SuggestionRequest
+import com.movie.app.best.data.model.Zee5SuggestionVariables
+import com.movie.app.best.data.remote.ImdbApiService
+import com.movie.app.best.data.remote.MeiliSearchRepository
+import com.movie.app.best.data.remote.Zee5ApiService
+import com.movie.app.best.data.remote.Zee5SuggestionApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,60 +28,126 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val repository: MovieRepository
+    private val imdbApi: ImdbApiService,
+    private val zee5SuggestionApi: Zee5SuggestionApiService,
+    private val zee5Api: Zee5ApiService,
+    private val meiliRepository: MeiliSearchRepository
 ) : ViewModel() {
 
     companion object {
-        private const val PAGE_LIMIT = 45
+        private const val PAGE_SIZE = 20
     }
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
+    private var suggestionJob: Job? = null
     private var searchJob: Job? = null
 
-    fun searchMovies(query: String, page: Int = 1) {
-        if (query.isEmpty()) {
+    fun updateSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query, isShowingSuggestions = true) }
+        suggestionJob?.cancel()
+        if (query.length >= 2) {
+            suggestionJob = viewModelScope.launch {
+                delay(400)
+                getSuggestions(query)
+            }
+        } else {
+            clearSuggestions()
+        }
+    }
+
+    private suspend fun getSuggestions(query: String) {
+        _uiState.update { it.copy(isSuggestionLoading = true) }
+        coroutineScope {
+            val meiliDeferred = async { meiliRepository.suggest(query, limit = 8) }
+            val imdbDeferred = async {
+                try { imdbApi.searchTitles(query) } catch (_: Exception) { null }
+            }
+            val zee5Deferred = async {
+                try {
+                    zee5SuggestionApi.getSuggestions(body = Zee5SuggestionRequest(
+                        variables = Zee5SuggestionVariables(
+                            input = Zee5SuggestionInput(query = query)
+                        )
+                    ))
+                } catch (_: Exception) { null }
+            }
+
+            val meiliResult = meiliDeferred.await()
+            val imdbResult = imdbDeferred.await()
+            val zee5Result = zee5Deferred.await()
+
             _uiState.update {
                 it.copy(
-                    searchResults = emptyList(),
-                    isLoading = false,
-                    error = null,
-                    searchQuery = query
+                    meiliSuggestions = meiliResult.hits,
+                    imdbSuggestions = imdbResult?.titles ?: emptyList(),
+                    zee5Suggestions = zee5Result?.data?.searchSuggestions?.suggestions
+                        ?.map { s -> s.text }
+                        ?.filter { s -> s.isNotBlank() }
+                        ?: emptyList(),
+                    isSuggestionLoading = false
                 )
             }
-            return
         }
+    }
 
-        _uiState.update { it.copy(isLoading = true, searchQuery = query) }
+    fun clearSuggestions() {
+        _uiState.update {
+            it.copy(
+                meiliSuggestions = emptyList(),
+                imdbSuggestions = emptyList(),
+                zee5Suggestions = emptyList(),
+                isSuggestionLoading = false
+            )
+        }
+    }
 
+    fun searchUniversal(query: String) {
+        if (query.isBlank()) return
+        _uiState.update {
+            it.copy(
+                searchQuery = query,
+                isShowingSuggestions = false,
+                ownResults = emptyList(),
+                zee5Results = emptyList(),
+                currentOffset = 0,
+                estimatedTotalHits = 0,
+                canLoadMore = false
+            )
+        }
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            repository.searchMovies(query, page).collect { result ->
-                when (result) {
-                    is Resource.Loading -> {
-                        _uiState.update { it.copy(isLoading = true) }
-                    }
-                    is Resource.Success -> {
-                        val results = result.data?.results ?: emptyList()
-                        val total = result.data?.total ?: 0
-                        val totalPages = result.data?.totalPages ?: 1
+            _uiState.update { it.copy(isOwnLoading = true, isZee5Loading = true, error = null) }
+            coroutineScope {
+                launch {
+                    try {
+                        val resp = meiliRepository.search(query, limit = PAGE_SIZE, offset = 0)
                         _uiState.update {
                             it.copy(
-                                searchResults = if (page == 1) results else it.searchResults + results,
-                                isLoading = false,
-                                error = null,
-                                currentPage = result.data?.page ?: 1,
-                                totalPages = totalPages,
-                                totalResults = total,
-                                canLoadMore = page < totalPages
+                                ownResults = resp.hits,
+                                isOwnLoading = false,
+                                currentOffset = PAGE_SIZE,
+                                estimatedTotalHits = resp.estimatedTotalHits,
+                                canLoadMore = PAGE_SIZE < resp.estimatedTotalHits
                             )
                         }
+                    } catch (_: Exception) {
+                        _uiState.update { it.copy(isOwnLoading = false) }
                     }
-                    is Resource.Error -> {
+                }
+                launch {
+                    try {
+                        val resp = zee5Api.search(query, limit = 20)
+                        val rails = resp.data?.hybridSearchResults?.rails ?: emptyList()
+                        val items = rails.flatMap { r ->
+                            r.contents?.mapNotNull { c -> c.effectiveItem } ?: emptyList()
+                        }.filter { it.id != null }
                         _uiState.update {
-                            it.copy(isLoading = false, error = result.error)
+                            it.copy(zee5Results = items, isZee5Loading = false)
                         }
+                    } catch (_: Exception) {
+                        _uiState.update { it.copy(isZee5Loading = false) }
                     }
                 }
             }
@@ -79,40 +156,52 @@ class SearchViewModel @Inject constructor(
 
     fun loadNextPage() {
         val current = _uiState.value
-        if (current.searchQuery.isNotEmpty() && current.canLoadMore && !current.isLoading) {
-            searchMovies(current.searchQuery, current.currentPage + 1)
+        if (!current.canLoadMore || current.isLoadingMore || current.searchQuery.isEmpty()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMore = true) }
+            try {
+                val resp = meiliRepository.search(
+                    current.searchQuery, limit = PAGE_SIZE, offset = current.currentOffset
+                )
+                _uiState.update {
+                    it.copy(
+                        ownResults = it.ownResults + resp.hits,
+                        currentOffset = it.currentOffset + PAGE_SIZE,
+                        canLoadMore = it.currentOffset + PAGE_SIZE < it.estimatedTotalHits,
+                        isLoadingMore = false
+                    )
+                }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isLoadingMore = false) }
+            }
         }
     }
 
-    fun updateSearchQuery(query: String) {
-        _uiState.update { it.copy(searchQuery = query) }
-
-        searchJob?.cancel()
-
-        if (query.length >= 3) {
-            searchJob = viewModelScope.launch {
-                delay(500)
-                searchMovies(query)
-            }
-        } else if (query.isEmpty()) {
-            _uiState.update {
-                it.copy(
-                    searchResults = emptyList(),
-                    isLoading = false,
-                    error = null
-                )
-            }
+    fun onSearchSubmit() {
+        val query = _uiState.value.searchQuery
+        if (query.isNotBlank()) {
+            searchUniversal(query)
         }
     }
 }
 
 data class SearchUiState(
     val searchQuery: String = "",
-    val searchResults: List<WasmerMovie> = emptyList(),
-    val isLoading: Boolean = false,
+    val isShowingSuggestions: Boolean = true,
+
+    val meiliSuggestions: List<MeiliHit> = emptyList(),
+    val imdbSuggestions: List<ImdbTitleDetails> = emptyList(),
+    val zee5Suggestions: List<String> = emptyList(),
+    val isSuggestionLoading: Boolean = false,
+
+    val ownResults: List<MeiliHit> = emptyList(),
+    val zee5Results: List<Zee5Item> = emptyList(),
+    val isOwnLoading: Boolean = false,
+    val isZee5Loading: Boolean = false,
     val error: String? = null,
-    val currentPage: Int = 1,
-    val totalPages: Int = 1,
-    val totalResults: Int = 0,
-    val canLoadMore: Boolean = false
+
+    val currentOffset: Int = 0,
+    val estimatedTotalHits: Int = 0,
+    val canLoadMore: Boolean = false,
+    val isLoadingMore: Boolean = false
 )

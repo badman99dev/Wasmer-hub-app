@@ -16,8 +16,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.PlayArrow
@@ -33,7 +31,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -52,7 +49,6 @@ import com.movie.app.best.ui.theme.WasmerBlack
 import com.movie.app.best.ui.theme.WasmerCardDark
 import com.movie.app.best.ui.theme.WasmerSubText
 import com.movie.app.best.util.formatDurationSeconds
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
@@ -64,11 +60,7 @@ fun Zee5Screen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currentTab by viewModel.currentTab.collectAsState()
-    val suggestions by viewModel.suggestions.collectAsState()
-    val isSuggestionsLoading by viewModel.isSuggestionsLoading.collectAsState()
     val listState = rememberLazyListState()
-    var searchQuery by remember { mutableStateOf("") }
-    var isSearching by remember { mutableStateOf(false) }
 
     // Infinite scroll detection
     val shouldLoadMore = remember {
@@ -86,16 +78,6 @@ fun Zee5Screen(
         }
     }
 
-    // Debounced suggestions — direct Zee5 GraphQL (no Vercel)
-    LaunchedEffect(searchQuery, isSearching) {
-        if (isSearching && searchQuery.isNotBlank()) {
-            delay(400)
-            viewModel.getSuggestions(searchQuery)
-        } else {
-            viewModel.clearSuggestions()
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -104,39 +86,9 @@ fun Zee5Screen(
         Column(modifier = Modifier.fillMaxSize()) {
             // Header with ZEE5 branding
             Zee5Header(
-                onSearchClick = { isSearching = true },
-                onBackClick = { isSearching = false }
+                onSearchClick = onSearchClick,
+                onBackClick = { }
             )
-
-            // Search bar + suggestions dropdown (when searching)
-            if (isSearching) {
-                Zee5SearchBar(
-                    query = searchQuery,
-                    onQueryChange = { searchQuery = it },
-                    onSearch = {
-                        if (searchQuery.isNotBlank()) {
-                            viewModel.searchWithAutocorrect(searchQuery)
-                            isSearching = false
-                        }
-                    },
-                    onClose = { isSearching = false }
-                )
-
-                // Suggestions dropdown
-                if (suggestions.isNotEmpty()) {
-                    Zee5SuggestionsDropdown(
-                        suggestions = suggestions,
-                        isLoading = isSuggestionsLoading,
-                        onSuggestionClick = { text ->
-                            searchQuery = text
-                            viewModel.search(text)
-                            isSearching = false
-                        }
-                    )
-                } else if (isSuggestionsLoading && searchQuery.isNotBlank()) {
-                    Zee5SuggestionsLoading()
-                }
-            }
 
             // Tab bar
             Zee5TabBar(
@@ -272,113 +224,6 @@ fun Zee5Header(
                 imageVector = Icons.Filled.Search,
                 contentDescription = "Search",
                 tint = Color.White
-            )
-        }
-    }
-}
-
-@Composable
-fun Zee5SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onSearch: () -> Unit,
-    onClose: () -> Unit
-) {
-    TextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .background(WasmerCardDark, RoundedCornerShape(8.dp)),
-        placeholder = { Text("Search ZEE5...", color = WasmerSubText) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = WasmerCardDark,
-            unfocusedContainerColor = WasmerCardDark,
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White,
-            focusedIndicatorColor = WasmerRed,
-            unfocusedIndicatorColor = Color.Transparent
-        ),
-        trailingIcon = {
-            IconButton(onClick = onSearch) {
-                Icon(Icons.Filled.Search, "Search", tint = WasmerRed)
-            }
-        }
-    )
-}
-
-@Composable
-fun Zee5SuggestionsDropdown(
-    suggestions: List<String>,
-    isLoading: Boolean,
-    onSuggestionClick: (String) -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(8.dp),
-        color = WasmerCardDark
-    ) {
-        Column {
-            suggestions.take(8).forEach { text ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSuggestionClick(text) }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Search,
-                        contentDescription = null,
-                        tint = WasmerSubText,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = text,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun Zee5SuggestionsLoading() {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(8.dp),
-        color = WasmerCardDark
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                color = WasmerRed,
-                strokeWidth = 2.dp
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Getting suggestions...",
-                color = WasmerSubText,
-                fontSize = 13.sp
             )
         }
     }
