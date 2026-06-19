@@ -66,9 +66,9 @@ class MovieWatchViewModel @Inject constructor(
     private fun buildCandidates(): List<StreamCandidate> {
         val list = mutableListOf<StreamCandidate>()
         if (hasStream || playerUrl.isNotEmpty()) {
-            val url = if (playerUrl.isNotEmpty()) playerUrl
-                else "https://sparkling-breeze-1ad6.badman993944.workers.dev/?id=${movieId}"
-            list.add(StreamCandidate.Backend(url))
+            list.add(StreamCandidate.Backend(
+                "https://sparkling-breeze-1ad6.badman993944.workers.dev/?id=${movieId}"
+            ))
         }
         if (imdbId.startsWith("tt")) {
             list.add(StreamCandidate.Gemma)
