@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 private sealed class StreamCandidate {
@@ -76,35 +77,45 @@ class MovieWatchViewModel @Inject constructor(
     }
 
     private fun loadAll() {
+        val needsImdb = imdbId.startsWith("tt")
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.update {
+                it.copy(
+                    isLoading = true,
+                    showBuffering = needsImdb,
+                    error = null
+                )
+            }
 
-            // Background IMDb enrichment (title + certificates), 2s soft timeout, survives
+            // IMDb enrichment (title + certificates) in parallel asyncs
             val titleDetailsDeferred = viewModelScope.async {
                 try { imdbApi.getTitleDetails(imdbId) } catch (_: Exception) { null }
             }
             val certificatesDeferred = viewModelScope.async {
                 try { imdbApi.getCertificates(imdbId) } catch (_: Exception) { null }
             }
-            viewModelScope.launch {
-                try {
-                    val details = titleDetailsDeferred.await()
-                    if (details != null) _state.update { it.copy(titleDetails = details) }
-                } catch (_: Exception) {}
-            }
-            viewModelScope.launch {
-                try {
-                    val certs = certificatesDeferred.await()
-                    if (certs != null) _state.update { it.copy(ageRating = extractAgeRating(certs)) }
-                } catch (_: Exception) {}
-            }
 
-            // Similar movies + bookmark status in background
+            // Stream resolution runs in parallel in the background (does not gate overlay)
+            viewModelScope.launch { tryNextCandidate() }
+
+            // Similar movies + bookmark status in parallel background
             loadSimilarMovies(imdbId)
             checkBookmarkStatus()
 
-            // Try first available candidate
-            tryNextCandidate()
+            // Gate overlay ONLY on IMDb responses, max 4 seconds
+            if (needsImdb) {
+                val titleDetails = withTimeoutOrNull(4000) { titleDetailsDeferred.await() }
+                val certificates = withTimeoutOrNull(4000) { certificatesDeferred.await() }
+                _state.update {
+                    it.copy(
+                        showBuffering = false,
+                        titleDetails = titleDetails,
+                        ageRating = certificates?.let { c -> extractAgeRating(c) } ?: ""
+                    )
+                }
+            } else {
+                _state.update { it.copy(showBuffering = false) }
+            }
         }
     }
 
@@ -139,7 +150,6 @@ class MovieWatchViewModel @Inject constructor(
                 val result = gemmaExtractor.extract(imdbId)
                 gemmaResult = result
                 if (result.seasons.isEmpty()) {
-                    // Gemma found nothing; try any remaining candidate (none left usually)
                     tryNextCandidate()
                     return
                 }
@@ -173,8 +183,7 @@ class MovieWatchViewModel @Inject constructor(
     }
 
     fun onPlaybackError() {
-        // Clear current stream and attempt the next candidate (Gemma fallback)
-        _state.update { it.copy(currentM3u8 = null) }
+        _state.update { it.copy(showBuffering = false, currentM3u8 = null) }
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             tryNextCandidate()
@@ -318,6 +327,7 @@ class MovieWatchViewModel @Inject constructor(
 
 data class MovieWatchState(
     val isLoading: Boolean = false,
+    val showBuffering: Boolean = false,
     val currentM3u8: String? = null,
     val activeSource: String = "",
     val titleDetails: ImdbTitleDetails? = null,

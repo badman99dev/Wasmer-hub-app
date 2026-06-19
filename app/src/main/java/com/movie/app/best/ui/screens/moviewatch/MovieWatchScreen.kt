@@ -328,33 +328,14 @@ fun MovieWatchScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        if (state.isLoading && state.currentM3u8 == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .background(Color.Black),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(48.dp))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Loading...",
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 14.sp
-                    )
-                }
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .background(Color.Black)
-                    .zIndex(1f)
-            ) {
-                if (exoPlayer != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .background(Color.Black)
+                .zIndex(1f)
+        ) {
+            if (exoPlayer != null) {
                     MediaPlayerScreen(
                         player = exoPlayer,
                         modifier = Modifier.fillMaxSize(),
@@ -486,7 +467,6 @@ fun MovieWatchScreen(
                     }
                 }
             }
-        }
 
         Column(
             modifier = Modifier
@@ -605,6 +585,41 @@ fun MovieWatchScreen(
             Spacer(modifier = Modifier.height(80.dp))
         } else {
             Spacer(modifier = Modifier.height(80.dp))
+        }
+    }
+
+    // Full-screen buffering overlay: shown until IMDb responds (max 4s)
+    if (state.showBuffering) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            val thumbUrl = viewModel.posterUrl.takeIf { it.isNotEmpty() }
+            if (thumbUrl != null) {
+                AsyncImage(
+                    model = thumbUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.6f))
+                )
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(48.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Loading...",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 
