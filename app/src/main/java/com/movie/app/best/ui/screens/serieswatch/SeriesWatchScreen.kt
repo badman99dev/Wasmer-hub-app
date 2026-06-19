@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -74,7 +73,6 @@ import com.movie.app.best.data.settings.VideoQualitySettings
 import com.movie.app.best.ui.components.GlassBadge
 import com.movie.app.best.ui.screens.player.MediaPlayerScreen
 import com.movie.app.best.ui.screens.serieswatch.components.EpisodeCard
-import com.movie.app.best.ui.screens.serieswatch.components.LanguageSelector
 import com.movie.app.best.ui.theme.WasmerBlack
 import com.movie.app.best.ui.theme.WasmerCardDark
 import com.movie.app.best.ui.theme.WasmerRed
@@ -95,7 +93,6 @@ fun SeriesWatchScreen(
     val context = LocalContext.current
     val activity = context as? android.app.Activity
     val lifecycleOwner = LocalLifecycleOwner.current
-    var showLangSheet by remember { mutableStateOf(false) }
 
     val trackSelector = remember {
         DefaultTrackSelector(context).apply {
@@ -106,6 +103,7 @@ fun SeriesWatchScreen(
     }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var isFullscreen by remember { mutableStateOf(false) }
+    var langSwitchSeek by remember { mutableStateOf(0L) }
 
     LaunchedEffect(isFullscreen) {
         FullscreenPlayerState.isActive = isFullscreen
@@ -173,6 +171,11 @@ fun SeriesWatchScreen(
                 }
             }
             override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY && langSwitchSeek > 0) {
+                    val seekTo = langSwitchSeek
+                    langSwitchSeek = 0L
+                    player.seekTo(seekTo)
+                }
                 activity?.let {
                     val playing = player.isPlaying
                     ImmersiveMode.keepScreenOn(it, playing || playbackState == Player.STATE_BUFFERING)
@@ -216,6 +219,15 @@ fun SeriesWatchScreen(
         activity?.let { ImmersiveMode.enter(it) }
     }
 
+    val onLangSelect: (String) -> Unit = { lang ->
+        exoPlayer?.let { p ->
+            if (p.duration > 0) langSwitchSeek = p.currentPosition.coerceIn(0L, p.duration)
+        }
+        viewModel.selectLanguage(lang)
+    }
+
+    val customAudioTracks = state.availableLanguages.takeIf { it.size > 1 }
+
     BackHandler {
         if (isFullscreen) {
             exitFullscreen()
@@ -224,15 +236,6 @@ fun SeriesWatchScreen(
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             onBackClick()
         }
-    }
-
-    if (showLangSheet) {
-        LanguageSelector(
-            availableLanguages = state.availableLanguages,
-            selectedLanguage = state.selectedLanguage,
-            onLanguageSelect = { viewModel.selectLanguage(it) },
-            onDismiss = { showLangSheet = false }
-        )
     }
 
     if (isFullscreen && exoPlayer != null) {
@@ -248,7 +251,10 @@ fun SeriesWatchScreen(
                 onPlayInBackgroundClick = {},
                 onFullscreenClick = { exitFullscreen() },
                 isInline = false,
-                title = state.currentEpisode?.displayTitle ?: ""
+                title = state.currentEpisode?.displayTitle ?: "",
+                customAudioTracks = customAudioTracks,
+                selectedAudioTrack = state.selectedLanguage,
+                onAudioTrackSelected = onLangSelect,
             )
         }
         return
@@ -296,7 +302,10 @@ fun SeriesWatchScreen(
                     onPlayInBackgroundClick = {},
                     onFullscreenClick = { enterFullscreen() },
                     isInline = true,
-                    title = state.currentEpisode?.displayTitle ?: ""
+                    title = state.currentEpisode?.displayTitle ?: "",
+                    customAudioTracks = customAudioTracks,
+                    selectedAudioTrack = state.selectedLanguage,
+                    onAudioTrackSelected = onLangSelect,
                 )
             } else {
                 val thumbUrl = state.currentEpisode?.stillImageUrl?.takeIf { it.isNotEmpty() }
@@ -413,26 +422,6 @@ fun SeriesWatchScreen(
                         Spacer(modifier = Modifier.width(6.dp))
                     }
                     GlassBadge(text = "HD", tint = Color.White)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    if (state.availableLanguages.size > 1) {
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color.White.copy(alpha = 0.1f))
-                                .clickable { showLangSheet = true }
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Language, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.padding(horizontal = 3.dp))
-                            Text(
-                                text = state.selectedLanguage,
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
                 }
             }
 

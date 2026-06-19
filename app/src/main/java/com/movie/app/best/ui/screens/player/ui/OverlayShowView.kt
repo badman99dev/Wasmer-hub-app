@@ -15,6 +15,9 @@ fun BoxScope.OverlayShowView(
     videoContentScale: VideoContentScale,
     onDismiss: () -> Unit = {},
     onVideoContentScaleChanged: (VideoContentScale) -> Unit = {},
+    customAudioTracks: List<String>? = null,
+    selectedAudioTrack: String? = null,
+    onAudioTrackSelected: ((String) -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier
@@ -24,11 +27,21 @@ fun BoxScope.OverlayShowView(
             ),
     )
 
-    AudioTrackSelectorView(
-        show = overlayView == OverlayViewType.AUDIO_SELECTOR,
-        player = player,
-        onDismiss = onDismiss,
-    )
+    if (customAudioTracks != null) {
+        CustomAudioTrackSelectorView(
+            show = overlayView == OverlayViewType.AUDIO_SELECTOR,
+            tracks = customAudioTracks,
+            selected = selectedAudioTrack,
+            onSelect = { onAudioTrackSelected?.invoke(it) },
+            onDismiss = onDismiss,
+        )
+    } else {
+        AudioTrackSelectorView(
+            show = overlayView == OverlayViewType.AUDIO_SELECTOR,
+            player = player,
+            onDismiss = onDismiss,
+        )
+    }
 
     SubtitleSelectorView(
         show = overlayView == OverlayViewType.SUBTITLE_SELECTOR,

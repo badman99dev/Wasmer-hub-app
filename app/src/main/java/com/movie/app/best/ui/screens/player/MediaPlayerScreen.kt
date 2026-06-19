@@ -77,6 +77,7 @@ import com.movie.app.best.ui.screens.player.state.rememberVolumeState
 import com.movie.app.best.ui.screens.player.state.seekAmountFormatted
 import com.movie.app.best.ui.screens.player.state.seekToPositionFormated
 import com.movie.app.best.ui.screens.player.ui.AudioTrackSelectorView
+import com.movie.app.best.ui.screens.player.ui.CustomAudioTrackSelectorView
 import com.movie.app.best.ui.screens.player.ui.SubtitleSelectorView
 import com.movie.app.best.ui.screens.player.ui.DoubleTapIndicator
 import com.movie.app.best.ui.screens.player.ui.OverlayShowView
@@ -104,6 +105,9 @@ fun MediaPlayerScreen(
     isInline: Boolean = false,
     isLive: Boolean = false,
     title: String = "",
+    customAudioTracks: List<String>? = null,
+    selectedAudioTrack: String? = null,
+    onAudioTrackSelected: ((String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val activity = context as? android.app.Activity
@@ -379,11 +383,21 @@ fun MediaPlayerScreen(
                                 .clickable { overlayView = null }
                         )
                         when (overlayView) {
-                            OverlayViewType.AUDIO_SELECTOR -> AudioTrackSelectorView(
-                                show = true,
-                                player = player,
-                                onDismiss = { overlayView = null }
-                            )
+                            OverlayViewType.AUDIO_SELECTOR -> if (customAudioTracks != null) {
+                                CustomAudioTrackSelectorView(
+                                    show = true,
+                                    tracks = customAudioTracks,
+                                    selected = selectedAudioTrack,
+                                    onSelect = { onAudioTrackSelected?.invoke(it) },
+                                    onDismiss = { overlayView = null }
+                                )
+                            } else {
+                                AudioTrackSelectorView(
+                                    show = true,
+                                    player = player,
+                                    onDismiss = { overlayView = null }
+                                )
+                            }
                             OverlayViewType.SUBTITLE_SELECTOR -> SubtitleSelectorView(
                                 show = true,
                                 player = player,
@@ -415,6 +429,9 @@ fun MediaPlayerScreen(
                     videoContentScale = videoZoomAndContentScaleState.videoContentScale,
                     onDismiss = { overlayView = null },
                     onVideoContentScaleChanged = { videoZoomAndContentScaleState.onVideoContentScaleChanged(it) },
+                    customAudioTracks = customAudioTracks,
+                    selectedAudioTrack = selectedAudioTrack,
+                    onAudioTrackSelected = onAudioTrackSelected,
                 )
             }
         }

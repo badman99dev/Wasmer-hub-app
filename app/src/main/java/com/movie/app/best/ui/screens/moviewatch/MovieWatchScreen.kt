@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -77,7 +76,6 @@ import com.movie.app.best.ui.screens.moviedetail.components.MoreLikeThisSection
 import com.movie.app.best.ui.screens.moviedetail.components.StreamRequestResultModal
 import com.movie.app.best.ui.screens.moviedetail.components.StreamRequestWaitingPopup
 import com.movie.app.best.ui.screens.player.MediaPlayerScreen
-import com.movie.app.best.ui.screens.serieswatch.components.LanguageSelector
 import com.movie.app.best.ui.theme.WasmerBlack
 import com.movie.app.best.ui.theme.WasmerRed
 import com.movie.app.best.ui.theme.WasmerSubText
@@ -98,7 +96,6 @@ fun MovieWatchScreen(
     val context = LocalContext.current
     val activity = context as? android.app.Activity
     val lifecycleOwner = LocalLifecycleOwner.current
-    var showLangSheet by remember { mutableStateOf(false) }
 
     val firebaseRepository = remember { FirebaseRepository(context) }
     val slug = viewModel.contentSlug
@@ -113,6 +110,7 @@ fun MovieWatchScreen(
     }
     var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
     var isFullscreen by remember { mutableStateOf(false) }
+    var langSwitchSeek by remember { mutableStateOf(0L) }
 
     LaunchedEffect(isFullscreen) {
         FullscreenPlayerState.isActive = isFullscreen
@@ -140,8 +138,11 @@ fun MovieWatchScreen(
 
         exoPlayer?.release()
 
-        // Resume from saved progress (local)
-        if (slug.isNotEmpty()) {
+        // On language switch: resume from captured position; else slug-based saved progress
+        if (langSwitchSeek > 0) {
+            resumePos = langSwitchSeek
+            langSwitchSeek = 0L
+        } else if (slug.isNotEmpty()) {
             val saved = firebaseRepository.getLocalProgress(slug)
             resumePos = saved?.progressMs ?: 0L
         }
@@ -280,6 +281,16 @@ fun MovieWatchScreen(
         activity?.let { ImmersiveMode.enter(it) }
     }
 
+    val onLangSelect: (String) -> Unit = { lang ->
+        exoPlayer?.let { p ->
+            if (p.duration > 0) langSwitchSeek = p.currentPosition.coerceIn(0L, p.duration)
+        }
+        viewModel.selectLanguage(lang)
+    }
+
+    val customAudioTracks = state.availableLanguages
+        .takeIf { it.size > 1 && state.activeSource == "gemma" }
+
     BackHandler {
         if (isFullscreen) {
             exitFullscreen()
@@ -288,15 +299,6 @@ fun MovieWatchScreen(
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             onBackClick()
         }
-    }
-
-    if (showLangSheet) {
-        LanguageSelector(
-            availableLanguages = state.availableLanguages,
-            selectedLanguage = state.selectedLanguage,
-            onLanguageSelect = { viewModel.selectLanguage(it) },
-            onDismiss = { showLangSheet = false }
-        )
     }
 
     if (isFullscreen && exoPlayer != null) {
@@ -312,7 +314,10 @@ fun MovieWatchScreen(
                 onPlayInBackgroundClick = {},
                 onFullscreenClick = { exitFullscreen() },
                 isInline = false,
-                title = title
+                title = title,
+                customAudioTracks = customAudioTracks,
+                selectedAudioTrack = state.selectedLanguage,
+                onAudioTrackSelected = onLangSelect,
             )
         }
         return
@@ -347,7 +352,10 @@ fun MovieWatchScreen(
                         onPlayInBackgroundClick = {},
                         onFullscreenClick = { enterFullscreen() },
                         isInline = true,
-                        title = title
+                        title = title,
+                        customAudioTracks = customAudioTracks,
+                        selectedAudioTrack = state.selectedLanguage,
+                        onAudioTrackSelected = onLangSelect,
                     )
                 } else if (state.error != null) {
                     Box(
@@ -512,26 +520,6 @@ fun MovieWatchScreen(
                     Spacer(modifier = Modifier.width(6.dp))
                 }
                 GlassBadge(text = "HD", tint = Color.White)
-                Spacer(modifier = Modifier.width(6.dp))
-                if (state.availableLanguages.size > 1) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.1f))
-                            .clickable { showLangSheet = true }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Language, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.padding(horizontal = 3.dp))
-                        Text(
-                            text = state.selectedLanguage,
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -596,20 +584,6 @@ fun MovieWatchScreen(
                 .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
-            val thumbUrl = viewModel.posterUrl.takeIf { it.isNotEmpty() }
-            if (thumbUrl != null) {
-                AsyncImage(
-                    model = thumbUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.6f))
-                )
-            }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(48.dp))
                 Spacer(modifier = Modifier.height(10.dp))
