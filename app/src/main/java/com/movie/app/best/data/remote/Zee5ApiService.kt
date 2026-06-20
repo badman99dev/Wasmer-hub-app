@@ -4,6 +4,7 @@ import com.movie.app.best.data.model.Zee5CollectionResponse
 import com.movie.app.best.data.model.Zee5DetailResponse
 import com.movie.app.best.data.model.Zee5PlaybackResponse
 import com.movie.app.best.data.model.Zee5SearchResponse
+import com.movie.app.best.data.model.Zee5TokensResponse
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -51,6 +52,10 @@ interface Zee5ApiService {
         @Path("id") id: String
     ): Zee5PlaybackResponse
     
+    // ─── ZEE5 Tokens (for direct GraphQL calls) ───
+    @GET("tokens")
+    suspend fun getTokens(): Zee5TokensResponse
+
     // ─── Seasons for a TV Show ───
     @GET("seasons/{showId}")
     suspend fun getSeasons(

@@ -12,6 +12,7 @@ import com.movie.app.best.data.model.Zee5SuggestionRequest
 import com.movie.app.best.data.model.Zee5SuggestionVariables
 import com.movie.app.best.data.remote.ImdbApiService
 import com.movie.app.best.data.repository.MeiliSearchRepository
+import com.movie.app.best.data.repository.Zee5TokenRepository
 import com.movie.app.best.data.remote.Zee5ApiService
 import com.movie.app.best.data.remote.Zee5SuggestionApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +32,8 @@ class SearchViewModel @Inject constructor(
     private val imdbApi: ImdbApiService,
     private val zee5SuggestionApi: Zee5SuggestionApiService,
     private val zee5Api: Zee5ApiService,
-    private val meiliRepository: MeiliSearchRepository
+    private val meiliRepository: MeiliSearchRepository,
+    private val zee5TokenRepository: Zee5TokenRepository
 ) : ViewModel() {
 
     companion object {
@@ -68,11 +70,16 @@ class SearchViewModel @Inject constructor(
             }
             val zee5Deferred = async {
                 try {
-                    zee5SuggestionApi.getSuggestions(body = Zee5SuggestionRequest(
-                        variables = Zee5SuggestionVariables(
-                            input = Zee5SuggestionInput(query = query)
+                    val tokens = zee5TokenRepository.getTokens()
+                    val headers = if (tokens != null) zee5TokenRepository.buildAuthHeaders(tokens) else emptyMap()
+                    zee5SuggestionApi.getSuggestions(
+                        headers = headers,
+                        body = Zee5SuggestionRequest(
+                            variables = Zee5SuggestionVariables(
+                                input = Zee5SuggestionInput(query = query)
+                            )
                         )
-                    ))
+                    )
                 } catch (_: Exception) { null }
             }
 

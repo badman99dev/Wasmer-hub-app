@@ -9,6 +9,7 @@ import com.movie.app.best.data.model.WasmerSliderResult
 import com.movie.app.best.data.debug.NetworkMonitor
 import com.movie.app.best.data.repository.MeiliSearchRepository
 import com.movie.app.best.data.repository.MovieRepository
+import com.movie.app.best.data.repository.Zee5TokenRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +22,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: MovieRepository,
-    private val meiliRepository: MeiliSearchRepository
+    private val meiliRepository: MeiliSearchRepository,
+    private val zee5TokenRepository: Zee5TokenRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -34,6 +36,7 @@ class HomeViewModel @Inject constructor(
     init {
         loadAllContent()
         viewModelScope.launch { meiliRepository.pingAndPrefetchKey() }
+        viewModelScope.launch { zee5TokenRepository.prefetchTokens() }
     }
 
     init {

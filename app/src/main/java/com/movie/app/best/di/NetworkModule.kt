@@ -10,6 +10,7 @@ import com.movie.app.best.data.remote.ImdbApiService
 import com.movie.app.best.data.remote.MeiliSearchService
 import com.movie.app.best.data.remote.MovieApiService
 import com.movie.app.best.data.repository.MeiliSearchRepository
+import com.movie.app.best.data.repository.Zee5TokenRepository
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -224,5 +225,13 @@ object NetworkModule {
     @Singleton
     fun provideZee5SuggestionApiService(@Named("zee5suggest") retrofit: Retrofit): com.movie.app.best.data.remote.Zee5SuggestionApiService {
         return retrofit.create(com.movie.app.best.data.remote.Zee5SuggestionApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideZee5TokenRepository(
+        zee5Api: com.movie.app.best.data.remote.Zee5ApiService
+    ): Zee5TokenRepository {
+        return Zee5TokenRepository(zee5Api)
     }
 }

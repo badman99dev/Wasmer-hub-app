@@ -314,3 +314,15 @@ data class Zee5SuggestionItem(
 )
 
 const val GQL_SUGGESTION_QUERY = "query GetSearchSuggestions(\$input: SearchSuggestionInput!) { searchSuggestions(searchSuggestionInput: \$input) { suggestions { text } } }"
+
+// ─── ZEE5 Tokens (from Vercel /tokens endpoint) ───
+
+data class Zee5TokensResponse(
+    val platformToken: String = "",
+    val guestToken: String = "",
+    val deviceId: String = "",
+    val expiresAt: Long = 0,
+    val appVersion: String = "",
+    val gId: String = "",
+    val xffIp: String = ""
+)
