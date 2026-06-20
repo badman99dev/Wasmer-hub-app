@@ -1,12 +1,10 @@
 package com.movie.app.best.ui.screens.downloads
 
 import android.Manifest
-import android.content.ContentResolver
-import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.os.Build
-import android.provider.MediaStore
+import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -86,55 +84,25 @@ internal fun formatFileSize(bytes: Long): String {
 }
 
 fun scanWasmerHubVideos(context: Context): List<LocalVideoFile> {
-    val results = mutableListOf<LocalVideoFile>()
     val videoExts = setOf("mp4", "mkv", "avi", "webm", "mov", "flv", "3gp", "ts", "m4v")
-
-    val collection = if (Build.VERSION.SDK_INT >= 29) {
-        MediaStore.Downloads.EXTERNAL_CONTENT_URI
-    } else {
-        MediaStore.Files.getContentUri("external")
-    }
-
-    val projection = arrayOf(
-        MediaStore.Downloads._ID,
-        MediaStore.Downloads.DISPLAY_NAME,
-        MediaStore.Downloads.SIZE,
-        MediaStore.Downloads.DATA
+    val dir = java.io.File(
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+        "WasmerHub"
     )
+    if (!dir.exists() || !dir.isDirectory) return emptyList()
 
-    val selection = "${MediaStore.Downloads.DISPLAY_NAME} LIKE ?"
-    val selectionArgs = arrayOf("%.mkv")
-    val sortOrder = "${MediaStore.Downloads.DATE_MODIFIED} DESC"
-
-    try {
-        val cursor = context.contentResolver.query(
-            collection, projection, null, null, sortOrder
-        ) ?: return emptyList()
-
-        cursor.use {
-            val idCol = it.getColumnIndexOrThrow(MediaStore.Downloads._ID)
-            val nameCol = it.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME)
-            val sizeCol = it.getColumnIndexOrThrow(MediaStore.Downloads.SIZE)
-            val dataCol = it.getColumnIndexOrThrow(MediaStore.Downloads.DATA)
-
-            while (it.moveToNext()) {
-                val filePath = it.getString(dataCol) ?: continue
-                val name = it.getString(nameCol) ?: continue
-
-                if (!filePath.contains("WasmerHub")) continue
-
-                val ext = name.substringAfterLast(".", "").lowercase()
-                if (ext !in videoExts) continue
-
-                val size = it.getLong(sizeCol)
-                val contentUri = ContentUris.withAppendedId(collection, it.getLong(idCol))
-
-                results.add(LocalVideoFile(name, filePath, size, ext, contentUri.toString()))
-            }
-        }
-    } catch (_: Exception) {}
-
-    return results
+    return dir.listFiles()
+        ?.filter { it.isFile && !it.name.endsWith(".temp") && it.extension.lowercase() in videoExts }
+        ?.sortedByDescending { it.lastModified() }
+        ?.map { file ->
+            LocalVideoFile(
+                name = file.name,
+                path = file.absolutePath,
+                size = file.length(),
+                extension = file.extension.lowercase(),
+                contentUri = ""
+            )
+        } ?: emptyList()
 }
 
 @Composable
@@ -297,7 +265,7 @@ fun DownloadsScreen(
             }
         }
 
-        if (uiState.activeDownloads.isEmpty() && scannedVideos.isEmpty() && !uiState.isResolving) {
+        if (uiState.activeDownloads.isEmpty() && uiState.completedDownloads.isEmpty() && scannedVideos.isEmpty() && !uiState.isResolving) {
             EmptyDownloadsState()
         } else {
             LazyColumn(
@@ -336,7 +304,9 @@ fun DownloadsScreen(
                             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                         )
                     }
-                    items(uiState.completedDownloads, key = { it.id }) { download ->
+                    items(uiState.completedDownloads.filter { download ->
+                        scannedVideos.none { it.name == download.fileName }
+                    }, key = { it.id }) { download ->
                         CompletedDownloadItem(
                             download = download,
                             onPlay = { onPlayFile("file://${download.path}/${download.fileName}", download.fileName) },
@@ -348,7 +318,7 @@ fun DownloadsScreen(
                 if (scannedVideos.isNotEmpty()) {
                     item {
                         Text(
-                            text = "LOCAL FILES",
+                            text = "DOWNLOADS",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF4CAF50),
