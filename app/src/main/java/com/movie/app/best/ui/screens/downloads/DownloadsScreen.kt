@@ -9,7 +9,6 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,11 +30,13 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideoFile
+import com.ketch.DownloadModel
+import com.ketch.Status
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -46,7 +47,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -167,8 +167,6 @@ fun DownloadsScreen(
     LaunchedEffect(Unit) {
         isRefreshing = true
         scannedVideos = scanWasmerHubVideos(context)
-        viewModel.loadActiveDownloads()
-        viewModel.loadCompletedDownloads()
         isRefreshing = false
 
         if (Build.VERSION.SDK_INT >= 33) {
@@ -238,8 +236,6 @@ fun DownloadsScreen(
             } else {
                 IconButton(onClick = {
                     isRefreshing = true
-                    viewModel.loadActiveDownloads()
-                    viewModel.loadCompletedDownloads()
                     scannedVideos = scanWasmerHubVideos(context)
                     isRefreshing = false
                 }) {
@@ -319,10 +315,32 @@ fun DownloadsScreen(
                             modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
                         )
                     }
-                    items(uiState.activeDownloads, key = { it.downloadId }) { download ->
+                    items(uiState.activeDownloads, key = { it.id }) { download ->
                         ActiveDownloadItem(
                             download = download,
-                            onCancel = { viewModel.cancelDownload(download.downloadId) }
+                            onPause = { viewModel.pauseDownload(download.id) },
+                            onResume = { viewModel.resumeDownload(download.id) },
+                            onCancel = { viewModel.cancelDownload(download.id) },
+                            onRetry = { viewModel.retryDownload(download.id) }
+                        )
+                    }
+                }
+
+                if (uiState.completedDownloads.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "COMPLETED",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4CAF50),
+                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                        )
+                    }
+                    items(uiState.completedDownloads, key = { it.id }) { download ->
+                        CompletedDownloadItem(
+                            download = download,
+                            onPlay = { onPlayFile("file://${download.path}/${download.fileName}", download.fileName) },
+                            onDelete = { viewModel.deleteDownload(download.id) }
                         )
                     }
                 }
@@ -330,7 +348,7 @@ fun DownloadsScreen(
                 if (scannedVideos.isNotEmpty()) {
                     item {
                         Text(
-                            text = "COMPLETED",
+                            text = "LOCAL FILES",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF4CAF50),
@@ -403,8 +421,11 @@ private fun EmptyDownloadsState() {
 
 @Composable
 private fun ActiveDownloadItem(
-    download: ActiveDownload,
-    onCancel: () -> Unit
+    download: DownloadModel,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onCancel: () -> Unit,
+    onRetry: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -423,14 +444,14 @@ private fun ActiveDownloadItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Download,
+                    imageVector = if (download.status == Status.Failed) Icons.Default.Refresh else Icons.Default.Download,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = if (download.status == Status.Failed) Color(0xFFFF5252) else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = download.title,
+                    text = download.fileName.ifEmpty { download.url.substringAfterLast("/") },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White,
@@ -438,32 +459,24 @@ private fun ActiveDownloadItem(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(
-                    onClick = onCancel,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Cancel",
-                        tint = Color.White.copy(alpha = 0.6f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            val progress = download.progress
-            val percentage = progress?.percentage ?: 0
-            val animatedProgress = (percentage / 100f).coerceIn(0f, 1f)
+            val progressFloat = if (download.progress > 0) download.progress / 100f else 0f
+            val progressColor = when (download.status) {
+                Status.Paused -> Color(0xFFFFA000)
+                Status.Failed -> Color(0xFFFF5252)
+                else -> MaterialTheme.colorScheme.primary
+            }
 
             LinearProgressIndicator(
-                progress = { animatedProgress },
+                progress = { progressFloat },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp)),
-                color = if (progress?.isPaused == true) Color(0xFFFFA000) else MaterialTheme.colorScheme.primary,
+                color = progressColor,
                 trackColor = Color(0xFF333333)
             )
 
@@ -473,59 +486,119 @@ private fun ActiveDownloadItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                val downloaded = formatFileSize(progress?.bytesDownloaded ?: 0)
-                val total = formatFileSize(progress?.totalBytes ?: 0)
-                Text(
-                    text = "$downloaded / $total",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.6f)
-                )
-
-                Text(
-                    text = "$percentage%",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                val speedText = if (download.speedBytesPerSec > 0) {
-                    "${formatFileSize(download.speedBytesPerSec.toLong())}/s"
-                } else {
-                    "Connecting..."
+                val statusText = when (download.status) {
+                    Status.Queued -> "Queued..."
+                    Status.Running -> if (download.speed > 0) "${formatFileSize(download.speed.toLong())}/s" else "Connecting..."
+                    Status.Paused -> "Paused"
+                    Status.Failed -> "Failed: ${download.failureReason}"
+                    else -> ""
                 }
-                Text(
-                    text = speedText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.5f)
-                )
+                val sizeText = "${formatFileSize(download.downloadedBytes)} / ${formatFileSize(download.fileSizeBytes)}"
 
-                Text(
-                    text = if (download.eta != "--") "ETA: ${download.eta}" else "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.5f)
-                )
-            }
+                Column {
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
+                    Text(
+                        text = sizeText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.4f),
+                        fontSize = 11.sp
+                    )
+                }
 
-            if (progress?.isPaused == true) {
-                Spacer(modifier = Modifier.height(8.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = onCancel,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF5252))
-                    ) {
-                        Text("Cancel", fontSize = 12.sp)
+                    Text(
+                        text = "${download.progress}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = progressColor
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    when (download.status) {
+                        Status.Running -> {
+                            IconButton(onClick = onPause, modifier = Modifier.size(28.dp)) {
+                                Icon(Icons.Default.Pause, "Pause", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        Status.Paused -> {
+                            IconButton(onClick = onResume, modifier = Modifier.size(28.dp)) {
+                                Icon(Icons.Default.PlayArrow, "Resume", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        Status.Failed -> {
+                            IconButton(onClick = onRetry, modifier = Modifier.size(28.dp)) {
+                                Icon(Icons.Default.Refresh, "Retry", tint = Color(0xFFFFA000), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        else -> {}
+                    }
+
+                    IconButton(onClick = onCancel, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Close, "Cancel", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompletedDownloadItem(
+    download: DownloadModel,
+    onPlay: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onPlay),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = null,
+                tint = Color(0xFFE50914),
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = download.fileName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = formatFileSize(download.fileSizeBytes),
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 11.sp
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

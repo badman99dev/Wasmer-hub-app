@@ -2,6 +2,8 @@ package com.movie.app.best
 
 import android.app.Application
 import com.movie.app.best.data.settings.VideoQualitySettings
+import com.ketch.Ketch
+import com.ketch.NotificationConfig
 import dagger.hilt.android.HiltAndroidApp
 import org.acra.config.toast
 import org.acra.config.dialog
@@ -10,10 +12,25 @@ import org.acra.data.StringFormat
 
 @HiltAndroidApp
 class MovieApplication : Application() {
+
+    lateinit var ketch: Ketch
+        private set
+
     override fun onCreate() {
         super.onCreate()
 
         VideoQualitySettings.initCache(this)
+
+        ketch = Ketch.builder()
+            .setNotificationConfig(
+                NotificationConfig(
+                    enabled = true,
+                    smallIcon = android.R.drawable.stat_sys_download,
+                    showSpeed = true,
+                    showSize = true,
+                    showTime = true
+                )
+            ).build(this)
 
         Thread { CrashPasteManager.ensurePasteExists(this) }.start()
 

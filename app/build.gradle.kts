@@ -110,9 +110,8 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.media3.datasource.okhttp)
     
-    // Fetch2 Download Manager
-    implementation(libs.fetch2)
-    implementation(libs.fetch2okhttp)
+    // Ketch Download Manager (WorkManager-based)
+    implementation("com.github.khushpanchal:Ketch:2.0.6")
     
     // DI
     implementation(libs.hilt.android)
