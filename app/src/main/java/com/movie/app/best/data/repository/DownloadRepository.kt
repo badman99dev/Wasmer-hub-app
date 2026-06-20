@@ -2,6 +2,7 @@ package com.movie.app.best.data.repository
 
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import com.movie.app.best.data.debug.NetworkLogger
 import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.remote.BypassApiService
@@ -12,6 +13,7 @@ import com.ketch.DownloadModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,6 +56,11 @@ class DownloadRepository @Inject constructor(
 
         NetworkLogger.logAction("DOWNLOAD_START", "url=$url file=$actualFileName title=$title")
 
+        val downloadPath = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "WasmerHub"
+        ).apply { if (!exists()) mkdirs() }.path
+
         val headers = HashMap<String, String>().apply {
             put("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36")
             put("Referer", "https://wasmer-hub.vercel.app/")
@@ -62,8 +69,8 @@ class DownloadRepository @Inject constructor(
 
         val id = ketch.download(
             url = url,
+            path = downloadPath,
             fileName = actualFileName,
-            path = "WasmerHub",
             tag = "wasmerhub",
             headers = headers
         )
