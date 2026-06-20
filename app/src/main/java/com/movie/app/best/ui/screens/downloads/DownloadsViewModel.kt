@@ -41,10 +41,11 @@ class DownloadsViewModel @Inject constructor(
         viewModelScope.launch {
             repository.observeDownloads().collect { downloads ->
                 val active = downloads.filter {
-                    it.status == Status.Queued || it.status == Status.Running ||
-                    it.status == Status.Paused || it.status == Status.Failed
+                    it.status == Status.QUEUED || it.status == Status.STARTED ||
+                    it.status == Status.PROGRESS || it.status == Status.PAUSED ||
+                    it.status == Status.FAILED
                 }
-                val completed = downloads.filter { it.status == Status.Succeeded }
+                val completed = downloads.filter { it.status == Status.SUCCESS }
                 _uiState.update {
                     it.copy(activeDownloads = active, completedDownloads = completed)
                 }

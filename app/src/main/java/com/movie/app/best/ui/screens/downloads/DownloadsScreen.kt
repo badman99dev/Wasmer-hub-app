@@ -444,9 +444,9 @@ private fun ActiveDownloadItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = if (download.status == Status.Failed) Icons.Default.Refresh else Icons.Default.Download,
+                    imageVector = if (download.status == Status.FAILED) Icons.Default.Refresh else Icons.Default.Download,
                     contentDescription = null,
-                    tint = if (download.status == Status.Failed) Color(0xFFFF5252) else MaterialTheme.colorScheme.primary,
+                    tint = if (download.status == Status.FAILED) Color(0xFFFF5252) else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -465,8 +465,8 @@ private fun ActiveDownloadItem(
 
             val progressFloat = if (download.progress > 0) download.progress / 100f else 0f
             val progressColor = when (download.status) {
-                Status.Paused -> Color(0xFFFFA000)
-                Status.Failed -> Color(0xFFFF5252)
+                Status.PAUSED -> Color(0xFFFFA000)
+                Status.FAILED -> Color(0xFFFF5252)
                 else -> MaterialTheme.colorScheme.primary
             }
 
@@ -487,13 +487,18 @@ private fun ActiveDownloadItem(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 val statusText = when (download.status) {
-                    Status.Queued -> "Queued..."
-                    Status.Running -> if (download.speed > 0) "${formatFileSize(download.speed.toLong())}/s" else "Connecting..."
-                    Status.Paused -> "Paused"
-                    Status.Failed -> "Failed: ${download.failureReason}"
+                    Status.QUEUED -> "Queued..."
+                    Status.STARTED -> "Starting..."
+                    Status.PROGRESS -> {
+                        val speedBytesPerSec = (download.speedInBytePerMs * 1000).toLong()
+                        if (speedBytesPerSec > 0) "${formatFileSize(speedBytesPerSec)}/s" else "Connecting..."
+                    }
+                    Status.PAUSED -> "Paused"
+                    Status.FAILED -> "Failed: ${download.failureReason}"
                     else -> ""
                 }
-                val sizeText = "${formatFileSize(download.downloadedBytes)} / ${formatFileSize(download.fileSizeBytes)}"
+                val downloadedBytes = (download.progress.toLong() * download.total) / 100
+                val sizeText = "${formatFileSize(downloadedBytes)} / ${formatFileSize(download.total)}"
 
                 Column {
                     Text(
@@ -522,17 +527,17 @@ private fun ActiveDownloadItem(
                     Spacer(modifier = Modifier.width(4.dp))
 
                     when (download.status) {
-                        Status.Running -> {
+                        Status.PROGRESS, Status.STARTED -> {
                             IconButton(onClick = onPause, modifier = Modifier.size(28.dp)) {
                                 Icon(Icons.Default.Pause, "Pause", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
                             }
                         }
-                        Status.Paused -> {
+                        Status.PAUSED -> {
                             IconButton(onClick = onResume, modifier = Modifier.size(28.dp)) {
                                 Icon(Icons.Default.PlayArrow, "Resume", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
                             }
                         }
-                        Status.Failed -> {
+                        Status.FAILED -> {
                             IconButton(onClick = onRetry, modifier = Modifier.size(28.dp)) {
                                 Icon(Icons.Default.Refresh, "Retry", tint = Color(0xFFFFA000), modifier = Modifier.size(18.dp))
                             }
@@ -587,7 +592,7 @@ private fun CompletedDownloadItem(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = formatFileSize(download.fileSizeBytes),
+                    text = formatFileSize(download.total),
                     color = Color.White.copy(alpha = 0.5f),
                     fontSize = 11.sp
                 )
