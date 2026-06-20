@@ -6,6 +6,7 @@ import com.movie.app.best.data.model.ImdbSearchResponse
 import com.movie.app.best.data.model.ImdbTitleDetails
 import com.movie.app.best.data.model.MeiliHit
 import com.movie.app.best.data.model.MeiliSearchResponse
+import com.movie.app.best.data.model.Zee5Bucket
 import com.movie.app.best.data.model.Zee5Item
 import com.movie.app.best.data.model.Zee5SuggestionInput
 import com.movie.app.best.data.model.Zee5SuggestionRequest
@@ -149,11 +150,19 @@ class SearchViewModel @Inject constructor(
                     try {
                         val resp = zee5Api.search(query, limit = 20)
                         val rails = resp.data?.hybridSearchResults?.rails ?: emptyList()
-                        val items = rails.flatMap { r ->
-                            r.contents?.mapNotNull { c -> c.effectiveItem } ?: emptyList()
-                        }.filter { it.id != null }
+                        val buckets = rails.mapNotNull { rail ->
+                            val items = rail.contents?.mapNotNull { c -> c.effectiveItem }
+                                ?.filter { it.id != null }
+                                ?: emptyList()
+                            if (items.isEmpty()) null
+                            else Zee5Bucket(
+                                id = rail.id,
+                                title = rail.title ?: rail.originalTitle,
+                                items = items
+                            )
+                        }
                         _uiState.update {
-                            it.copy(zee5Results = items, isZee5Loading = false)
+                            it.copy(zee5Results = buckets, isZee5Loading = false)
                         }
                     } catch (_: Exception) {
                         _uiState.update { it.copy(isZee5Loading = false) }
@@ -204,7 +213,7 @@ data class SearchUiState(
     val isSuggestionLoading: Boolean = false,
 
     val ownResults: List<MeiliHit> = emptyList(),
-    val zee5Results: List<Zee5Item> = emptyList(),
+    val zee5Results: List<Zee5Bucket> = emptyList(),
     val isOwnLoading: Boolean = false,
     val isZee5Loading: Boolean = false,
     val error: String? = null,

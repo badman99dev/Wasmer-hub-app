@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.MeiliHit
+import com.movie.app.best.data.model.Zee5Bucket
 import com.movie.app.best.data.model.Zee5Item
 import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.components.BlurredContent
@@ -433,22 +434,19 @@ fun SearchResultsView(
                 Column {
                     Text(
                         text = "Results from Zee5",
-                        color = Color.White,
-                        fontSize = 14.sp,
+                        color = Color(0xFF888888),
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
                     )
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(state.zee5Results, key = { "zee5_${it.id}" }) { item ->
-                            Zee5ResultCard(item = item, onClick = {
-                                item.id?.let { onZee5Click(it) }
-                            })
-                        }
+                    state.zee5Results.forEach { bucket ->
+                        Zee5RailSection(
+                            title = bucket.title ?: "",
+                            items = bucket.items ?: emptyList(),
+                            onZee5Click = onZee5Click
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "Movies & Series",
                         color = Color.White,
@@ -577,6 +575,36 @@ fun MeiliResultCard(hit: MeiliHit, onClick: () -> Unit) {
                     Text(text = " • ", color = Color.White.copy(alpha = 0.7f), fontSize = 9.sp)
                     Text(text = "⭐ ${hit.rating}", color = Color.White.copy(alpha = 0.7f), fontSize = 9.sp)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun Zee5RailSection(
+    title: String,
+    items: List<Zee5Item>,
+    onZee5Click: (String) -> Unit
+) {
+    if (items.isEmpty()) return
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (title.isNotBlank()) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(items, key = { "zee5_${it.id}" }) { item ->
+                Zee5ResultCard(item = item, onClick = {
+                    item.id?.let { onZee5Click(it) }
+                })
             }
         }
     }
