@@ -36,7 +36,6 @@ class Zee5TokenRepository @Inject constructor(
 
     fun buildAuthHeaders(tokens: Zee5TokensResponse): Map<String, String> {
         return mapOf(
-            "Content-Type" to "application/json",
             "X-ACCESS-TOKEN" to tokens.platformToken,
             "X-Z5-Guest-Token" to tokens.guestToken,
             "x-z5-device-id" to tokens.deviceId,
