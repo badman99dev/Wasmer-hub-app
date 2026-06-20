@@ -2,47 +2,26 @@ package com.movie.app.best.data.model
 
 import com.google.gson.annotations.SerializedName
 
-data class MeiliSearchRequest(
-    val q: String,
-    val limit: Int = 20,
-    val offset: Int = 0,
-    val attributesToRetrieve: List<String> = listOf(
-        "id", "slug", "title", "poster_url", "release_year",
-        "rating", "quality_label", "is_series", "has_stream",
-        "audio_label", "content_moderation", "poster_moderation"
-    ),
-    val attributesToHighlight: List<String> = listOf("title"),
-    val highlightPreTag: String = "\u0001",
-    val highlightPostTag: String = "\u0002"
-)
-
-data class MeiliSearchResponse(
-    val hits: List<MeiliHit> = emptyList(),
-    val estimatedTotalHits: Int = 0,
-    val limit: Int = 20,
-    val offset: Int = 0
-)
-
 data class MeiliHit(
     val id: Int = 0,
     val slug: String = "",
     val title: String = "",
     @SerializedName("poster_url") val posterUrl: String = "",
-    @SerializedName("release_year") val releaseYear: String = "",
-    val rating: String = "",
+    @SerializedName("release_year") val releaseYear: Int = 0,
+    val rating: Double = 0.0,
     @SerializedName("quality_label") val qualityLabel: String = "",
     @SerializedName("is_series") val isSeries: Int = 0,
-    @SerializedName("has_stream") val hasStream: Boolean? = null,
+    @SerializedName("stream_avl") val streamAvl: Boolean? = null,
     @SerializedName("audio_label") val audioLabel: String = "",
-    @SerializedName("content_moderation") val contentModeration: Map<String, String>? = null,
     @SerializedName("poster_moderation") val posterModeration: String? = null,
-    val _formatted: MeiliFormatted? = null
+    @SerializedName("content_moderation") val contentModeration: Map<String, String>? = null,
+    @SerializedName("_formatted") val formatted: Map<String, String>? = null
 ) {
-    val effectiveContentModeration: ContentModeration?
-        get() = contentModeration?.toContentModeration()
-
-    val isSeriesBool: Boolean
-        get() = isSeries == 1
+    val isSeriesBool: Boolean get() = isSeries == 1
+    val hasStream: Boolean get() = streamAvl ?: false
+    val releaseYearStr: String get() = releaseYear.toString()
+    val ratingStr: String get() = if (rating > 0) String.format("%.1f", rating) else ""
+    val highlightedTitle: String get() = formatted?.get("title") ?: title
 
     fun toWasmerMovie(): WasmerMovie = WasmerMovie(
         id = id,
@@ -50,23 +29,14 @@ data class MeiliHit(
         title = title,
         posterUrl = posterUrl,
         qualityLabel = qualityLabel,
-        releaseYear = releaseYear,
-        rating = rating,
+        releaseYear = releaseYearStr,
+        rating = ratingStr,
         audioLabel = audioLabel,
         isSeries = isSeries == 1,
-        hasStream = hasStream ?: false,
+        hasStream = hasStream,
         views = 0,
         rank = 0,
-        contentModeration = effectiveContentModeration,
+        contentModeration = contentModeration?.toContentModeration(),
         posterModeration = posterModeration
     )
 }
-
-data class MeiliFormatted(
-    val title: String = ""
-)
-
-data class MeiliKeyResponse(
-    val key: String = "",
-    val uid: String = ""
-)

@@ -7,9 +7,7 @@ import com.movie.app.best.data.debug.DebugInterceptor
 import com.movie.app.best.data.remote.AuthApiService
 import com.movie.app.best.data.remote.BypassApiService
 import com.movie.app.best.data.remote.ImdbApiService
-import com.movie.app.best.data.remote.MeiliSearchService
 import com.movie.app.best.data.remote.MovieApiService
-import com.movie.app.best.data.repository.MeiliSearchRepository
 import com.movie.app.best.data.repository.Zee5TokenRepository
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
@@ -175,35 +173,6 @@ object NetworkModule {
     @Singleton
     fun provideZee5ApiService(@Named("zee5") retrofit: Retrofit): com.movie.app.best.data.remote.Zee5ApiService {
         return retrofit.create(com.movie.app.best.data.remote.Zee5ApiService::class.java)
-    }
-
-    @Provides
-    @Singleton
-    @Named("meili")
-    fun provideMeiliRetrofit(gson: com.google.gson.Gson): Retrofit {
-        val plainClient = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .build()
-        return Retrofit.Builder()
-            .baseUrl("https://meilisearch-rs25.onrender.com/")
-            .client(plainClient)
-            .addConverterFactory(GsonConverterFactory.create(gson))
-            .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideMeiliSearchService(@Named("meili") retrofit: Retrofit): MeiliSearchService {
-        return retrofit.create(MeiliSearchService::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideMeiliSearchRepository(
-        meiliService: MeiliSearchService
-    ): MeiliSearchRepository {
-        return MeiliSearchRepository(meiliService)
     }
 
     @Provides

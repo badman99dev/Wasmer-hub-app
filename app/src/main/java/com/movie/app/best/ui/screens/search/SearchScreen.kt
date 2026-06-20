@@ -165,7 +165,6 @@ fun SearchScreen(
                 SuggestionsView(
                     state = uiState,
                     onMeiliClick = { hit -> onContentClick(hit.slug, hit.isSeriesBool) },
-                    onImdbClick = { title -> viewModel.searchUniversal(title) },
                     onZee5Click = { text -> viewModel.searchUniversal(text) }
                 )
             } else {
@@ -199,11 +198,9 @@ fun EmptySearchState() {
 fun SuggestionsView(
     state: SearchUiState,
     onMeiliClick: (MeiliHit) -> Unit,
-    onImdbClick: (String) -> Unit,
     onZee5Click: (String) -> Unit
 ) {
     val hasAnySuggestions = state.meiliSuggestions.isNotEmpty() ||
-            state.imdbSuggestions.isNotEmpty() ||
             state.zee5Suggestions.isNotEmpty()
 
     if (!hasAnySuggestions && !state.isSuggestionLoading) {
@@ -236,13 +233,6 @@ fun SuggestionsView(
             item { SuggestionHeader("Movies & Series") }
             items(state.meiliSuggestions, key = { "meili_${it.id}" }) { hit ->
                 MeiliSuggestionRow(hit = hit, onClick = { onMeiliClick(hit) })
-            }
-        }
-
-        if (state.imdbSuggestions.isNotEmpty()) {
-            item { SuggestionHeader("Suggestions from IMDb") }
-            items(state.imdbSuggestions.take(5), key = { "imdb_${it.id}" }) { title ->
-                ImdbSuggestionRow(title = title, onClick = { onImdbClick(title.primaryTitle) })
             }
         }
 
@@ -297,15 +287,15 @@ fun MeiliSuggestionRow(hit: MeiliHit, onClick: () -> Unit) {
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = highlightedTitle(hit._formatted?.title ?: hit.title),
+                text = highlightedTitle(hit.highlightedTitle),
                 color = Color.White,
                 fontSize = 14.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (hit.releaseYear.isNotEmpty()) {
-                    Text(text = hit.releaseYear, color = Color.Gray, fontSize = 12.sp)
+                if (hit.releaseYear > 0) {
+                    Text(text = hit.releaseYearStr, color = Color.Gray, fontSize = 12.sp)
                     Spacer(modifier = Modifier.width(6.dp))
                 }
                 if (hit.qualityLabel.isNotBlank()) {
@@ -315,64 +305,10 @@ fun MeiliSuggestionRow(hit: MeiliHit, onClick: () -> Unit) {
                 if (hit.isSeriesBool) {
                     SeriesBadge()
                 }
-                if (hit.hasStream == true) {
+                if (hit.hasStream) {
                     Spacer(modifier = Modifier.width(4.dp))
                     StreamBadge()
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun ImdbSuggestionRow(title: com.movie.app.best.data.model.ImdbTitleDetails, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        val img = title.posterUrl
-        if (img.isNotEmpty()) {
-            AsyncImage(
-                model = img,
-                contentDescription = title.primaryTitle,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .width(36.dp)
-                    .height(54.dp)
-                    .clip(RoundedCornerShape(4.dp))
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .width(36.dp)
-                    .height(54.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFF1A1A1A))
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title.primaryTitle,
-                color = Color.White,
-                fontSize = 14.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (title.startYear > 0) {
-                    Text(text = title.startYear.toString(), color = Color.Gray, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.width(6.dp))
-                }
-                Text(
-                    text = title.type.ifBlank { "movie" }.replaceFirstChar { it.uppercase() },
-                    color = Color(0xFF888888),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
-                )
             }
         }
     }
@@ -535,7 +471,7 @@ fun MeiliResultCard(hit: MeiliHit, onClick: () -> Unit) {
                 if (hit.qualityLabel.isNotBlank()) {
                     QualityBadge(label = hit.qualityLabel)
                 }
-                if (hit.hasStream == true) {
+                if (hit.hasStream) {
                     StreamBadge()
                 }
             }
@@ -570,10 +506,10 @@ fun MeiliResultCard(hit: MeiliHit, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = hit.releaseYear, color = Color.White.copy(alpha = 0.7f), fontSize = 9.sp)
-                if (hit.rating.isNotBlank() && hit.rating != "0.0") {
+                Text(text = hit.releaseYearStr, color = Color.White.copy(alpha = 0.7f), fontSize = 9.sp)
+                if (hit.rating > 0) {
                     Text(text = " • ", color = Color.White.copy(alpha = 0.7f), fontSize = 9.sp)
-                    Text(text = "⭐ ${hit.rating}", color = Color.White.copy(alpha = 0.7f), fontSize = 9.sp)
+                    Text(text = "⭐ ${hit.ratingStr}", color = Color.White.copy(alpha = 0.7f), fontSize = 9.sp)
                 }
             }
         }

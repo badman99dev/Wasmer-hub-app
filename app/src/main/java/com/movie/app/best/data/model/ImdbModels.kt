@@ -75,7 +75,3 @@ data class ImdbCertificateCountry(
     val code: String = "",
     val name: String = ""
 )
-
-data class ImdbSearchResponse(
-    val titles: List<ImdbTitleDetails> = emptyList()
-)

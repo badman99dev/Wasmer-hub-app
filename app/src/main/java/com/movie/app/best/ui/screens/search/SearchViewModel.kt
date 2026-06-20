@@ -2,20 +2,16 @@ package com.movie.app.best.ui.screens.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.movie.app.best.data.model.ImdbSearchResponse
-import com.movie.app.best.data.model.ImdbTitleDetails
 import com.movie.app.best.data.model.MeiliHit
-import com.movie.app.best.data.model.MeiliSearchResponse
 import com.movie.app.best.data.model.Zee5Bucket
-import com.movie.app.best.data.model.Zee5Item
 import com.movie.app.best.data.model.Zee5SuggestionInput
 import com.movie.app.best.data.model.Zee5SuggestionRequest
 import com.movie.app.best.data.model.Zee5SuggestionVariables
-import com.movie.app.best.data.remote.ImdbApiService
-import com.movie.app.best.data.repository.MeiliSearchRepository
-import com.movie.app.best.data.repository.Zee5TokenRepository
 import com.movie.app.best.data.remote.Zee5ApiService
 import com.movie.app.best.data.remote.Zee5SuggestionApiService
+import com.movie.app.best.data.repository.MeiliSearchRepository
+import com.movie.app.best.data.repository.MeiliSearchResponse
+import com.movie.app.best.data.repository.Zee5TokenRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -30,7 +26,6 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val imdbApi: ImdbApiService,
     private val zee5SuggestionApi: Zee5SuggestionApiService,
     private val zee5Api: Zee5ApiService,
     private val meiliRepository: MeiliSearchRepository,
@@ -66,9 +61,6 @@ class SearchViewModel @Inject constructor(
             val meiliDeferred = async {
                 try { meiliRepository.suggest(query, limit = 8) } catch (_: Exception) { null }
             }
-            val imdbDeferred = async {
-                try { imdbApi.searchTitles(query) } catch (_: Exception) { null }
-            }
             val zee5Deferred = async {
                 try {
                     val tokens = zee5TokenRepository.getTokens()
@@ -85,13 +77,11 @@ class SearchViewModel @Inject constructor(
             }
 
             val meiliResult = meiliDeferred.await()
-            val imdbResult = imdbDeferred.await()
             val zee5Result = zee5Deferred.await()
 
             _uiState.update {
                 it.copy(
                     meiliSuggestions = meiliResult?.hits ?: emptyList(),
-                    imdbSuggestions = imdbResult?.titles ?: emptyList(),
                     zee5Suggestions = zee5Result?.data?.searchSuggestions?.suggestions
                         ?.map { s -> s.text }
                         ?.filter { s -> s.isNotBlank() }
@@ -106,7 +96,6 @@ class SearchViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 meiliSuggestions = emptyList(),
-                imdbSuggestions = emptyList(),
                 zee5Suggestions = emptyList(),
                 isSuggestionLoading = false
             )
@@ -208,7 +197,6 @@ data class SearchUiState(
     val isShowingSuggestions: Boolean = true,
 
     val meiliSuggestions: List<MeiliHit> = emptyList(),
-    val imdbSuggestions: List<ImdbTitleDetails> = emptyList(),
     val zee5Suggestions: List<String> = emptyList(),
     val isSuggestionLoading: Boolean = false,
 
