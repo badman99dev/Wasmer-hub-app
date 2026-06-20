@@ -2,30 +2,42 @@ package com.movie.app.best.data.repository
 
 import com.movie.app.best.data.model.MeiliSearchRequest
 import com.movie.app.best.data.model.MeiliSearchResponse
-import com.movie.app.best.data.remote.MeiliKeyService
 import com.movie.app.best.data.remote.MeiliSearchService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
 import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class MeiliSearchRepository @Inject constructor(
-    private val meiliService: MeiliSearchService,
-    private val keyService: MeiliKeyService
+    private val meiliService: MeiliSearchService
 ) {
     @Volatile
     private var cachedKey: String? = null
     private var keyExpiry: Long = 0
     private val KEY_TTL = 3600000L
 
+    private val plainClient = OkHttpClient.Builder()
+        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
+    private val KEY_URL = "https://meilisearch.badman993944.workers.dev/"
+    private val PING_URL = "https://meilisearch-rs25.onrender.com/"
+
     suspend fun pingAndPrefetchKey() {
         coroutineScope {
             launch(Dispatchers.IO) {
-                try { meiliService.ping() } catch (_: Exception) {}
+                try {
+                    val req = Request.Builder().url(PING_URL).get().build()
+                    plainClient.newCall(req).execute().close()
+                } catch (_: Exception) {}
             }
             launch(Dispatchers.IO) {
                 try { refreshKey() } catch (_: Exception) {}
@@ -34,12 +46,20 @@ class MeiliSearchRepository @Inject constructor(
     }
 
     private suspend fun refreshKey(): String? {
-        return try {
-            val resp = keyService.getKey()
-            cachedKey = resp.key
-            keyExpiry = System.currentTimeMillis() + KEY_TTL
-            resp.key
-        } catch (_: Exception) { null }
+        return withContext(Dispatchers.IO) {
+            try {
+                val req = Request.Builder().url(KEY_URL).get().build()
+                val resp = plainClient.newCall(req).execute()
+                val body = resp.body?.string()
+                resp.close()
+                val key = JSONObject(body ?: "").optString("key", "")
+                if (key.isNotEmpty()) {
+                    cachedKey = key
+                    keyExpiry = System.currentTimeMillis() + KEY_TTL
+                    key
+                } else null
+            } catch (_: Exception) { null }
+        }
     }
 
     suspend fun getKey(): String? {

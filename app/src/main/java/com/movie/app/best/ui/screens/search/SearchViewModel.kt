@@ -60,7 +60,9 @@ class SearchViewModel @Inject constructor(
     private suspend fun getSuggestions(query: String) {
         _uiState.update { it.copy(isSuggestionLoading = true) }
         coroutineScope {
-            val meiliDeferred = async { meiliRepository.suggest(query, limit = 8) }
+            val meiliDeferred = async {
+                try { meiliRepository.suggest(query, limit = 8) } catch (_: Exception) { null }
+            }
             val imdbDeferred = async {
                 try { imdbApi.searchTitles(query) } catch (_: Exception) { null }
             }
@@ -80,7 +82,7 @@ class SearchViewModel @Inject constructor(
 
             _uiState.update {
                 it.copy(
-                    meiliSuggestions = meiliResult.hits,
+                    meiliSuggestions = meiliResult?.hits ?: emptyList(),
                     imdbSuggestions = imdbResult?.titles ?: emptyList(),
                     zee5Suggestions = zee5Result?.data?.searchSuggestions?.suggestions
                         ?.map { s -> s.text }

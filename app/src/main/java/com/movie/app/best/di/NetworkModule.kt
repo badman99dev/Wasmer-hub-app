@@ -7,7 +7,6 @@ import com.movie.app.best.data.debug.DebugInterceptor
 import com.movie.app.best.data.remote.AuthApiService
 import com.movie.app.best.data.remote.BypassApiService
 import com.movie.app.best.data.remote.ImdbApiService
-import com.movie.app.best.data.remote.MeiliKeyService
 import com.movie.app.best.data.remote.MeiliSearchService
 import com.movie.app.best.data.remote.MovieApiService
 import com.movie.app.best.data.repository.MeiliSearchRepository
@@ -200,32 +199,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    @Named("meilikey")
-    fun provideMeiliKeyRetrofit(gson: com.google.gson.Gson): Retrofit {
-        val plainClient = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
-            .build()
-        return Retrofit.Builder()
-            .baseUrl("https://meilisearch.badman993944.workers.dev/")
-            .client(plainClient)
-            .addConverterFactory(GsonConverterFactory.create(gson))
-            .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideMeiliKeyService(@Named("meilikey") retrofit: Retrofit): MeiliKeyService {
-        return retrofit.create(MeiliKeyService::class.java)
-    }
-
-    @Provides
-    @Singleton
     fun provideMeiliSearchRepository(
-        meiliService: MeiliSearchService,
-        keyService: MeiliKeyService
+        meiliService: MeiliSearchService
     ): MeiliSearchRepository {
-        return MeiliSearchRepository(meiliService, keyService)
+        return MeiliSearchRepository(meiliService)
     }
 
     @Provides
