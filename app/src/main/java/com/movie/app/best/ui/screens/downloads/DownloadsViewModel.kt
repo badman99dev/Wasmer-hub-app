@@ -37,6 +37,8 @@ class DownloadsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(DownloadsUiState())
     val uiState: StateFlow<DownloadsUiState> = _uiState.asStateFlow()
 
+    private val processedKetchIds = mutableSetOf<Int>()
+
     init {
         rescanDownloads()
         observeDownloads()
@@ -51,6 +53,14 @@ class DownloadsViewModel @Inject constructor(
                     it.status == Status.FAILED
                 }
                 val completed = downloads.filter { it.status == Status.SUCCESS }
+
+                completed.forEach { dl ->
+                    if (dl.id !in processedKetchIds) {
+                        processedKetchIds.add(dl.id)
+                        checkAndExtractZip(dl.id, dl.fileName)
+                    }
+                }
+
                 val allMeta = repository.getAllMetadata()
                 val packs = allMeta.filter { it.isZip && it.extractPath != null }
                 _uiState.update {
@@ -65,15 +75,73 @@ class DownloadsViewModel @Inject constructor(
         }
     }
 
+    private fun checkAndExtractZip(ketchId: Int, fileName: String) {
+        viewModelScope.launch {
+            val allMeta = repository.getAllMetadata()
+            val meta = allMeta.find { it.ketchId == ketchId }
+
+            if (meta != null && meta.isZip && meta.extractPath == null) {
+                val metaKey = meta.slug + (meta.episodeLabel ?: "")
+                repository.postProcessDownload(ketchId, metaKey)
+
+                val updatedMeta = repository.getAllMetadata()
+                val packs = updatedMeta.filter { it.isZip && it.extractPath != null }
+                _uiState.update {
+                    it.copy(
+                        downloadMetadata = updatedMeta,
+                        extractedPacks = packs
+                    )
+                }
+            } else if (meta == null && isZipFile(fileName)) {
+                val slug = fileName.substringBeforeLast(".").replace(Regex("[^a-zA-Z0-9-]"), "-").lowercase()
+                val metaKey = slug
+                val newMeta = DownloadMetadata(
+                    slug = slug,
+                    title = fileName.substringBeforeLast("."),
+                    fileName = fileName,
+                    filePath = android.os.Environment.getExternalStoragePublicDirectory(
+                        android.os.Environment.DIRECTORY_DOWNLOADS
+                    ).path + "/WasmerHub/$fileName",
+                    ketchId = ketchId,
+                    isZip = true,
+                    contentType = "series",
+                    status = "extracting"
+                )
+                repository.saveMetadataDirect(metaKey, newMeta)
+                repository.postProcessDownload(ketchId, metaKey)
+
+                val updatedMeta = repository.getAllMetadata()
+                val packs = updatedMeta.filter { it.isZip && it.extractPath != null }
+                _uiState.update {
+                    it.copy(
+                        downloadMetadata = updatedMeta,
+                        extractedPacks = packs
+                    )
+                }
+            }
+        }
+    }
+
+    private fun isZipFile(fileName: String): Boolean {
+        val f = fileName.lowercase()
+        return f.endsWith(".zip") || f.endsWith(".rar") || f.endsWith(".7z")
+    }
+
     fun rescanDownloads() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRescanning = true) }
             repository.rescanDownloads()
+
             val allMeta = repository.getAllMetadata()
-            val packs = allMeta.filter { it.isZip && it.extractPath != null }
+            allMeta.filter { it.isZip && it.extractPath == null && it.ketchId >= 0 }.forEach { meta ->
+                repository.postProcessDownload(meta.ketchId, meta.slug + (meta.episodeLabel ?: ""))
+            }
+
+            val finalMeta = repository.getAllMetadata()
+            val packs = finalMeta.filter { it.isZip && it.extractPath != null }
             _uiState.update {
                 it.copy(
-                    downloadMetadata = allMeta,
+                    downloadMetadata = finalMeta,
                     extractedPacks = packs,
                     isRescanning = false
                 )

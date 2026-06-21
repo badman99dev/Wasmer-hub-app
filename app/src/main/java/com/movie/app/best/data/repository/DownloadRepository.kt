@@ -255,6 +255,10 @@ class DownloadRepository @Inject constructor(
 
     fun getMetadata(key: String): DownloadMetadata? = metadataStore.getMetadata(key)
 
+    fun saveMetadataDirect(key: String, metadata: DownloadMetadata) {
+        metadataStore.saveMetadataByKey(key, metadata)
+    }
+
     fun rescanDownloads() {
         val downloadDir = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),

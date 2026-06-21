@@ -40,6 +40,12 @@ class DownloadMetadataStore @Inject constructor(
         prefs.edit().putString("metadata", gson.toJson(all)).apply()
     }
 
+    fun saveMetadataByKey(key: String, metadata: DownloadMetadata) {
+        val all = getAllMetadataMap().toMutableMap()
+        all[key] = metadata
+        prefs.edit().putString("metadata", gson.toJson(all)).apply()
+    }
+
     fun updateMetadata(key: String, update: (DownloadMetadata) -> DownloadMetadata) {
         val all = getAllMetadataMap().toMutableMap()
         val existing = all[key] ?: return
