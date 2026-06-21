@@ -303,8 +303,10 @@ fun TVShowDetailScreen(
                 DownloadBottomSheetContent(
                     downloadLinks = sheetDownloadLinks,
                     downloadLoadingLinkId = uiState.downloadLoadingLinkId,
-                    downloadStarted = uiState.downloadStarted,
+                    downloadPhase = uiState.downloadPhase,
+                    downloadProgress = uiState.downloadProgress,
                     downloadError = uiState.downloadError,
+                    downloadFailureReason = uiState.downloadFailureReason,
                     resolvedMirrors = uiState.resolvedMirrors,
                     expandedLinkId = uiState.expandedLinkId,
                     onStartDownload = { linkUrl, linkId -> requestDownload(linkUrl, linkId) },
@@ -606,7 +608,12 @@ private fun TVShowDetailContent(
                     onPlayClick = {
                         onWatchNow(series.imdbId, series.title, series.id.toString(), series.slug, selectedSeason)
                     },
-                    onDownloadClick = { },
+                    onDownloadClick = {
+                        val allLinks = uiState.linksByEpisode.values.flatten() + uiState.downloadLinks
+                        if (allLinks.isNotEmpty()) {
+                            onOpenEpisodeDownloadSheet(allLinks, series.title)
+                        }
+                    },
                     onMyListClick = onToggleBookmark,
                     onLikeClick = onToggleLike,
                     onRequestStream = onRequestStream

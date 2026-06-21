@@ -142,8 +142,10 @@ fun MovieDetailScreen(
                 DownloadBottomSheetContent(
                     downloadLinks = uiState.downloadLinks,
                     downloadLoadingLinkId = uiState.downloadLoadingLinkId,
-                    downloadStarted = uiState.downloadStarted,
+                    downloadPhase = uiState.downloadPhase,
+                    downloadProgress = uiState.downloadProgress,
                     downloadError = uiState.downloadError,
+                    downloadFailureReason = uiState.downloadFailureReason,
                     resolvedMirrors = uiState.resolvedMirrors,
                     expandedLinkId = uiState.expandedLinkId,
                     onStartDownload = { linkUrl, linkId -> requestDownload(linkUrl, linkId) },

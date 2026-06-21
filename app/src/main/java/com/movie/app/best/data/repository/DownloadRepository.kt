@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import com.movie.app.best.data.debug.NetworkLogger
+import com.movie.app.best.data.model.DownloadMetadata
+import com.movie.app.best.data.model.DownloadPhase
 import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.remote.BypassApiService
 import com.movie.app.best.data.remote.BypassRequest
@@ -13,6 +15,7 @@ import com.ketch.DownloadModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,10 +30,19 @@ data class ResolvedMirror(
     val sourceLabel: String
 )
 
+data class DownloadStatusInfo(
+    val phase: DownloadPhase,
+    val progress: Int = 0,
+    val ketchId: Int = -1,
+    val failureReason: String? = null
+)
+
 @Singleton
 class DownloadRepository @Inject constructor(
     private val bypassApiService: BypassApiService,
     private val ketch: Ketch,
+    private val metadataStore: DownloadMetadataStore,
+    private val zipExtractor: ZipExtractor,
     @ApplicationContext private val context: Context
 ) {
     fun resolveDownloadUrls(linkUrl: String): Flow<Resource<List<ResolvedMirror>>> = flow {
@@ -76,11 +88,67 @@ class DownloadRepository @Inject constructor(
         }
     }
 
+    suspend fun startDownloadWithMetadata(
+        mirror: ResolvedMirror,
+        slug: String,
+        posterUrl: String,
+        title: String,
+        contentType: String = "movie",
+        episodeId: Int? = null,
+        episodeLabel: String? = null
+    ): Int {
+        val safeFileName = sanitizeFileName(mirror.fileName)
+        val isZip = metadataStore.isZipFile(safeFileName)
+
+        val downloadPath = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "WasmerHub"
+        ).apply { if (!exists()) mkdirs() }.path
+
+        val filePath = File(downloadPath, safeFileName).path
+        val metaKey = slug + (episodeLabel ?: "")
+
+        NetworkLogger.logAction("DOWNLOAD_INIT", "slug=$slug poster=$posterUrl isZip=$isZip")
+
+        val localPosterPath = metadataStore.downloadPoster(posterUrl, slug)
+
+        val metadata = DownloadMetadata(
+            slug = slug,
+            title = title,
+            posterUrl = posterUrl,
+            localPosterPath = localPosterPath,
+            fileName = safeFileName,
+            filePath = filePath,
+            isZip = isZip,
+            contentType = contentType,
+            episodeId = episodeId,
+            episodeLabel = episodeLabel,
+            status = "initializing"
+        )
+        metadataStore.saveMetadata(metadata)
+
+        val headers = HashMap<String, String>().apply {
+            put("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36")
+            put("Referer", "https://wasmer-hub.vercel.app/")
+            put("Accept", "*/*")
+        }
+
+        val id = ketch.download(
+            url = mirror.jackpot,
+            path = downloadPath,
+            fileName = safeFileName,
+            tag = "wasmerhub",
+            headers = headers
+        )
+
+        metadataStore.updateMetadata(metaKey) { it.copy(ketchId = id, status = "downloading") }
+        NetworkLogger.logAction("DOWNLOAD_QUEUED", "id=$id file=$safeFileName slug=$slug")
+        return id
+    }
+
     fun startDownload(url: String, fileName: String, title: String): Int {
         val safeFileName = sanitizeFileName(fileName)
         val actualFileName = if (safeFileName.isNotBlank()) safeFileName else extractFileNameFromUrl(url)
-
-        NetworkLogger.logAction("DOWNLOAD_START", "url=$url file=$actualFileName title=$title")
 
         val downloadPath = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
@@ -109,6 +177,55 @@ class DownloadRepository @Inject constructor(
         return ketch.observeDownloads()
     }
 
+    fun observeDownloadStatus(ketchId: Int): Flow<DownloadStatusInfo> {
+        return ketch.observeDownloads().map { downloads ->
+            val dl = downloads.find { it.id == ketchId }
+            if (dl == null) {
+                DownloadStatusInfo(phase = DownloadPhase.NONE, ketchId = ketchId)
+            } else {
+                val phase = when (dl.status) {
+                    Status.QUEUED -> DownloadPhase.DOWNLOADING
+                    Status.STARTED -> DownloadPhase.DOWNLOADING
+                    Status.PROGRESS -> DownloadPhase.DOWNLOADING
+                    Status.SUCCESS -> DownloadPhase.COMPLETE
+                    Status.CANCELLED -> DownloadPhase.CANCELLED
+                    Status.FAILED -> DownloadPhase.FAILED
+                    Status.PAUSED -> DownloadPhase.DOWNLOADING
+                    Status.DEFAULT -> DownloadPhase.NONE
+                }
+                DownloadStatusInfo(
+                    phase = phase,
+                    progress = dl.progress,
+                    ketchId = ketchId,
+                    failureReason = if (dl.status == Status.FAILED) dl.failureReason else null
+                )
+            }
+        }
+    }
+
+    suspend fun postProcessDownload(ketchId: Int, metaKey: String) {
+        val meta = metadataStore.getMetadata(metaKey) ?: return
+        if (!meta.isZip) {
+            metadataStore.updateMetadata(metaKey) { it.copy(status = "complete") }
+            return
+        }
+
+        metadataStore.updateMetadata(metaKey) { it.copy(status = "extracting") }
+
+        val downloadDir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "WasmerHub"
+        )
+
+        val extractedVideos = zipExtractor.extractZip(meta.filePath, downloadDir)
+        val extractPath = if (extractedVideos.isNotEmpty()) {
+            File(extractedVideos.first()).parent
+        } else null
+
+        metadataStore.updateMetadata(metaKey) { it.copy(status = "complete", extractPath = extractPath) }
+        NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extractPath=$extractPath videos=${extractedVideos.size}")
+    }
+
     fun pauseDownload(id: Int) {
         ketch.pause(id)
         NetworkLogger.logAction("DOWNLOAD_PAUSE", "id=$id")
@@ -132,6 +249,18 @@ class DownloadRepository @Inject constructor(
     fun deleteDownload(id: Int) {
         ketch.clearDb(id)
         NetworkLogger.logAction("DOWNLOAD_DELETE", "id=$id")
+    }
+
+    fun getAllMetadata(): List<DownloadMetadata> = metadataStore.getAllMetadata()
+
+    fun getMetadata(key: String): DownloadMetadata? = metadataStore.getMetadata(key)
+
+    fun rescanDownloads() {
+        val downloadDir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "WasmerHub"
+        )
+        metadataStore.rescanAndCleanup(downloadDir)
     }
 
     private fun detectQuality(filename: String): String {

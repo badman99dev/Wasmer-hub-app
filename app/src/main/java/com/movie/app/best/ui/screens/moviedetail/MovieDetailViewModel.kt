@@ -16,6 +16,7 @@ import com.movie.app.best.data.repository.FirebaseRepository
 import com.movie.app.best.data.repository.MovieRepository
 import com.movie.app.best.data.repository.MyListRefreshState
 import com.movie.app.best.data.repository.ResolvedMirror
+import com.movie.app.best.data.model.DownloadPhase
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -190,9 +191,12 @@ class MovieDetailViewModel @Inject constructor(
     }
 
     fun resolveDownloadLink(linkUrl: String, linkId: Int?) {
-        val title = _uiState.value.movie?.title ?: "Movie"
+        val movie = _uiState.value.movie
+        val title = movie?.title ?: "Movie"
+        val slug = movie?.slug ?: ""
+        val posterUrl = movie?.posterUrl ?: ""
         viewModelScope.launch {
-            _uiState.update { it.copy(downloadLoadingLinkId = linkId, downloadError = null) }
+            _uiState.update { it.copy(downloadLoadingLinkId = linkId, downloadError = null, downloadPhase = DownloadPhase.NONE) }
             downloadRepository.resolveDownloadUrls(linkUrl).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
@@ -200,14 +204,17 @@ class MovieDetailViewModel @Inject constructor(
                         val mirrors = result.data ?: emptyList()
                         if (mirrors.size == 1) {
                             val m = mirrors.first()
-                            downloadRepository.startDownload(m.jackpot, m.fileName, title)
+                            _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, downloadLoadingLinkId = null) }
+                            val ketchId = downloadRepository.startDownloadWithMetadata(m, slug, posterUrl, title, "movie")
                             _uiState.update {
                                 it.copy(
-                                    downloadLoadingLinkId = null,
+                                    downloadKetchId = ketchId,
+                                    downloadPhase = DownloadPhase.DOWNLOADING,
                                     downloadStarted = true,
                                     downloadError = null
                                 )
                             }
+                            observeDownloadStatus(ketchId, slug)
                         } else {
                             _uiState.update {
                                 it.copy(
@@ -233,15 +240,57 @@ class MovieDetailViewModel @Inject constructor(
     }
 
     fun startDirectDownload(mirror: ResolvedMirror) {
-        val title = _uiState.value.movie?.title ?: "Movie"
+        val movie = _uiState.value.movie
+        val title = movie?.title ?: "Movie"
+        val slug = movie?.slug ?: ""
+        val posterUrl = movie?.posterUrl ?: ""
         viewModelScope.launch {
-            downloadRepository.startDownload(mirror.jackpot, mirror.fileName, title)
+            _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, expandedLinkId = null) }
+            val ketchId = downloadRepository.startDownloadWithMetadata(mirror, slug, posterUrl, title, "movie")
             _uiState.update {
                 it.copy(
+                    downloadKetchId = ketchId,
+                    downloadPhase = DownloadPhase.DOWNLOADING,
                     downloadStarted = true,
-                    downloadError = null,
-                    expandedLinkId = null
+                    downloadError = null
                 )
+            }
+            observeDownloadStatus(ketchId, slug)
+        }
+    }
+
+    private fun observeDownloadStatus(ketchId: Int, slug: String) {
+        val metaKey = slug
+        viewModelScope.launch {
+            downloadRepository.observeDownloadStatus(ketchId).collect { statusInfo ->
+                when (statusInfo.phase) {
+                    DownloadPhase.COMPLETE -> {
+                        downloadRepository.postProcessDownload(ketchId, metaKey)
+                        _uiState.update {
+                            it.copy(
+                                downloadPhase = DownloadPhase.COMPLETE,
+                                downloadProgress = 100,
+                                downloadStarted = true
+                            )
+                        }
+                    }
+                    DownloadPhase.CANCELLED -> {
+                        _uiState.update {
+                            it.copy(downloadPhase = DownloadPhase.CANCELLED, downloadKetchId = null, downloadStarted = false)
+                        }
+                    }
+                    DownloadPhase.FAILED -> {
+                        _uiState.update {
+                            it.copy(downloadPhase = DownloadPhase.FAILED, downloadFailureReason = statusInfo.failureReason, downloadStarted = false)
+                        }
+                    }
+                    DownloadPhase.DOWNLOADING -> {
+                        _uiState.update {
+                            it.copy(downloadPhase = DownloadPhase.DOWNLOADING, downloadProgress = statusInfo.progress, downloadStarted = true)
+                        }
+                    }
+                    else -> {}
+                }
             }
         }
     }
@@ -487,6 +536,10 @@ data class MovieDetailUiState(
     val downloadError: String? = null,
     val resolvedMirrors: Map<Int?, List<ResolvedMirror>> = emptyMap(),
     val expandedLinkId: Int? = null,
+    val downloadPhase: DownloadPhase = DownloadPhase.NONE,
+    val downloadProgress: Int = 0,
+    val downloadKetchId: Int? = null,
+    val downloadFailureReason: String? = null,
 
     val isBookmarked: Boolean = false,
     val isLiked: Boolean = false,

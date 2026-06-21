@@ -20,6 +20,7 @@ import androidx.navigation.navArgument
 import com.movie.app.best.ui.screens.categories.CategoriesScreen
 import com.movie.app.best.ui.screens.categories.CategoryPageScreen
 import com.movie.app.best.ui.screens.downloads.DownloadsScreen
+import com.movie.app.best.ui.screens.downloads.ExtractedSeriesScreen
 import com.movie.app.best.ui.screens.downloads.LocalVideoScreen
 import com.movie.app.best.ui.screens.home.HomeScreen
 import com.movie.app.best.ui.screens.library.LibraryScreen
@@ -65,6 +66,11 @@ sealed class Screen(val route: String) {
     object Login : Screen("login")
     object LocalVideos : Screen("localVideos")
     object Notifications : Screen("notifications")
+    object ExtractedSeries : Screen("extractedSeries/{extractPath}/{slug}/{posterPath}") {
+        fun createRoute(extractPath: String, slug: String, posterPath: String): String {
+            return "extractedSeries/${Uri.encode(extractPath)}/${Uri.encode(slug)}/${Uri.encode(posterPath)}"
+        }
+    }
     object SeriesDetail : Screen("series/{slug}") {
         fun createRoute(slug: String) = "series/${Uri.encode(slug)}"
     }
@@ -442,7 +448,10 @@ fun AppNavigation(
                 onPlayFile = { path, name ->
                     navController.navigate(Screen.VideoPlayer.createRoute("", path, name, "", ""))
                 },
-                onSettingsClick = { navController.navigate(Screen.Settings.route) }
+                onSettingsClick = { navController.navigate(Screen.Settings.route) },
+                onOpenExtractedSeries = { extractPath, slug, posterPath ->
+                    navController.navigate(Screen.ExtractedSeries.createRoute(extractPath, slug, posterPath))
+                }
             )
         }
 
@@ -487,6 +496,25 @@ fun AppNavigation(
                 onPlayVideo = { path, title ->
                     navController.navigate(Screen.VideoPlayer.createRoute("", "file://$path", title, "", ""))
                 }
+            )
+        }
+
+        composable(
+            route = Screen.ExtractedSeries.route,
+            arguments = listOf(
+                navArgument("extractPath") { type = NavType.StringType },
+                navArgument("slug") { type = NavType.StringType },
+                navArgument("posterPath") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val extractPath = backStackEntry.arguments?.getString("extractPath") ?: ""
+            val slug = backStackEntry.arguments?.getString("slug") ?: ""
+            val posterPath = backStackEntry.arguments?.getString("posterPath") ?: ""
+            ExtractedSeriesScreen(
+                extractPath = extractPath,
+                slug = slug,
+                posterPath = posterPath,
+                onBackClick = { navController.popBackStack() }
             )
         }
 

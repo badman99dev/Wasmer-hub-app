@@ -18,6 +18,7 @@ import com.movie.app.best.data.repository.FirebaseRepository
 import com.movie.app.best.data.repository.MovieRepository
 import com.movie.app.best.data.repository.MyListRefreshState
 import com.movie.app.best.data.repository.ResolvedMirror
+import com.movie.app.best.data.model.DownloadPhase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -157,10 +158,13 @@ class TVShowDetailViewModel @Inject constructor(
         _uiState.update { it.copy(showStreamRequestResult = false) }
     }
 
-    fun resolveDownloadLink(linkUrl: String, linkId: Int?) {
-        val title = _uiState.value.series?.title ?: "Series"
+    fun resolveDownloadLink(linkUrl: String, linkId: Int?, episodeId: Int? = null, episodeLabel: String? = null) {
+        val series = _uiState.value.series
+        val title = series?.title ?: "Series"
+        val slug = series?.slug ?: ""
+        val posterUrl = series?.posterUrl ?: ""
         viewModelScope.launch {
-            _uiState.update { it.copy(downloadLoadingLinkId = linkId, downloadError = null) }
+            _uiState.update { it.copy(downloadLoadingLinkId = linkId, downloadError = null, downloadPhase = DownloadPhase.NONE) }
             downloadRepository.resolveDownloadUrls(linkUrl).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
@@ -168,14 +172,19 @@ class TVShowDetailViewModel @Inject constructor(
                         val mirrors = result.data ?: emptyList()
                         if (mirrors.size == 1) {
                             val m = mirrors.first()
-                            downloadRepository.startDownload(m.jackpot, m.fileName, title)
+                            _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, downloadLoadingLinkId = null) }
+                            val ketchId = downloadRepository.startDownloadWithMetadata(
+                                m, slug, posterUrl, title, "series", episodeId, episodeLabel
+                            )
                             _uiState.update {
                                 it.copy(
-                                    downloadLoadingLinkId = null,
+                                    downloadKetchId = ketchId,
+                                    downloadPhase = DownloadPhase.DOWNLOADING,
                                     downloadStarted = true,
                                     downloadError = null
                                 )
                             }
+                            observeDownloadStatus(ketchId, slug + (episodeLabel ?: ""))
                         } else {
                             _uiState.update {
                                 it.copy(
@@ -200,16 +209,59 @@ class TVShowDetailViewModel @Inject constructor(
         }
     }
 
-    fun startDirectDownload(mirror: ResolvedMirror) {
-        val title = _uiState.value.series?.title ?: "Series"
+    fun startDirectDownload(mirror: ResolvedMirror, episodeId: Int? = null, episodeLabel: String? = null) {
+        val series = _uiState.value.series
+        val title = series?.title ?: "Series"
+        val slug = series?.slug ?: ""
+        val posterUrl = series?.posterUrl ?: ""
         viewModelScope.launch {
-            downloadRepository.startDownload(mirror.jackpot, mirror.fileName, title)
+            _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, expandedLinkId = null) }
+            val ketchId = downloadRepository.startDownloadWithMetadata(
+                mirror, slug, posterUrl, title, "series", episodeId, episodeLabel
+            )
             _uiState.update {
                 it.copy(
+                    downloadKetchId = ketchId,
+                    downloadPhase = DownloadPhase.DOWNLOADING,
                     downloadStarted = true,
-                    downloadError = null,
-                    expandedLinkId = null
+                    downloadError = null
                 )
+            }
+            observeDownloadStatus(ketchId, slug + (episodeLabel ?: ""))
+        }
+    }
+
+    private fun observeDownloadStatus(ketchId: Int, metaKey: String) {
+        viewModelScope.launch {
+            downloadRepository.observeDownloadStatus(ketchId).collect { statusInfo ->
+                when (statusInfo.phase) {
+                    DownloadPhase.COMPLETE -> {
+                        downloadRepository.postProcessDownload(ketchId, metaKey)
+                        _uiState.update {
+                            it.copy(
+                                downloadPhase = DownloadPhase.COMPLETE,
+                                downloadProgress = 100,
+                                downloadStarted = true
+                            )
+                        }
+                    }
+                    DownloadPhase.CANCELLED -> {
+                        _uiState.update {
+                            it.copy(downloadPhase = DownloadPhase.CANCELLED, downloadKetchId = null, downloadStarted = false)
+                        }
+                    }
+                    DownloadPhase.FAILED -> {
+                        _uiState.update {
+                            it.copy(downloadPhase = DownloadPhase.FAILED, downloadFailureReason = statusInfo.failureReason, downloadStarted = false)
+                        }
+                    }
+                    DownloadPhase.DOWNLOADING -> {
+                        _uiState.update {
+                            it.copy(downloadPhase = DownloadPhase.DOWNLOADING, downloadProgress = statusInfo.progress, downloadStarted = true)
+                        }
+                    }
+                    else -> {}
+                }
             }
         }
     }
@@ -457,6 +509,10 @@ data class TVShowDetailUiState(
     val downloadLoadingLinkId: Int? = null,
     val resolvedMirrors: Map<Int?, List<ResolvedMirror>> = emptyMap(),
     val expandedLinkId: Int? = null,
+    val downloadPhase: DownloadPhase = DownloadPhase.NONE,
+    val downloadProgress: Int = 0,
+    val downloadKetchId: Int? = null,
+    val downloadFailureReason: String? = null,
 
     val isBookmarked: Boolean = false,
     val isLiked: Boolean = false,

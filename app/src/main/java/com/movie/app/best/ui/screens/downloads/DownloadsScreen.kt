@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -58,12 +59,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.movie.app.best.data.model.DownloadMetadata
 import java.io.File
 
 data class LocalVideoFile(
@@ -110,7 +114,8 @@ fun DownloadsScreen(
     viewModel: DownloadsViewModel = hiltViewModel(),
     onLocalVideosClick: () -> Unit = {},
     onPlayFile: (String, String) -> Unit = { _, _ -> },
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onOpenExtractedSeries: (String, String, String) -> Unit = { _, _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -134,6 +139,7 @@ fun DownloadsScreen(
 
     LaunchedEffect(Unit) {
         isRefreshing = true
+        viewModel.rescanDownloads()
         scannedVideos = scanWasmerHubVideos(context)
         isRefreshing = false
 
@@ -204,6 +210,7 @@ fun DownloadsScreen(
             } else {
                 IconButton(onClick = {
                     isRefreshing = true
+                    viewModel.rescanDownloads()
                     scannedVideos = scanWasmerHubVideos(context)
                     isRefreshing = false
                 }) {
@@ -265,7 +272,7 @@ fun DownloadsScreen(
             }
         }
 
-        if (uiState.activeDownloads.isEmpty() && uiState.completedDownloads.isEmpty() && scannedVideos.isEmpty() && !uiState.isResolving) {
+        if (uiState.activeDownloads.isEmpty() && uiState.completedDownloads.isEmpty() && scannedVideos.isEmpty() && uiState.extractedPacks.isEmpty() && !uiState.isResolving) {
             EmptyDownloadsState()
         } else {
             LazyColumn(
@@ -315,6 +322,26 @@ fun DownloadsScreen(
                     }
                 }
 
+                if (uiState.extractedPacks.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "SERIES PACKS",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFB388FF),
+                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                        )
+                    }
+                    items(uiState.extractedPacks, key = { it.slug + (it.episodeLabel ?: "") }) { pack ->
+                        ExtractedPackItem(
+                            pack = pack,
+                            onOpen = {
+                                onOpenExtractedSeries(pack.extractPath ?: "", pack.slug, pack.localPosterPath)
+                            }
+                        )
+                    }
+                }
+
                 if (scannedVideos.isNotEmpty()) {
                     item {
                         Text(
@@ -326,8 +353,10 @@ fun DownloadsScreen(
                         )
                     }
                     items(scannedVideos, key = { it.path }) { video ->
+                        val meta = uiState.downloadMetadata.find { it.fileName == video.name }
                         ScannedVideoItem(
                             video = video,
+                            posterPath = meta?.localPosterPath ?: "",
                             onPlay = { onPlayFile("file://${video.path}", video.name) },
                             onDelete = { showDeleteDialog = video }
                         )
@@ -582,6 +611,7 @@ private fun CompletedDownloadItem(
 @Composable
 private fun ScannedVideoItem(
     video: LocalVideoFile,
+    posterPath: String = "",
     onPlay: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -596,15 +626,34 @@ private fun ScannedVideoItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = null,
-                tint = Color(0xFFE50914),
-                modifier = Modifier.size(24.dp)
-            )
+            if (posterPath.isNotEmpty() && File(posterPath).exists()) {
+                AsyncImage(
+                    model = File(posterPath),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(48.dp, 64.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp, 64.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xFFE50914).copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color(0xFFE50914),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -638,6 +687,93 @@ private fun ScannedVideoItem(
                     modifier = Modifier.size(20.dp)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ExtractedPackItem(
+    pack: DownloadMetadata,
+    onOpen: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onOpen),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (pack.localPosterPath.isNotEmpty() && File(pack.localPosterPath).exists()) {
+                AsyncImage(
+                    model = File(pack.localPosterPath),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(48.dp, 64.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp, 64.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xFFB388FF).copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.FolderOpen,
+                        contentDescription = null,
+                        tint = Color(0xFFB388FF),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = pack.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFB388FF).copy(alpha = 0.2f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            "ZIP",
+                            color = Color(0xFFB388FF),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text(
+                        text = "Extracted",
+                        color = Color(0xFF4CAF50).copy(alpha = 0.7f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Icon(
+                Icons.Default.FolderOpen,
+                contentDescription = "Open",
+                tint = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

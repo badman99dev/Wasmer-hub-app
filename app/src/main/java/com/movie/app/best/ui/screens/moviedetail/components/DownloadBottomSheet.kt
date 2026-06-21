@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.movie.app.best.data.model.DownloadPhase
 import com.movie.app.best.data.model.WasmerDownloadLink
 import com.movie.app.best.data.repository.ResolvedMirror
 import com.movie.app.best.ui.theme.WasmerGreen
@@ -50,8 +51,10 @@ import com.movie.app.best.ui.theme.WasmerRed
 fun DownloadBottomSheetContent(
     downloadLinks: List<WasmerDownloadLink>,
     downloadLoadingLinkId: Int?,
-    downloadStarted: Boolean,
+    downloadPhase: DownloadPhase,
+    downloadProgress: Int,
     downloadError: String?,
+    downloadFailureReason: String?,
     resolvedMirrors: Map<Int?, List<ResolvedMirror>>,
     expandedLinkId: Int?,
     onStartDownload: (String, Int?) -> Unit,
@@ -104,9 +107,10 @@ fun DownloadBottomSheetContent(
 
         Spacer(Modifier.height(8.dp))
 
-        // Download started success popup
+        val showPopup = downloadPhase != DownloadPhase.NONE
+
         AnimatedVisibility(
-            visible = downloadStarted,
+            visible = showPopup,
             enter = slideInVertically(
                 initialOffsetY = { it / 3 },
                 animationSpec = tween(400)
@@ -116,14 +120,16 @@ fun DownloadBottomSheetContent(
                 animationSpec = tween(250)
             ) + fadeOut(tween(200))
         ) {
-            DownloadStartedPopup(
+            DownloadStatusPopup(
+                phase = downloadPhase,
+                progress = downloadProgress,
+                failureReason = downloadFailureReason,
                 onGoToDownloads = onGoToDownloads
             )
         }
 
-        // Links list (hidden when download started popup is showing)
         AnimatedVisibility(
-            visible = !downloadStarted,
+            visible = !showPopup,
             enter = fadeIn(tween(200)),
             exit = fadeOut(tween(150))
         ) {
@@ -175,7 +181,10 @@ fun DownloadBottomSheetContent(
 }
 
 @Composable
-private fun DownloadStartedPopup(
+private fun DownloadStatusPopup(
+    phase: DownloadPhase,
+    progress: Int,
+    failureReason: String?,
     onGoToDownloads: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "capsule")
@@ -198,13 +207,41 @@ private fun DownloadStartedPopup(
         label = "shimmer"
     )
 
+    val accentColor = when (phase) {
+        DownloadPhase.COMPLETE -> WasmerGreen
+        DownloadPhase.FAILED -> WasmerRed
+        DownloadPhase.CANCELLED -> Color(0xFFFB923C)
+        else -> WasmerGreen
+    }
+
+    val title = when (phase) {
+        DownloadPhase.INITIALIZING -> "Initializing..."
+        DownloadPhase.DOWNLOADING -> "Downloading... $progress%"
+        DownloadPhase.EXTRACTING -> "Extracting ZIP..."
+        DownloadPhase.COMPLETE -> "Download Complete!"
+        DownloadPhase.CANCELLED -> "Download Cancelled"
+        DownloadPhase.FAILED -> "Download Failed"
+        else -> ""
+    }
+
+    val subtitle = when (phase) {
+        DownloadPhase.INITIALIZING -> "Preparing poster and metadata..."
+        DownloadPhase.DOWNLOADING -> "File is downloading in background"
+        DownloadPhase.EXTRACTING -> "Extracting episodes from archive..."
+        DownloadPhase.COMPLETE -> "File saved to Downloads/WasmerHub"
+        DownloadPhase.CANCELLED -> "Download was cancelled"
+        DownloadPhase.FAILED -> failureReason ?: "An error occurred during download"
+        else -> ""
+    }
+
+    val showGoToDownloads = phase == DownloadPhase.COMPLETE || phase == DownloadPhase.DOWNLOADING || phase == DownloadPhase.EXTRACTING
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Capsule success card
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -212,8 +249,8 @@ private fun DownloadStartedPopup(
                 .background(
                     Brush.linearGradient(
                         colors = listOf(
-                            WasmerGreen.copy(alpha = 0.15f),
-                            WasmerGreen.copy(alpha = 0.08f)
+                            accentColor.copy(alpha = 0.15f),
+                            accentColor.copy(alpha = 0.08f)
                         )
                     )
                 )
@@ -221,9 +258,9 @@ private fun DownloadStartedPopup(
                     width = 1.dp,
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            WasmerGreen.copy(alpha = pulseAlpha * 0.6f),
-                            WasmerGreen.copy(alpha = 0.2f),
-                            WasmerGreen.copy(alpha = pulseAlpha * 0.6f)
+                            accentColor.copy(alpha = pulseAlpha * 0.6f),
+                            accentColor.copy(alpha = 0.2f),
+                            accentColor.copy(alpha = pulseAlpha * 0.6f)
                         )
                     ),
                     shape = RoundedCornerShape(16.dp)
@@ -239,30 +276,41 @@ private fun DownloadStartedPopup(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Animated check icon with pulsing alpha
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = WasmerGreen.copy(alpha = pulseAlpha),
-                        modifier = Modifier.size(28.dp)
-                    )
+                    when (phase) {
+                        DownloadPhase.COMPLETE -> Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = accentColor.copy(alpha = pulseAlpha),
+                            modifier = Modifier.size(28.dp)
+                        )
+                        DownloadPhase.FAILED, DownloadPhase.CANCELLED -> Icon(
+                            Icons.Default.Close,
+                            contentDescription = null,
+                            tint = accentColor,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        else -> CircularProgressIndicator(
+                            modifier = Modifier.size(28.dp),
+                            color = accentColor,
+                            strokeWidth = 2.5.dp
+                        )
+                    }
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Download Started!",
-                            color = WasmerGreen,
+                            text = title,
+                            color = accentColor,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "File is downloading in background",
+                            text = subtitle,
                             color = Color.White.copy(alpha = 0.5f),
                             fontSize = 12.sp,
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
                 }
-                // Close X icon on the side
                 Icon(
                     Icons.Default.Close,
                     contentDescription = null,
@@ -274,7 +322,11 @@ private fun DownloadStartedPopup(
 
         Spacer(Modifier.height(16.dp))
 
-        // Capsule animated progress shimmer
+        val progressWidth = when (phase) {
+            DownloadPhase.DOWNLOADING -> progress / 100f
+            else -> shimmerOffset
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -285,71 +337,72 @@ private fun DownloadStartedPopup(
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth(shimmerOffset)
+                    .fillMaxWidth(progressWidth)
                     .clip(RoundedCornerShape(2.dp))
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                WasmerGreen.copy(alpha = 0.3f),
-                                WasmerGreen.copy(alpha = 0.8f),
-                                WasmerGreen.copy(alpha = 0.3f)
+                                accentColor.copy(alpha = 0.3f),
+                                accentColor.copy(alpha = 0.8f),
+                                accentColor.copy(alpha = 0.3f)
                             )
                         )
                     )
             )
         }
 
-        Spacer(Modifier.height(20.dp))
+        if (showGoToDownloads) {
+            Spacer(Modifier.height(20.dp))
 
-        // Go to Downloads button
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            WasmerGreen.copy(alpha = 0.2f),
-                            WasmerGreen.copy(alpha = 0.12f)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                accentColor.copy(alpha = 0.2f),
+                                accentColor.copy(alpha = 0.12f)
+                            )
                         )
                     )
-                )
-                .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            WasmerGreen.copy(alpha = 0.5f),
-                            WasmerGreen.copy(alpha = 0.2f),
-                            WasmerGreen.copy(alpha = 0.5f)
-                        )
-                    ),
-                    shape = RoundedCornerShape(24.dp)
-                )
-                .clickable { onGoToDownloads() },
-            contentAlignment = Alignment.Center
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Download,
-                    contentDescription = null,
-                    tint = WasmerGreen,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "Go to Downloads",
-                    color = WasmerGreen,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(Modifier.width(6.dp))
-                Icon(
-                    Icons.Default.ArrowForward,
-                    contentDescription = null,
-                    tint = WasmerGreen.copy(alpha = 0.7f),
-                    modifier = Modifier.size(18.dp)
-                )
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                accentColor.copy(alpha = 0.5f),
+                                accentColor.copy(alpha = 0.2f),
+                                accentColor.copy(alpha = 0.5f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    .clickable { onGoToDownloads() },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Download,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Go to Downloads",
+                        color = accentColor,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        Icons.Default.ArrowForward,
+                        contentDescription = null,
+                        tint = accentColor.copy(alpha = 0.7f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
