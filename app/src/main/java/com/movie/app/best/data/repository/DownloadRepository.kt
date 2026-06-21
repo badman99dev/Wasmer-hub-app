@@ -17,33 +17,59 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class ResolvedMirror(
+    val jackpot: String,
+    val fileName: String,
+    val size: String,
+    val sizeBytes: Long?,
+    val resumable: Boolean,
+    val quality: String,
+    val sourceLabel: String
+)
+
 @Singleton
 class DownloadRepository @Inject constructor(
     private val bypassApiService: BypassApiService,
     private val ketch: Ketch,
     @ApplicationContext private val context: Context
 ) {
-    fun resolveDownloadUrl(linkUrl: String): Flow<Resource<String>> = flow {
+    fun resolveDownloadUrls(linkUrl: String): Flow<Resource<List<ResolvedMirror>>> = flow {
         emit(Resource.Loading())
         try {
             NetworkLogger.logAction("RESOLVE", "linkUrl=$linkUrl")
-            val bypassResponse = bypassApiService.bypassUrl(BypassRequest(linkUrl))
+            val bypassResponse = bypassApiService.bypassUrl(BypassRequest(linkUrl, fetchInfo = true))
             if (!bypassResponse.success || bypassResponse.data.isEmpty()) {
                 emit(Resource.Error("Bypass API failed - no direct link returned"))
                 return@flow
             }
-            val directUrl = bypassResponse.data.firstOrNull { it.status == "SUCCESS" }?.jackpot
-                ?: bypassResponse.data.firstOrNull()?.jackpot
-            if (directUrl.isNullOrEmpty()) {
+            val successItems = bypassResponse.data.filter { it.status == "SUCCESS" && !it.jackpot.isNullOrEmpty() }
+            if (successItems.isEmpty()) {
                 emit(Resource.Error("No direct download URL found"))
                 return@flow
             }
-            if (!directUrl.startsWith("http")) {
-                emit(Resource.Error("Invalid URL returned: $directUrl"))
+            val mirrors = successItems.mapIndexedNotNull { idx, item ->
+                val jackpot = item.jackpot ?: return@mapIndexedNotNull null
+                if (!jackpot.startsWith("http")) return@mapIndexedNotNull null
+                val fi = item.fileInfo
+                val fileName = fi?.filename ?: extractFileNameFromUrl(jackpot)
+                val quality = detectQuality(fileName)
+                val sourceLabel = if (successItems.size == 1) "Download Now" else "Server ${idx + 1}"
+                ResolvedMirror(
+                    jackpot = jackpot,
+                    fileName = fileName,
+                    size = fi?.size ?: "",
+                    sizeBytes = fi?.sizeBytes,
+                    resumable = fi?.resumable ?: false,
+                    quality = quality,
+                    sourceLabel = sourceLabel
+                )
+            }
+            if (mirrors.isEmpty()) {
+                emit(Resource.Error("No valid direct download URLs found"))
                 return@flow
             }
-            NetworkLogger.logAction("RESOLVE", "directUrl=$directUrl")
-            emit(Resource.Success(directUrl))
+            NetworkLogger.logAction("RESOLVE", "mirrors=${mirrors.size}")
+            emit(Resource.Success(mirrors))
         } catch (e: Exception) {
             NetworkLogger.logAction("RESOLVE_ERR", e.message ?: "unknown")
             emit(Resource.Error(e.message ?: "Failed to resolve download URL"))
@@ -106,6 +132,19 @@ class DownloadRepository @Inject constructor(
     fun deleteDownload(id: Int) {
         ketch.clearDb(id)
         NetworkLogger.logAction("DOWNLOAD_DELETE", "id=$id")
+    }
+
+    private fun detectQuality(filename: String): String {
+        val f = filename.lowercase()
+        return when {
+            f.contains("4k") || f.contains("2160p") || f.contains("uhd") -> "4K"
+            f.contains("2k") || f.contains("1440p") -> "2K"
+            f.contains("1080p") || f.contains("fhd") -> "1080p"
+            f.contains("720p") || f.contains("hd") -> "720p"
+            f.contains("480p") -> "480p"
+            f.contains("360p") -> "360p"
+            else -> "Unknown"
+        }
     }
 
     private fun sanitizeFileName(name: String): String {

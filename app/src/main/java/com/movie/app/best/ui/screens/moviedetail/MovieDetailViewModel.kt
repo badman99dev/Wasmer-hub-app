@@ -15,6 +15,7 @@ import com.movie.app.best.data.repository.DownloadRepository
 import com.movie.app.best.data.repository.FirebaseRepository
 import com.movie.app.best.data.repository.MovieRepository
 import com.movie.app.best.data.repository.MyListRefreshState
+import com.movie.app.best.data.repository.ResolvedMirror
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -188,24 +189,34 @@ class MovieDetailViewModel @Inject constructor(
         _uiState.update { it.copy(showStreamRequestResult = false) }
     }
 
-    fun startDownload(linkUrl: String, linkId: Int? = null) {
+    fun resolveDownloadLink(linkUrl: String, linkId: Int?) {
         val title = _uiState.value.movie?.title ?: "Movie"
         viewModelScope.launch {
-            _uiState.update { it.copy(downloadLoadingLinkId = linkId, downloadError = null, downloadUrl = "", downloadStarted = false) }
-            downloadRepository.resolveDownloadUrl(linkUrl).collect { result ->
+            _uiState.update { it.copy(downloadLoadingLinkId = linkId, downloadError = null) }
+            downloadRepository.resolveDownloadUrls(linkUrl).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
-                        val directUrl = result.data ?: return@collect
-                        val fileName = extractFileName(directUrl, title)
-                        downloadRepository.startDownload(directUrl, fileName, title)
-                        _uiState.update {
-                            it.copy(
-                                downloadUrl = directUrl,
-                                downloadLoadingLinkId = null,
-                                downloadStarted = true,
-                                downloadError = null
-                            )
+                        val mirrors = result.data ?: emptyList()
+                        if (mirrors.size == 1) {
+                            val m = mirrors.first()
+                            downloadRepository.startDownload(m.jackpot, m.fileName, title)
+                            _uiState.update {
+                                it.copy(
+                                    downloadLoadingLinkId = null,
+                                    downloadStarted = true,
+                                    downloadError = null
+                                )
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    downloadLoadingLinkId = null,
+                                    resolvedMirrors = it.resolvedMirrors + (linkId to mirrors),
+                                    expandedLinkId = linkId,
+                                    downloadError = null
+                                )
+                            }
                         }
                     }
                     is Resource.Error -> {
@@ -221,13 +232,34 @@ class MovieDetailViewModel @Inject constructor(
         }
     }
 
-    private fun extractFileName(url: String, fallback: String): String {
-        return try {
-            val path = android.net.Uri.parse(url).path ?: fallback
-            val name = path.substringAfterLast("/")
-            if (name.contains(".")) name else "$fallback.mkv"
-        } catch (_: Exception) {
-            "$fallback.mkv"
+    fun startDirectDownload(mirror: ResolvedMirror) {
+        val title = _uiState.value.movie?.title ?: "Movie"
+        viewModelScope.launch {
+            downloadRepository.startDownload(mirror.jackpot, mirror.fileName, title)
+            _uiState.update {
+                it.copy(
+                    downloadStarted = true,
+                    downloadError = null,
+                    expandedLinkId = null
+                )
+            }
+        }
+    }
+
+    fun toggleExpandLink(linkId: Int?) {
+        _uiState.update {
+            it.copy(expandedLinkId = if (it.expandedLinkId == linkId) null else linkId)
+        }
+    }
+
+    fun dismissResolvedMirrors(linkId: Int?) {
+        _uiState.update {
+            val updated = it.resolvedMirrors.toMutableMap()
+            updated.remove(linkId)
+            it.copy(
+                resolvedMirrors = updated,
+                expandedLinkId = if (it.expandedLinkId == linkId) null else it.expandedLinkId
+            )
         }
     }
 
@@ -453,6 +485,8 @@ data class MovieDetailUiState(
     val downloadLoadingLinkId: Int? = null,
     val downloadStarted: Boolean = false,
     val downloadError: String? = null,
+    val resolvedMirrors: Map<Int?, List<ResolvedMirror>> = emptyMap(),
+    val expandedLinkId: Int? = null,
 
     val isBookmarked: Boolean = false,
     val isLiked: Boolean = false,

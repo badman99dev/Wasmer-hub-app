@@ -67,13 +67,13 @@ fun MovieDetailScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasStoragePermission = granted
-        if (granted) pendingDownload?.let { viewModel.startDownload(it.first, it.second); pendingDownload = null }
+        if (granted) pendingDownload?.let { viewModel.resolveDownloadLink(it.first, it.second); pendingDownload = null }
     }
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasNotifPermission = granted
-        pendingDownload?.let { viewModel.startDownload(it.first, it.second); pendingDownload = null }
+        pendingDownload?.let { viewModel.resolveDownloadLink(it.first, it.second); pendingDownload = null }
     }
 
     fun requestDownload(linkUrl: String, linkId: Int? = null) {
@@ -86,7 +86,7 @@ fun MovieDetailScreen(
                 pendingDownload = Pair(linkUrl, linkId)
                 notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-            else -> viewModel.startDownload(linkUrl, linkId)
+            else -> viewModel.resolveDownloadLink(linkUrl, linkId)
         }
     }
 
@@ -144,7 +144,11 @@ fun MovieDetailScreen(
                     downloadLoadingLinkId = uiState.downloadLoadingLinkId,
                     downloadStarted = uiState.downloadStarted,
                     downloadError = uiState.downloadError,
+                    resolvedMirrors = uiState.resolvedMirrors,
+                    expandedLinkId = uiState.expandedLinkId,
                     onStartDownload = { linkUrl, linkId -> requestDownload(linkUrl, linkId) },
+                    onPickMirror = { mirror -> viewModel.startDirectDownload(mirror) },
+                    onToggleExpand = { linkId -> viewModel.toggleExpandLink(linkId) },
                     onDismiss = { showDownloadSheet = false },
                     onGoToDownloads = {
                         showDownloadSheet = false

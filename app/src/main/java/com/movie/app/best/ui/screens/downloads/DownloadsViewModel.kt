@@ -56,14 +56,18 @@ class DownloadsViewModel @Inject constructor(
     fun resolveAndDownload(linkUrl: String, title: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isResolving = true, resolveError = null, resolveSuccess = false) }
-            repository.resolveDownloadUrl(linkUrl).collect { result ->
+            repository.resolveDownloadUrls(linkUrl).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
                     is Resource.Success -> {
-                        val directUrl = result.data ?: return@collect
-                        val fileName = extractFileName(directUrl, title)
-                        repository.startDownload(directUrl, fileName, title)
-                        _uiState.update { it.copy(isResolving = false, resolveSuccess = true) }
+                        val mirrors = result.data ?: emptyList()
+                        val first = mirrors.firstOrNull()
+                        if (first != null) {
+                            repository.startDownload(first.jackpot, first.fileName, title)
+                            _uiState.update { it.copy(isResolving = false, resolveSuccess = true) }
+                        } else {
+                            _uiState.update { it.copy(isResolving = false, resolveError = "No mirrors found") }
+                        }
                     }
                     is Resource.Error -> {
                         _uiState.update { it.copy(isResolving = false, resolveError = result.error) }
@@ -78,14 +82,4 @@ class DownloadsViewModel @Inject constructor(
     fun cancelDownload(id: Int) { repository.cancelDownload(id) }
     fun retryDownload(id: Int) { repository.retryDownload(id) }
     fun deleteDownload(id: Int) { repository.deleteDownload(id) }
-
-    private fun extractFileName(url: String, fallback: String): String {
-        return try {
-            val path = android.net.Uri.parse(url).path ?: fallback
-            val name = path.substringAfterLast("/")
-            if (name.contains(".")) name else "$fallback.mkv"
-        } catch (_: Exception) {
-            "$fallback.mkv"
-        }
-    }
 }

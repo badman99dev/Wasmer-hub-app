@@ -1,7 +1,14 @@
 package com.movie.app.best.ui.screens.tvshowdetail
 
-import android.content.Intent
-import android.net.Uri
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,8 +38,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SmartDisplay
@@ -78,19 +88,24 @@ import com.movie.app.best.data.model.WasmerDownloadLink
 import com.movie.app.best.data.model.WasmerEpisode
 import com.movie.app.best.data.model.WasmerSeason
 import com.movie.app.best.data.model.WasmerMovieDetails
+import com.movie.app.best.data.repository.ResolvedMirror
+import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.components.BlurredContent
 import com.movie.app.best.ui.components.CelebrationOverlay
 import com.movie.app.best.ui.components.ScreenshotViewer
 import com.movie.app.best.ui.components.SkeletonDetailPage
 import com.movie.app.best.ui.components.ErrorView
-import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.ui.components.StorylineWarningBadge
 import com.movie.app.best.ui.screens.moviedetail.components.DetailActionButtons
+import com.movie.app.best.ui.screens.moviedetail.components.DownloadBottomSheetContent
 import com.movie.app.best.ui.screens.moviedetail.components.ReportDrawer
 import com.movie.app.best.ui.screens.moviedetail.components.StreamRequestWaitingPopup
 import com.movie.app.best.ui.screens.moviedetail.components.StreamRequestResultModal
 import com.movie.app.best.ui.screens.moviedetail.components.ReportWaitingPopup
 import com.movie.app.best.ui.screens.moviedetail.components.ReportResultModal
+import com.movie.app.best.ui.theme.WasmerGreen
+import com.movie.app.best.ui.theme.WasmerPurple
+import com.movie.app.best.ui.theme.WasmerRed
 import kotlinx.coroutines.delay
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -102,9 +117,65 @@ fun TVShowDetailScreen(
     onWatchNow: (imdbId: String, title: String, movieId: String, slug: String, targetSeason: Int) -> Unit = { _, _, _, _, _ -> },
     onMovieClick: (String) -> Unit = {},
     onSeriesClick: (String) -> Unit = {},
+    onGoToDownloads: () -> Unit = {},
     viewModel: TVShowDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    var hasStoragePermission by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q)
+                context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+                        android.content.pm.PackageManager.PERMISSION_GRANTED
+            else true
+        )
+    }
+    var hasNotifPermission by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= 33)
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                        android.content.pm.PackageManager.PERMISSION_GRANTED
+            else true
+        )
+    }
+    var showDownloadSheet by remember { mutableStateOf(false) }
+    var sheetDownloadLinks by remember { mutableStateOf<List<WasmerDownloadLink>>(emptyList()) }
+    var sheetTitle by remember { mutableStateOf("") }
+    var pendingDownload by remember { mutableStateOf<Pair<String, Int?>?>(null) }
+
+    val storageLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasStoragePermission = granted
+        if (granted) pendingDownload?.let { viewModel.resolveDownloadLink(it.first, it.second); pendingDownload = null }
+    }
+    val notifLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasNotifPermission = granted
+        pendingDownload?.let { viewModel.resolveDownloadLink(it.first, it.second); pendingDownload = null }
+    }
+
+    fun requestDownload(linkUrl: String, linkId: Int? = null) {
+        when {
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q && !hasStoragePermission -> {
+                pendingDownload = Pair(linkUrl, linkId)
+                storageLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+            Build.VERSION.SDK_INT >= 33 && !hasNotifPermission -> {
+                pendingDownload = Pair(linkUrl, linkId)
+                notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            else -> viewModel.resolveDownloadLink(linkUrl, linkId)
+        }
+    }
+
+    fun openEpisodeDownloadSheet(links: List<WasmerDownloadLink>, title: String) {
+        sheetDownloadLinks = links
+        sheetTitle = title
+        showDownloadSheet = true
+    }
 
     Box(
         modifier = Modifier
@@ -131,7 +202,8 @@ fun TVShowDetailScreen(
                     onWatchNow = onWatchNow,
                     onPostComment = viewModel::postComment,
                     onRequestStream = viewModel::requestStream,
-                    onStartDownload = viewModel::startDownload,
+                    onStartDownload = { linkUrl, linkId -> requestDownload(linkUrl, linkId) },
+                    onOpenEpisodeDownloadSheet = { links, title -> openEpisodeDownloadSheet(links, title) },
                     onResetCommentState = viewModel::resetCommentState,
                     onToggleBookmark = viewModel::toggleBookmark,
                     onToggleLike = viewModel::toggleLike,
@@ -221,6 +293,31 @@ fun TVShowDetailScreen(
                 )
             }
         }
+
+        if (showDownloadSheet && sheetDownloadLinks.isNotEmpty()) {
+            androidx.compose.material3.ModalBottomSheet(
+                onDismissRequest = { showDownloadSheet = false },
+                containerColor = Color(0xFF1A1A1A),
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+            ) {
+                DownloadBottomSheetContent(
+                    downloadLinks = sheetDownloadLinks,
+                    downloadLoadingLinkId = uiState.downloadLoadingLinkId,
+                    downloadStarted = uiState.downloadStarted,
+                    downloadError = uiState.downloadError,
+                    resolvedMirrors = uiState.resolvedMirrors,
+                    expandedLinkId = uiState.expandedLinkId,
+                    onStartDownload = { linkUrl, linkId -> requestDownload(linkUrl, linkId) },
+                    onPickMirror = { mirror -> viewModel.startDirectDownload(mirror) },
+                    onToggleExpand = { linkId -> viewModel.toggleExpandLink(linkId) },
+                    onDismiss = { showDownloadSheet = false },
+                    onGoToDownloads = {
+                        showDownloadSheet = false
+                        onGoToDownloads()
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -233,7 +330,8 @@ private fun TVShowDetailContent(
     onWatchNow: (imdbId: String, title: String, movieId: String, slug: String, targetSeason: Int) -> Unit,
     onPostComment: (name: String, msg: String) -> Unit,
     onRequestStream: () -> Unit,
-    onStartDownload: (linkUrl: String) -> Unit,
+    onStartDownload: (linkUrl: String, linkId: Int?) -> Unit,
+    onOpenEpisodeDownloadSheet: (List<WasmerDownloadLink>, String) -> Unit,
     onResetCommentState: () -> Unit,
     onToggleBookmark: () -> Unit,
     onToggleLike: () -> Unit,
@@ -583,8 +681,13 @@ private fun TVShowDetailContent(
                 EpisodeItem(
                     episode = episode,
                     downloadLinks = uiState.linksByEpisode[episode.id] ?: emptyList(),
+                    downloadLoadingLinkId = uiState.downloadLoadingLinkId,
+                    downloadStarted = uiState.downloadStarted,
                     onPlayClick = {
                         onWatchNow(series.imdbId, series.title, series.id.toString(), series.slug, selectedSeason)
+                    },
+                    onDownloadClick = { links ->
+                        onOpenEpisodeDownloadSheet(links, "${series.title} - S${selectedSeason}E${episode.episodeNo}")
                     }
                 )
                 HorizontalDivider(
@@ -700,7 +803,6 @@ private fun TVShowDetailContent(
             uiState = uiState,
             onStartDownload = onStartDownload
         )
-
         Spacer(modifier = Modifier.height(8.dp))
         TVCommentFormSection(
             isPosting = uiState.isCommentPosting,
@@ -729,7 +831,10 @@ private fun SectionTitle(title: String) {
 private fun EpisodeItem(
     episode: WasmerEpisode,
     downloadLinks: List<WasmerDownloadLink>,
-    onPlayClick: () -> Unit
+    downloadLoadingLinkId: Int?,
+    downloadStarted: Boolean,
+    onPlayClick: () -> Unit,
+    onDownloadClick: (List<WasmerDownloadLink>) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -830,24 +935,57 @@ private fun EpisodeItem(
             }
 
             if (downloadLinks.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val isAnyLoading = downloadLinks.any { downloadLoadingLinkId == it.id }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(WasmerRed.copy(alpha = 0.1f))
+                        .border(1.dp, WasmerRed.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = !isAnyLoading,
+                            onClick = { onDownloadClick(downloadLinks) }
+                        )
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    downloadLinks.forEach { link ->
-                        OutlinedButton(
-                            onClick = {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link.linkUrl))
-                                context.startActivity(intent)
-                            },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                            modifier = Modifier.height(28.dp)
-                        ) {
-                            Text(
-                                text = link.label,
-                                style = MaterialTheme.typography.labelSmall
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isAnyLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = WasmerRed,
+                                strokeWidth = 2.dp
+                            )
+                        } else if (downloadStarted) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = WasmerGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Download,
+                                contentDescription = "Download",
+                                tint = WasmerRed,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = when {
+                                isAnyLoading -> "Resolving..."
+                                downloadStarted -> "Started"
+                                else -> "Download (${downloadLinks.size})"
+                            },
+                            color = if (isAnyLoading) Color.White.copy(0.5f) else if (downloadStarted) WasmerGreen else WasmerRed,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
@@ -949,18 +1087,80 @@ private fun MoreSeasonCard(
 @Composable
 private fun TVDownloadSection(
     uiState: TVShowDetailUiState,
-    onStartDownload: (linkUrl: String) -> Unit
+    onStartDownload: (linkUrl: String, linkId: Int?) -> Unit
 ) {
     val context = LocalContext.current
+    val links = uiState.downloadLinks
+
+    if (links.isEmpty()) return
 
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         SectionTitle("Download")
 
-        if (uiState.isDownloadLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.padding(16.dp),
-                color = MaterialTheme.colorScheme.primary
-            )
+        links.forEach { link ->
+            val isLoading = uiState.downloadLoadingLinkId == link.id
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.White.copy(alpha = 0.06f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = !isLoading,
+                        onClick = { onStartDownload(link.linkUrl, link.id) }
+                    )
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(WasmerRed.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = WasmerRed,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Download,
+                            contentDescription = null,
+                            tint = WasmerRed,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = link.label.ifEmpty { "Download" },
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    if (link.fileSize.isNotEmpty()) {
+                        Text(
+                            text = link.fileSize,
+                            color = Color.White.copy(0.5f),
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = WasmerRed.copy(0.6f),
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
         }
 
         if (uiState.downloadError != null) {
@@ -987,7 +1187,7 @@ private fun TVDownloadSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Download,
+                        imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
                         tint = Color(0xFF69F0AE),
                         modifier = Modifier.size(20.dp)

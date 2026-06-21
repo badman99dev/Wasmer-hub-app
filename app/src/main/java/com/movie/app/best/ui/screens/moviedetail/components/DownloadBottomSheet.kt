@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.movie.app.best.data.model.WasmerDownloadLink
+import com.movie.app.best.data.repository.ResolvedMirror
 import com.movie.app.best.ui.theme.WasmerGreen
 import com.movie.app.best.ui.theme.WasmerPurple
 import com.movie.app.best.ui.theme.WasmerRed
@@ -49,7 +52,11 @@ fun DownloadBottomSheetContent(
     downloadLoadingLinkId: Int?,
     downloadStarted: Boolean,
     downloadError: String?,
+    resolvedMirrors: Map<Int?, List<ResolvedMirror>>,
+    expandedLinkId: Int?,
     onStartDownload: (String, Int?) -> Unit,
+    onPickMirror: (ResolvedMirror) -> Unit,
+    onToggleExpand: (Int?) -> Unit,
     onDismiss: () -> Unit,
     onGoToDownloads: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -142,7 +149,11 @@ fun DownloadBottomSheetContent(
                         DownloadLinkBottomSheetItem(
                             link = link,
                             isLoading = downloadLoadingLinkId == link.id,
-                            onDownload = { onStartDownload(link.linkUrl, link.id) }
+                            mirrors = resolvedMirrors[link.id],
+                            isExpanded = expandedLinkId == link.id,
+                            onDownload = { onStartDownload(link.linkUrl, link.id) },
+                            onPickMirror = onPickMirror,
+                            onToggleExpand = { onToggleExpand(link.id) }
                         )
                     }
                 }
@@ -348,7 +359,11 @@ private fun DownloadStartedPopup(
 private fun DownloadLinkBottomSheetItem(
     link: WasmerDownloadLink,
     isLoading: Boolean,
-    onDownload: () -> Unit
+    mirrors: List<ResolvedMirror>?,
+    isExpanded: Boolean,
+    onDownload: () -> Unit,
+    onPickMirror: (ResolvedMirror) -> Unit,
+    onToggleExpand: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "spin")
     val rotation by infiniteTransition.animateFloat(
@@ -361,98 +376,217 @@ private fun DownloadLinkBottomSheetItem(
         label = "rotation"
     )
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White.copy(alpha = 0.06f))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onDownload
-            )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(WasmerRed.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDownload
+                )
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(WasmerRed.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        color = WasmerRed,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Download,
+                        null,
+                        tint = WasmerRed,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = link.label.ifEmpty { "Download" },
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (link.fileSize.isNotEmpty() || link.type.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.padding(top = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (link.fileSize.isNotEmpty()) {
+                            Text(
+                                link.fileSize,
+                                color = Color.White.copy(0.5f),
+                                fontSize = 12.sp
+                            )
+                        }
+                        if (link.type.isNotEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(WasmerPurple.copy(alpha = 0.2f))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    link.type.uppercase(),
+                                    color = Color(0xFFB388FF),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             if (isLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    color = WasmerRed,
+                    modifier = Modifier.size(20.dp),
+                    color = WasmerRed.copy(alpha = 0.6f),
                     strokeWidth = 2.dp
+                )
+            } else if (mirrors != null && mirrors.size > 1) {
+                Icon(
+                    if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = Color.White.copy(0.5f),
+                    modifier = Modifier.size(20.dp)
                 )
             } else {
                 Icon(
                     Icons.Default.Download,
                     null,
-                    tint = WasmerRed,
-                    modifier = Modifier.size(22.dp)
+                    tint = Color.White.copy(0.3f),
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
 
-        Spacer(Modifier.width(14.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = link.label.ifEmpty { "Download" },
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (link.fileSize.isNotEmpty() || link.type.isNotEmpty()) {
-                Row(
-                    modifier = Modifier.padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (link.fileSize.isNotEmpty()) {
-                        Text(
-                            link.fileSize,
-                            color = Color.White.copy(0.5f),
-                            fontSize = 12.sp
-                        )
-                    }
-                    if (link.type.isNotEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(WasmerPurple.copy(alpha = 0.2f))
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) {
-                            Text(
-                                link.type.uppercase(),
-                                color = Color(0xFFB388FF),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+        AnimatedVisibility(
+            visible = isExpanded && mirrors != null && mirrors.size > 1,
+            enter = expandVertically(tween(200)) + fadeIn(tween(200)),
+            exit = shrinkVertically(tween(200)) + fadeOut(tween(200))
+        ) {
+            Column(
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                mirrors?.forEach { mirror ->
+                    MirrorItem(
+                        mirror = mirror,
+                        onPick = { onPickMirror(mirror) }
+                    )
                 }
             }
         }
+    }
+}
 
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                color = WasmerRed.copy(alpha = 0.6f),
-                strokeWidth = 2.dp
+@Composable
+private fun MirrorItem(
+    mirror: ResolvedMirror,
+    onPick: () -> Unit
+) {
+    val qualityColors = when (mirror.quality) {
+        "4K", "2K" -> Color(0xFFC084FC)
+        "1080p" -> Color(0xFF60A5FA)
+        "720p" -> Color(0xFF4ADE80)
+        "480p" -> Color(0xFFFB923C)
+        else -> Color(0xFF71717A)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(qualityColors.copy(alpha = 0.08f))
+            .border(1.dp, qualityColors.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onPick
             )
-        } else {
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(qualityColors.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
             Icon(
                 Icons.Default.Download,
                 null,
-                tint = Color.White.copy(0.3f),
-                modifier = Modifier.size(20.dp)
+                tint = qualityColors,
+                modifier = Modifier.size(18.dp)
             )
+        }
+
+        Spacer(Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = mirror.sourceLabel,
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = mirror.fileName,
+                color = Color.White.copy(0.5f),
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+
+        if (mirror.size.isNotEmpty()) {
+            Text(
+                text = mirror.size,
+                color = qualityColors,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        if (mirror.resumable) {
+            Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(WasmerGreen.copy(alpha = 0.15f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    "Resume",
+                    color = WasmerGreen,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

@@ -230,6 +230,15 @@ fun AppNavigation(
                     navController.navigate(Screen.SeriesDetail.createRoute(seriesSlug)) {
                         popUpTo(Screen.SeriesDetail.route) { inclusive = true }
                     }
+                },
+                onGoToDownloads = {
+                    navController.navigate(Screen.Downloads.route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             )
         }
