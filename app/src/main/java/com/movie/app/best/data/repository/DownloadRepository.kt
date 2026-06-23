@@ -27,7 +27,8 @@ data class ResolvedMirror(
     val sizeBytes: Long?,
     val resumable: Boolean,
     val quality: String,
-    val sourceLabel: String
+    val sourceLabel: String,
+    val isZip: Boolean = false
 )
 
 data class DownloadStatusInfo(
@@ -73,8 +74,14 @@ class DownloadRepository @Inject constructor(
                     sizeBytes = fi?.sizeBytes,
                     resumable = fi?.resumable ?: false,
                     quality = quality,
-                    sourceLabel = sourceLabel
+                    sourceLabel = sourceLabel,
+                    isZip = isZipFileName(fileName)
                 )
+            }.distinctBy { it.jackpot }
+            if (mirrors.size == 1) {
+                mirrors.mapIndexed { idx, m -> m.copy(sourceLabel = "Download Now") }
+            } else {
+                mirrors.mapIndexed { idx, m -> m.copy(sourceLabel = "Server ${idx + 1}") }
             }
             if (mirrors.isEmpty()) {
                 emit(Resource.Error("No valid direct download URLs found"))
@@ -265,6 +272,11 @@ class DownloadRepository @Inject constructor(
             "WasmerHub"
         )
         metadataStore.rescanAndCleanup(downloadDir)
+    }
+
+    private fun isZipFileName(fileName: String): Boolean {
+        val f = fileName.lowercase()
+        return f.endsWith(".zip") || f.endsWith(".rar") || f.endsWith(".7z")
     }
 
     private fun detectQuality(filename: String): String {

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
@@ -590,7 +591,7 @@ private fun MirrorItem(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.Download,
+                if (mirror.isZip) Icons.Default.FolderZip else Icons.Default.Download,
                 null,
                 tint = qualityColors,
                 modifier = Modifier.size(18.dp)
@@ -614,6 +615,23 @@ private fun MirrorItem(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 2.dp)
             )
+        }
+
+        if (mirror.isZip) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(WasmerPurple.copy(alpha = 0.2f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    "ZIP",
+                    color = Color(0xFFB388FF),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.width(4.dp))
         }
 
         if (mirror.size.isNotEmpty()) {
