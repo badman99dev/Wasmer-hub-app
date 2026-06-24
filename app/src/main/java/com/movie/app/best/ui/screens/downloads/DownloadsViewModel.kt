@@ -44,14 +44,37 @@ class DownloadsViewModel @Inject constructor(
         observeDownloads()
     }
 
+    private fun refreshUiState(downloads: List<DownloadModel>? = null) {
+        val allMeta = repository.getAllMetadata()
+        val packs = allMeta.filter { it.isZip && it.extractPath != null }
+        if (downloads != null) {
+            val active = downloads.filter {
+                it.status == Status.QUEUED || it.status == Status.STARTED ||
+                it.status == Status.PROGRESS || it.status == Status.PAUSED ||
+                it.status == Status.FAILED
+            }
+            val completed = downloads.filter { it.status == Status.SUCCESS }
+            _uiState.update {
+                it.copy(
+                    activeDownloads = active,
+                    completedDownloads = completed,
+                    downloadMetadata = allMeta,
+                    extractedPacks = packs
+                )
+            }
+        } else {
+            _uiState.update {
+                it.copy(
+                    downloadMetadata = allMeta,
+                    extractedPacks = packs
+                )
+            }
+        }
+    }
+
     private fun observeDownloads() {
         viewModelScope.launch {
             repository.observeDownloads().collect { downloads ->
-                val active = downloads.filter {
-                    it.status == Status.QUEUED || it.status == Status.STARTED ||
-                    it.status == Status.PROGRESS || it.status == Status.PAUSED ||
-                    it.status == Status.FAILED
-                }
                 val completed = downloads.filter { it.status == Status.SUCCESS }
 
                 completed.forEach { dl ->
@@ -61,16 +84,7 @@ class DownloadsViewModel @Inject constructor(
                     }
                 }
 
-                val allMeta = repository.getAllMetadata()
-                val packs = allMeta.filter { it.isZip && it.extractPath != null }
-                _uiState.update {
-                    it.copy(
-                        activeDownloads = active,
-                        completedDownloads = completed,
-                        downloadMetadata = allMeta,
-                        extractedPacks = packs
-                    )
-                }
+                refreshUiState(downloads)
             }
         }
     }
@@ -83,15 +97,7 @@ class DownloadsViewModel @Inject constructor(
             if (meta != null && meta.isZip && meta.extractPath == null) {
                 val metaKey = meta.slug + (meta.episodeLabel ?: "")
                 repository.postProcessDownload(ketchId, metaKey)
-
-                val updatedMeta = repository.getAllMetadata()
-                val packs = updatedMeta.filter { it.isZip && it.extractPath != null }
-                _uiState.update {
-                    it.copy(
-                        downloadMetadata = updatedMeta,
-                        extractedPacks = packs
-                    )
-                }
+                refreshUiState()
             } else if (meta == null && isZipFile(fileName)) {
                 val slug = fileName.substringBeforeLast(".").replace(Regex("[^a-zA-Z0-9-]"), "-").lowercase()
                 val metaKey = slug
@@ -109,15 +115,7 @@ class DownloadsViewModel @Inject constructor(
                 )
                 repository.saveMetadataDirect(metaKey, newMeta)
                 repository.postProcessDownload(ketchId, metaKey)
-
-                val updatedMeta = repository.getAllMetadata()
-                val packs = updatedMeta.filter { it.isZip && it.extractPath != null }
-                _uiState.update {
-                    it.copy(
-                        downloadMetadata = updatedMeta,
-                        extractedPacks = packs
-                    )
-                }
+                refreshUiState()
             }
         }
     }
@@ -134,18 +132,12 @@ class DownloadsViewModel @Inject constructor(
 
             val allMeta = repository.getAllMetadata()
             allMeta.filter { it.isZip && it.extractPath == null && it.ketchId >= 0 }.forEach { meta ->
-                repository.postProcessDownload(meta.ketchId, meta.slug + (meta.episodeLabel ?: ""))
+                val metaKey = meta.slug + (meta.episodeLabel ?: "")
+                repository.postProcessDownload(meta.ketchId, metaKey)
             }
 
-            val finalMeta = repository.getAllMetadata()
-            val packs = finalMeta.filter { it.isZip && it.extractPath != null }
-            _uiState.update {
-                it.copy(
-                    downloadMetadata = finalMeta,
-                    extractedPacks = packs,
-                    isRescanning = false
-                )
-            }
+            refreshUiState()
+            _uiState.update { it.copy(isRescanning = false) }
         }
     }
 

@@ -229,8 +229,15 @@ class DownloadRepository @Inject constructor(
             File(extractedVideos.first()).parent
         } else null
 
-        metadataStore.updateMetadata(metaKey) { it.copy(status = "complete", extractPath = extractPath) }
-        NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extractPath=$extractPath videos=${extractedVideos.size}")
+        if (extractPath != null) {
+            try { File(meta.filePath).delete() } catch (_: Exception) {}
+            try { ketch.clearDb(ketchId) } catch (_: Exception) {}
+            metadataStore.updateMetadata(metaKey) { it.copy(status = "complete", extractPath = extractPath, filePath = extractPath) }
+            NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extractPath=$extractPath videos=${extractedVideos.size} ZIP_DELETED=true")
+        } else {
+            metadataStore.updateMetadata(metaKey) { it.copy(status = "failed") }
+            NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extraction FAILED, ZIP kept")
+        }
     }
 
     fun pauseDownload(id: Int) {
