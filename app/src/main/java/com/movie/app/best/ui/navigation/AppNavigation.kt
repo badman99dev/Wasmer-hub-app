@@ -211,6 +211,9 @@ fun AppNavigation(
                         launchSingleTop = true
                         restoreState = true
                     }
+                },
+                onOpenExtractedSeries = { extractPath, slug, posterPath ->
+                    navController.navigate(Screen.ExtractedSeries.createRoute(extractPath, slug, posterPath))
                 }
             )
         }
@@ -245,6 +248,9 @@ fun AppNavigation(
                         launchSingleTop = true
                         restoreState = true
                     }
+                },
+                onOpenExtractedSeries = { extractPath, slug, posterPath ->
+                    navController.navigate(Screen.ExtractedSeries.createRoute(extractPath, slug, posterPath))
                 }
             )
         }

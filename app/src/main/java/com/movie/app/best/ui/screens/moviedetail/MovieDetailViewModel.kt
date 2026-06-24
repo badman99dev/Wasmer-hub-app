@@ -206,13 +206,15 @@ class MovieDetailViewModel @Inject constructor(
                             val m = mirrors.first()
                             _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, downloadLoadingLinkId = null) }
                             val ketchId = downloadRepository.startDownloadWithMetadata(m, slug, posterUrl, title, "movie")
+                            val meta = downloadRepository.getMetadata(slug)
                             _uiState.update {
                                 it.copy(
                                     downloadKetchId = ketchId,
                                     downloadPhase = DownloadPhase.DOWNLOADING,
                                     downloadStarted = true,
                                     downloadError = null,
-                                    downloadIsZip = m.isZip
+                                    downloadIsZip = m.isZip,
+                                    downloadFilePath = meta?.filePath
                                 )
                             }
                             observeDownloadStatus(ketchId, slug)
@@ -248,13 +250,15 @@ class MovieDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, expandedLinkId = null, downloadTitle = title, downloadIsZip = mirror.isZip) }
             val ketchId = downloadRepository.startDownloadWithMetadata(mirror, slug, posterUrl, title, "movie")
+            val meta = downloadRepository.getMetadata(slug)
             _uiState.update {
                 it.copy(
                     downloadKetchId = ketchId,
                     downloadPhase = DownloadPhase.DOWNLOADING,
                     downloadStarted = true,
                     downloadError = null,
-                    downloadIsZip = mirror.isZip
+                    downloadIsZip = mirror.isZip,
+                    downloadFilePath = meta?.filePath
                 )
             }
             observeDownloadStatus(ketchId, slug)
@@ -265,6 +269,7 @@ class MovieDetailViewModel @Inject constructor(
         val metaKey = slug
         viewModelScope.launch {
             downloadRepository.observeDownloadStatus(ketchId).collect { statusInfo ->
+                if (_uiState.value.downloadPhase == DownloadPhase.COMPLETE) return@collect
                 when (statusInfo.phase) {
                     DownloadPhase.COMPLETE -> {
                         val meta = downloadRepository.getMetadata(metaKey)

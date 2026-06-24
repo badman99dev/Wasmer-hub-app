@@ -119,6 +119,7 @@ fun TVShowDetailScreen(
     onMovieClick: (String) -> Unit = {},
     onSeriesClick: (String) -> Unit = {},
     onGoToDownloads: () -> Unit = {},
+    onOpenExtractedSeries: (String, String, String) -> Unit = { _, _, _ -> },
     viewModel: TVShowDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -213,9 +214,7 @@ fun TVShowDetailScreen(
                         if (isSeries) onSeriesClick(slug)
                         else onMovieClick(slug)
                     },
-                    onOpenExtractedSeries = { extractPath, slug, posterPath ->
-                        onGoToDownloads()
-                    }
+                    onOpenExtractedSeries = onOpenExtractedSeries
                 )
             }
         }

@@ -40,6 +40,7 @@ fun MovieDetailScreen(
     onMovieClick: (slug: String) -> Unit = {},
     onDownloadClick: (linkUrl: String) -> Unit = { },
     onGoToDownloads: () -> Unit = {},
+    onOpenExtractedSeries: (String, String, String) -> Unit = { _, _, _ -> },
     viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -125,7 +126,8 @@ fun MovieDetailScreen(
                         if (isSeries) onSeriesClick(slug)
                         else onMovieClick(slug)
                     },
-                    onGoToDownloads    = onGoToDownloads
+                    onGoToDownloads    = onGoToDownloads,
+                    onOpenExtractedSeries = onOpenExtractedSeries
                 )
             }
         }
@@ -230,7 +232,8 @@ private fun MovieDetailContent(
     onToggleLike: () -> Unit,
     onReportClick: () -> Unit = {},
     onContentClick: (String, Boolean) -> Unit = { _, _ -> },
-    onGoToDownloads: () -> Unit = {}
+    onGoToDownloads: () -> Unit = {},
+    onOpenExtractedSeries: (String, String, String) -> Unit = { _, _, _ -> }
 ) {
     val context = LocalContext.current
     val isContentHidden = ModerationSettings.shouldHideDetail(context, movie.contentModeration)
@@ -313,7 +316,7 @@ private fun MovieDetailContent(
                 failureReason = uiState.downloadFailureReason,
                 onPlay = {
                     if (uiState.downloadIsZip && uiState.downloadExtractPath != null) {
-                        onGoToDownloads()
+                        onOpenExtractedSeries(uiState.downloadExtractPath, movie.slug, movie.posterUrl)
                     } else if (uiState.downloadFilePath != null) {
                         onPlayClick("", "file://${uiState.downloadFilePath}", uiState.downloadTitle, "", movie.id.toString(), movie.slug)
                     }

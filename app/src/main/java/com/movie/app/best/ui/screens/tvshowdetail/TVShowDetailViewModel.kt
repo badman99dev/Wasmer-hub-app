@@ -234,6 +234,7 @@ class TVShowDetailViewModel @Inject constructor(
     private fun observeDownloadStatus(ketchId: Int, metaKey: String) {
         viewModelScope.launch {
             downloadRepository.observeDownloadStatus(ketchId).collect { statusInfo ->
+                if (_uiState.value.downloadPhase == DownloadPhase.COMPLETE) return@collect
                 when (statusInfo.phase) {
                     DownloadPhase.COMPLETE -> {
                         val meta = downloadRepository.getMetadata(metaKey)
