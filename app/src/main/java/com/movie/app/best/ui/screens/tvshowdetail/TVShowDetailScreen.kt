@@ -628,23 +628,6 @@ private fun TVShowDetailContent(
                     onRequestStream = onRequestStream
                 )
 
-                DownloadStatusChip(
-                    phase = uiState.downloadPhase,
-                    progress = uiState.downloadProgress,
-                    isZip = uiState.downloadIsZip,
-                    failureReason = uiState.downloadFailureReason,
-                    posterPath = "",
-                    title = uiState.downloadTitle.ifEmpty { series.title },
-                    onPlay = {
-                        if (uiState.downloadIsZip && uiState.downloadExtractPath != null) {
-                            onOpenExtractedSeries(uiState.downloadExtractPath, series.slug, series.posterUrl)
-                        } else if (uiState.downloadFilePath != null) {
-                            onPlayClick("", "file://${uiState.downloadFilePath}", uiState.downloadTitle.ifEmpty { series.title }, "", series.id.toString(), series.slug)
-                        }
-                    },
-                    onDismiss = { },
-                    onGoToDownloads = onGoToDownloads
-                )
             }
         }
 
@@ -1205,36 +1188,6 @@ private fun TVDownloadSection(
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-        }
-
-        if (uiState.downloadStartedLinkIds.isNotEmpty() && links.any { it.id in uiState.downloadStartedLinkIds }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1B5E20).copy(alpha = 0.3f))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = Color(0xFF69F0AE),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Download started! Check Downloads tab",
-                        fontSize = 13.sp,
-                        color = Color(0xFF69F0AE)
-                    )
-                }
-            }
         }
     }
 }

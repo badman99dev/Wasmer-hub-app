@@ -220,6 +220,11 @@ class DownloadsViewModel @Inject constructor(
                 completed.forEach { dl ->
                     if (dl.id !in processedKetchIds) {
                         processedKetchIds.add(dl.id)
+                        val meta = repository.getAllMetadata().find { it.ketchId == dl.id }
+                        if (meta?.isZip == true && meta.extractPath == null) {
+                            val metaKey = meta.slug + (meta.episodeLabel ?: "")
+                            repository.saveMetadataDirect(metaKey, meta.copy(status = "extracting"))
+                        }
                         checkAndExtractZip(dl.id, dl.fileName)
                     }
                 }
@@ -236,6 +241,8 @@ class DownloadsViewModel @Inject constructor(
 
             if (meta != null && meta.isZip && meta.extractPath == null) {
                 val metaKey = meta.slug + (meta.episodeLabel ?: "")
+                repository.saveMetadataDirect(metaKey, meta.copy(status = "extracting"))
+                refreshUiState()
                 repository.postProcessDownload(ketchId, metaKey)
                 refreshUiState()
             } else if (meta == null && isZipFile(fileName)) {
@@ -254,6 +261,7 @@ class DownloadsViewModel @Inject constructor(
                     status = "extracting"
                 )
                 repository.saveMetadataDirect(metaKey, newMeta)
+                refreshUiState()
                 repository.postProcessDownload(ketchId, metaKey)
                 refreshUiState()
             }

@@ -312,24 +312,6 @@ private fun MovieDetailContent(
                 onRequestStream = onRequestStream
             )
 
-            DownloadStatusChip(
-                phase = uiState.downloadPhase,
-                progress = uiState.downloadProgress,
-                isZip = uiState.downloadIsZip,
-                failureReason = uiState.downloadFailureReason,
-                posterPath = "",
-                title = uiState.downloadTitle.ifEmpty { movie.title },
-                onPlay = {
-                    if (uiState.downloadIsZip && uiState.downloadExtractPath != null) {
-                        onOpenExtractedSeries(uiState.downloadExtractPath, movie.slug, movie.posterUrl)
-                    } else if (uiState.downloadFilePath != null) {
-                        onPlayClick("", "file://${uiState.downloadFilePath}", uiState.downloadTitle, "", movie.id.toString(), movie.slug)
-                    }
-                },
-                onDismiss = { },
-                onGoToDownloads = onGoToDownloads
-            )
-
             // 3. Meta info chips
             MetaChipsRow(movie = movie)
 

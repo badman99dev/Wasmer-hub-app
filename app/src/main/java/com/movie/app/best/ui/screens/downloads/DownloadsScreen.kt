@@ -414,20 +414,20 @@ private fun UnifiedDownloadCard(
     val statusText = when (item.phase) {
         UnifiedDownloadPhase.DOWNLOADING -> "Downloading ${item.progress}%"
         UnifiedDownloadPhase.PAUSED -> "Paused ${item.progress}%"
-        UnifiedDownloadPhase.EXTRACTING -> "Extracting episodes..."
-        UnifiedDownloadPhase.COMPLETE -> if (item.isZip) "Ready to Play" else "Ready to Play"
+        UnifiedDownloadPhase.EXTRACTING -> "Unpacking..."
+        UnifiedDownloadPhase.COMPLETE -> "Ready to Play"
         UnifiedDownloadPhase.FAILED -> "Download Failed"
     }
 
     val subtitle = when (item.phase) {
         UnifiedDownloadPhase.DOWNLOADING -> {
             val speed = if (item.speedBytesPerSec > 0) "${formatFileSize(item.speedBytesPerSec)}/s" else "Connecting..."
-            val sizeText = if (item.totalBytes > 0) "${formatFileSize(item.downloadedBytes)} / ${formatFileSize(item.totalBytes)}" else speed
-            "$speed  •  $sizeText"
+            val sizeText = if (item.totalBytes > 0) "${formatFileSize(item.downloadedBytes)} / ${formatFileSize(item.totalBytes)}" else ""
+            if (sizeText.isNotEmpty()) "$speed  •  $sizeText" else speed
         }
-        UnifiedDownloadPhase.PAUSED -> "${formatFileSize(item.downloadedBytes)} / ${formatFileSize(item.totalBytes)}"
-        UnifiedDownloadPhase.EXTRACTING -> "Unpacking episodes from archive"
-        UnifiedDownloadPhase.COMPLETE -> if (item.isZip) "${item.episodeCount} episodes extracted" else formatFileSize(item.totalBytes)
+        UnifiedDownloadPhase.PAUSED -> if (item.totalBytes > 0) "${formatFileSize(item.downloadedBytes)} / ${formatFileSize(item.totalBytes)}" else "Paused"
+        UnifiedDownloadPhase.EXTRACTING -> "Preparing episodes"
+        UnifiedDownloadPhase.COMPLETE -> if (item.isZip) "${item.episodeCount} episodes ready" else formatFileSize(item.totalBytes)
         UnifiedDownloadPhase.FAILED -> item.failureReason ?: "An error occurred"
     }
 
@@ -464,11 +464,11 @@ private fun UnifiedDownloadCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
+                .padding(16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 if (item.posterPath.isNotEmpty() && File(item.posterPath).exists()) {
                     AsyncImage(
@@ -476,13 +476,13 @@ private fun UnifiedDownloadCard(
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .size(52.dp, 72.dp)
+                            .size(60.dp, 84.dp)
                             .clip(RoundedCornerShape(8.dp))
                     )
                 } else {
                     Box(
                         modifier = Modifier
-                            .size(52.dp, 72.dp)
+                            .size(60.dp, 84.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(accentColor.copy(alpha = 0.12f)),
                         contentAlignment = Alignment.Center
@@ -491,12 +491,12 @@ private fun UnifiedDownloadCard(
                             if (item.isZip) Icons.Default.FolderZip else Icons.Default.Download,
                             contentDescription = null,
                             tint = accentColor,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(26.dp)
                         )
                     }
                 }
 
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(14.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -504,14 +504,11 @@ private fun UnifiedDownloadCard(
                         color = Color.White,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(Modifier.height(3.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         if (item.phase != UnifiedDownloadPhase.COMPLETE) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
@@ -526,130 +523,102 @@ private fun UnifiedDownloadCard(
                                 modifier = Modifier.size(14.dp)
                             )
                         }
+                        Spacer(Modifier.width(6.dp))
                         Text(
                             text = statusText,
                             color = accentColor,
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        if (item.isZip) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(WasmerPurple.copy(alpha = 0.2f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    "ZIP",
-                                    color = Color(0xFFB388FF),
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
                     }
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(3.dp))
                     Text(
                         text = subtitle,
-                        color = Color.White.copy(alpha = 0.4f),
-                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                when (item.phase) {
-                    UnifiedDownloadPhase.DOWNLOADING -> {
-                        Text(
-                            text = "${item.progress}%",
-                            color = accentColor,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(end = 4.dp)
-                        )
-                        IconButton(onClick = onPause, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Default.Pause, "Pause", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
-                        }
-                        IconButton(onClick = onCancel, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Default.Close, "Cancel", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
-                        }
-                    }
-                    UnifiedDownloadPhase.PAUSED -> {
-                        IconButton(onClick = onResume, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Default.PlayArrow, "Resume", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
-                        }
-                        IconButton(onClick = onCancel, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Default.Close, "Cancel", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
-                        }
-                    }
-                    UnifiedDownloadPhase.FAILED -> {
-                        IconButton(onClick = onRetry, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Default.Refresh, "Retry", tint = Color(0xFFFFA000), modifier = Modifier.size(18.dp))
-                        }
-                        IconButton(onClick = onCancel, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Default.Close, "Dismiss", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
-                        }
-                    }
-                    UnifiedDownloadPhase.EXTRACTING -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = accentColor,
-                            strokeWidth = 2.dp
-                        )
-                    }
-                    UnifiedDownloadPhase.COMPLETE -> {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(accentColor.copy(alpha = 0.15f))
-                                .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = onPlay
-                                )
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Default.PlayArrow,
-                                    contentDescription = null,
-                                    tint = accentColor,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    "Play",
-                                    color = accentColor,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                Spacer(Modifier.width(8.dp))
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    when (item.phase) {
+                        UnifiedDownloadPhase.DOWNLOADING -> {
+                            IconButton(onClick = onPause, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Pause, "Pause", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = onCancel, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Close, "Cancel", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
                             }
                         }
-                        Spacer(Modifier.width(4.dp))
-                        IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Default.Delete, "Delete", tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
+                        UnifiedDownloadPhase.PAUSED -> {
+                            IconButton(onClick = onResume, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.PlayArrow, "Resume", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = onCancel, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Close, "Cancel", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        UnifiedDownloadPhase.FAILED -> {
+                            IconButton(onClick = onRetry, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Refresh, "Retry", tint = Color(0xFFFFA000), modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = onCancel, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Close, "Dismiss", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        UnifiedDownloadPhase.EXTRACTING -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = accentColor,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                        UnifiedDownloadPhase.COMPLETE -> {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(accentColor.copy(alpha = 0.15f))
+                                    .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = onPlay
+                                    )
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.PlayArrow,
+                                        contentDescription = null,
+                                        tint = accentColor,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        "Play",
+                                        color = accentColor,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Delete, "Delete", tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
+                            }
                         }
                     }
                 }
             }
 
-            if (item.phase == UnifiedDownloadPhase.DOWNLOADING && item.progress > 0) {
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { item.progress / 100f },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = accentColor,
-                    trackColor = Color.White.copy(alpha = 0.08f)
-                )
-            }
-
-            if (item.phase == UnifiedDownloadPhase.PAUSED && item.progress > 0) {
-                Spacer(Modifier.height(8.dp))
+            if (item.phase == UnifiedDownloadPhase.DOWNLOADING || item.phase == UnifiedDownloadPhase.PAUSED) {
+                Spacer(Modifier.height(10.dp))
                 LinearProgressIndicator(
                     progress = { item.progress / 100f },
                     modifier = Modifier
@@ -662,7 +631,7 @@ private fun UnifiedDownloadCard(
             }
 
             if (item.phase == UnifiedDownloadPhase.EXTRACTING) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
