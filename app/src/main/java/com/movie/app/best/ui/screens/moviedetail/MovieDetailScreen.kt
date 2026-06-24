@@ -326,7 +326,8 @@ private fun MovieDetailContent(
                         onPlayClick("", "file://${uiState.downloadFilePath}", uiState.downloadTitle, "", movie.id.toString(), movie.slug)
                     }
                 },
-                onDismiss = { }
+                onDismiss = { },
+                onGoToDownloads = onGoToDownloads
             )
 
             // 3. Meta info chips

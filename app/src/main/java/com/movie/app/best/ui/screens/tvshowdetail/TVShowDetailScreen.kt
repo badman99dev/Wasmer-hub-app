@@ -214,6 +214,7 @@ fun TVShowDetailScreen(
                         if (isSeries) onSeriesClick(slug)
                         else onMovieClick(slug)
                     },
+                    onGoToDownloads = onGoToDownloads,
                     onOpenExtractedSeries = onOpenExtractedSeries
                 )
             }
@@ -345,6 +346,7 @@ private fun TVShowDetailContent(
     onToggleLike: () -> Unit,
     onReportClick: () -> Unit = {},
     onContentClick: (String, Boolean) -> Unit = { _, _ -> },
+    onGoToDownloads: () -> Unit = {},
     onOpenExtractedSeries: (String, String, String) -> Unit = { _, _, _ -> }
 ) {
     val context = LocalContext.current
@@ -636,9 +638,12 @@ private fun TVShowDetailContent(
                     onPlay = {
                         if (uiState.downloadIsZip && uiState.downloadExtractPath != null) {
                             onOpenExtractedSeries(uiState.downloadExtractPath, series.slug, series.posterUrl)
+                        } else if (uiState.downloadFilePath != null) {
+                            onPlayClick("", "file://${uiState.downloadFilePath}", uiState.downloadTitle.ifEmpty { series.title }, "", series.id.toString(), series.slug)
                         }
                     },
-                    onDismiss = { }
+                    onDismiss = { },
+                    onGoToDownloads = onGoToDownloads
                 )
             }
         }
@@ -711,7 +716,7 @@ private fun TVShowDetailContent(
                     episode = episode,
                     downloadLinks = uiState.linksByEpisode[episode.id] ?: emptyList(),
                     downloadLoadingLinkId = uiState.downloadLoadingLinkId,
-                    downloadStarted = uiState.downloadStarted,
+                    downloadStartedLinkIds = uiState.downloadStartedLinkIds,
                     onPlayClick = {
                         onWatchNow(series.imdbId, series.title, series.id.toString(), series.slug, selectedSeason)
                     },
@@ -861,7 +866,7 @@ private fun EpisodeItem(
     episode: WasmerEpisode,
     downloadLinks: List<WasmerDownloadLink>,
     downloadLoadingLinkId: Int?,
-    downloadStarted: Boolean,
+    downloadStartedLinkIds: Set<Int>,
     onPlayClick: () -> Unit,
     onDownloadClick: (List<WasmerDownloadLink>) -> Unit
 ) {
@@ -967,6 +972,7 @@ private fun EpisodeItem(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val isAnyLoading = downloadLinks.any { downloadLoadingLinkId == it.id }
+                val isAnyStarted = downloadLinks.any { it.id in downloadStartedLinkIds }
 
                 Box(
                     modifier = Modifier
@@ -989,7 +995,7 @@ private fun EpisodeItem(
                                 color = WasmerRed,
                                 strokeWidth = 2.dp
                             )
-                        } else if (downloadStarted) {
+                        } else if (isAnyStarted) {
                             Icon(
                                 Icons.Default.CheckCircle,
                                 contentDescription = null,
@@ -1008,10 +1014,10 @@ private fun EpisodeItem(
                         Text(
                             text = when {
                                 isAnyLoading -> "Resolving..."
-                                downloadStarted -> "Started"
+                                isAnyStarted -> "Started"
                                 else -> "Download (${downloadLinks.size})"
                             },
-                            color = if (isAnyLoading) Color.White.copy(0.5f) else if (downloadStarted) WasmerGreen else WasmerRed,
+                            color = if (isAnyLoading) Color.White.copy(0.5f) else if (isAnyStarted) WasmerGreen else WasmerRed,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -1201,7 +1207,7 @@ private fun TVDownloadSection(
             )
         }
 
-        if (uiState.downloadStarted) {
+        if (uiState.downloadStartedLinkIds.isNotEmpty() && links.any { it.id in uiState.downloadStartedLinkIds }) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()

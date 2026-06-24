@@ -66,6 +66,7 @@ fun DownloadStatusChip(
     title: String = "",
     onPlay: () -> Unit,
     onDismiss: () -> Unit = {},
+    onGoToDownloads: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     AnimatedVisibility(
@@ -293,6 +294,52 @@ fun DownloadStatusChip(
                                     )
                                 )
                         )
+                    }
+                }
+
+                val showGoToDownloads = phase == DownloadPhase.COMPLETE ||
+                    phase == DownloadPhase.DOWNLOADING ||
+                    phase == DownloadPhase.EXTRACTING ||
+                    phase == DownloadPhase.INITIALIZING
+
+                if (showGoToDownloads) {
+                    Spacer(Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(accentColor.copy(alpha = 0.12f))
+                            .border(1.dp, accentColor.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onGoToDownloads
+                            )
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Download,
+                                contentDescription = null,
+                                tint = accentColor,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Go to Downloads",
+                                color = accentColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Icon(
+                                Icons.Default.ArrowForward,
+                                contentDescription = null,
+                                tint = accentColor.copy(alpha = 0.7f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }

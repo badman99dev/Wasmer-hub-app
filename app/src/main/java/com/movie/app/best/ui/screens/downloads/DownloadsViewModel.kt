@@ -1,10 +1,10 @@
 package com.movie.app.best.ui.screens.downloads
 
 import android.content.Context
+import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.movie.app.best.data.model.DownloadMetadata
-import com.movie.app.best.data.model.DownloadPhase
 import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.repository.DownloadRepository
 import com.ketch.DownloadModel
@@ -15,24 +15,38 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
+data class UnifiedDownloadItem(
+    val id: String,
+    val title: String,
+    val fileName: String,
+    val posterPath: String,
+    val isZip: Boolean,
+    val phase: UnifiedDownloadPhase,
+    val progress: Int,
+    val speedBytesPerSec: Long,
+    val totalBytes: Long,
+    val downloadedBytes: Long,
+    val ketchId: Int,
+    val filePath: String,
+    val extractPath: String?,
+    val slug: String,
+    val failureReason: String?,
+    val episodeCount: Int
+)
+
+enum class UnifiedDownloadPhase {
+    DOWNLOADING, PAUSED, EXTRACTING, COMPLETE, FAILED
+}
+
 data class DownloadsUiState(
-    val activeDownloads: List<DownloadModel> = emptyList(),
-    val completedDownloads: List<DownloadModel> = emptyList(),
-    val downloadMetadata: List<DownloadMetadata> = emptyList(),
-    val extractedPacks: List<DownloadMetadata> = emptyList(),
-    val activeZipDownloads: List<ZipDownloadInfo> = emptyList(),
+    val unifiedDownloads: List<UnifiedDownloadItem> = emptyList(),
     val isResolving: Boolean = false,
     val resolveError: String? = null,
     val resolveSuccess: Boolean = false,
     val isRescanning: Boolean = false
-)
-
-data class ZipDownloadInfo(
-    val metadata: DownloadMetadata,
-    val progress: Int,
-    val phase: String
 )
 
 @HiltViewModel
@@ -51,47 +65,150 @@ class DownloadsViewModel @Inject constructor(
         observeDownloads()
     }
 
-    private fun refreshUiState(downloads: List<DownloadModel>? = null) {
+    private fun buildUnifiedList(downloads: List<DownloadModel>?): List<UnifiedDownloadItem> {
         val allMeta = repository.getAllMetadata()
-        val packs = allMeta.filter { it.isZip && it.extractPath != null }
-        val activeZips = allMeta.filter { it.isZip && it.extractPath == null }.mapNotNull { meta ->
-            val progress = if (downloads != null) {
-                downloads.find { it.id == meta.ketchId }?.progress ?: 0
-            } else 0
-            val phase = when (meta.status) {
-                "initializing" -> "initializing"
-                "downloading" -> "downloading"
-                "extracting" -> "extracting"
-                "failed" -> "failed"
-                else -> "downloading"
-            }
-            if (phase == "failed") return@mapNotNull null
-            ZipDownloadInfo(metadata = meta, progress = progress, phase = phase)
-        }
+        val scannedVideos = scanWasmerHubVideos(context)
+        val result = mutableListOf<UnifiedDownloadItem>()
+        val seenKetchIds = mutableSetOf<Int>()
+
         if (downloads != null) {
-            val active = downloads.filter {
+            downloads.filter {
                 it.status == Status.QUEUED || it.status == Status.STARTED ||
                 it.status == Status.PROGRESS || it.status == Status.PAUSED ||
                 it.status == Status.FAILED
-            }
-            val completed = downloads.filter { it.status == Status.SUCCESS }
-            _uiState.update {
-                it.copy(
-                    activeDownloads = active,
-                    completedDownloads = completed,
-                    downloadMetadata = allMeta,
-                    extractedPacks = packs,
-                    activeZipDownloads = activeZips
+            }.forEach { dl ->
+                seenKetchIds.add(dl.id)
+                val meta = allMeta.find { it.ketchId == dl.id }
+                val isZip = meta?.isZip ?: false
+                val phase = when (dl.status) {
+                    Status.PAUSED -> UnifiedDownloadPhase.PAUSED
+                    Status.FAILED -> UnifiedDownloadPhase.FAILED
+                    else -> UnifiedDownloadPhase.DOWNLOADING
+                }
+                result.add(
+                    UnifiedDownloadItem(
+                        id = "ketch_${dl.id}",
+                        title = meta?.title ?: dl.fileName.substringBeforeLast("."),
+                        fileName = dl.fileName.ifEmpty { dl.url.substringAfterLast("/") },
+                        posterPath = meta?.localPosterPath ?: "",
+                        isZip = isZip,
+                        phase = phase,
+                        progress = dl.progress,
+                        speedBytesPerSec = (dl.speedInBytePerMs * 1000).toLong(),
+                        totalBytes = dl.total,
+                        downloadedBytes = (dl.progress.toLong() * dl.total) / 100,
+                        ketchId = dl.id,
+                        filePath = meta?.filePath ?: "",
+                        extractPath = meta?.extractPath,
+                        slug = meta?.slug ?: "",
+                        failureReason = if (dl.status == Status.FAILED) dl.failureReason else null,
+                        episodeCount = 0
+                    )
                 )
             }
-        } else {
-            _uiState.update {
-                it.copy(
-                    downloadMetadata = allMeta,
-                    extractedPacks = packs,
-                    activeZipDownloads = activeZips
+        }
+
+        allMeta.filter { it.status == "extracting" }.forEach { meta ->
+            if (meta.ketchId in seenKetchIds) return@forEach
+            result.add(
+                UnifiedDownloadItem(
+                    id = "extracting_${meta.slug}_${meta.episodeLabel ?: ""}",
+                    title = meta.title,
+                    fileName = meta.fileName,
+                    posterPath = meta.localPosterPath,
+                    isZip = true,
+                    phase = UnifiedDownloadPhase.EXTRACTING,
+                    progress = 100,
+                    speedBytesPerSec = 0,
+                    totalBytes = 0,
+                    downloadedBytes = 0,
+                    ketchId = meta.ketchId,
+                    filePath = meta.filePath,
+                    extractPath = null,
+                    slug = meta.slug,
+                    failureReason = null,
+                    episodeCount = 0
                 )
+            )
+        }
+
+        allMeta.filter { it.isZip && it.extractPath != null }.forEach { meta ->
+            val episodeCount = countVideosInDir(meta.extractPath!!)
+            result.add(
+                UnifiedDownloadItem(
+                    id = "pack_${meta.slug}_${meta.episodeLabel ?: ""}",
+                    title = meta.title,
+                    fileName = meta.fileName,
+                    posterPath = meta.localPosterPath,
+                    isZip = true,
+                    phase = UnifiedDownloadPhase.COMPLETE,
+                    progress = 100,
+                    speedBytesPerSec = 0,
+                    totalBytes = 0,
+                    downloadedBytes = 0,
+                    ketchId = meta.ketchId,
+                    filePath = meta.extractPath!!,
+                    extractPath = meta.extractPath,
+                    slug = meta.slug,
+                    failureReason = null,
+                    episodeCount = episodeCount
+                )
+            )
+        }
+
+        scannedVideos.forEach { video ->
+            val isInExtractedPack = allMeta.any {
+                it.isZip && it.extractPath != null && video.path.startsWith(it.extractPath!!)
             }
+            if (isInExtractedPack) return@forEach
+
+            val meta = allMeta.find { it.fileName == video.name }
+            result.add(
+                UnifiedDownloadItem(
+                    id = "video_${video.path}",
+                    title = meta?.title ?: video.name.substringBeforeLast("."),
+                    fileName = video.name,
+                    posterPath = meta?.localPosterPath ?: "",
+                    isZip = false,
+                    phase = UnifiedDownloadPhase.COMPLETE,
+                    progress = 100,
+                    speedBytesPerSec = 0,
+                    totalBytes = video.size,
+                    downloadedBytes = video.size,
+                    ketchId = meta?.ketchId ?: -1,
+                    filePath = video.path,
+                    extractPath = null,
+                    slug = meta?.slug ?: "",
+                    failureReason = null,
+                    episodeCount = 0
+                )
+            )
+        }
+
+        return result.sortedBy { item ->
+            when (item.phase) {
+                UnifiedDownloadPhase.DOWNLOADING -> 0
+                UnifiedDownloadPhase.PAUSED -> 1
+                UnifiedDownloadPhase.FAILED -> 2
+                UnifiedDownloadPhase.EXTRACTING -> 3
+                UnifiedDownloadPhase.COMPLETE -> 4
+            }
+        }
+    }
+
+    private fun countVideosInDir(dirPath: String): Int {
+        val dir = File(dirPath)
+        if (!dir.exists() || !dir.isDirectory) return 0
+        val videoExts = setOf("mp4", "mkv", "avi", "webm", "mov", "flv", "3gp", "ts", "m4v")
+        return dir.listFiles()?.count {
+            it.isFile && it.extension.lowercase() in videoExts
+        } ?: 0
+    }
+
+    private fun refreshUiState(downloads: List<DownloadModel>? = null) {
+        val unified = buildUnifiedList(downloads)
+        _uiState.update {
+            it.copy(unifiedDownloads = unified)
         }
     }
 
@@ -128,8 +245,8 @@ class DownloadsViewModel @Inject constructor(
                     slug = slug,
                     title = fileName.substringBeforeLast("."),
                     fileName = fileName,
-                    filePath = android.os.Environment.getExternalStoragePublicDirectory(
-                        android.os.Environment.DIRECTORY_DOWNLOADS
+                    filePath = Environment.getExternalStoragePublicDirectory(
+                        Environment.DIRECTORY_DOWNLOADS
                     ).path + "/WasmerHub/$fileName",
                     ketchId = ketchId,
                     isZip = true,
@@ -164,8 +281,33 @@ class DownloadsViewModel @Inject constructor(
         }
     }
 
-    fun getMetadataForKetchId(ketchId: Int): DownloadMetadata? {
-        return repository.getAllMetadata().find { it.ketchId == ketchId }
+    fun deleteUnifiedItem(item: UnifiedDownloadItem) {
+        viewModelScope.launch {
+            if (item.ketchId >= 0 && item.phase != UnifiedDownloadPhase.COMPLETE) {
+                repository.cancelDownload(item.ketchId)
+                repository.deleteDownload(item.ketchId)
+            }
+            if (item.extractPath != null) {
+                try { File(item.extractPath).deleteRecursively() } catch (_: Exception) {}
+            }
+            if (item.filePath.isNotEmpty() && File(item.filePath).isFile) {
+                try { File(item.filePath).delete() } catch (_: Exception) {}
+            }
+            if (item.slug.isNotEmpty()) {
+                val metaKey = item.slug
+                try {
+                    val meta = repository.getMetadata(metaKey)
+                    if (meta != null) {
+                        repository.saveMetadataDirect(metaKey, meta.copy(
+                            extractPath = null,
+                            filePath = "",
+                            status = "deleted"
+                        ))
+                    }
+                } catch (_: Exception) {}
+            }
+            refreshUiState()
+        }
     }
 
     fun resolveAndDownload(linkUrl: String, title: String) {

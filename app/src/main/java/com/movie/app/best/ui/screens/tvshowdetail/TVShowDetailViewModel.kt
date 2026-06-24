@@ -164,7 +164,7 @@ class TVShowDetailViewModel @Inject constructor(
         val slug = series?.slug ?: ""
         val posterUrl = series?.posterUrl ?: ""
         viewModelScope.launch {
-            _uiState.update { it.copy(downloadLoadingLinkId = linkId, downloadError = null, downloadPhase = DownloadPhase.NONE) }
+            _uiState.update { it.copy(downloadLoadingLinkId = linkId, downloadError = null, downloadPhase = DownloadPhase.NONE, downloadTitle = title) }
             downloadRepository.resolveDownloadUrls(linkUrl).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
@@ -172,16 +172,21 @@ class TVShowDetailViewModel @Inject constructor(
                         val mirrors = result.data ?: emptyList()
                         if (mirrors.size == 1) {
                             val m = mirrors.first()
-                            _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, downloadLoadingLinkId = null) }
+                            _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, downloadLoadingLinkId = null, downloadIsZip = m.isZip) }
                             val ketchId = downloadRepository.startDownloadWithMetadata(
                                 m, slug, posterUrl, title, "series", episodeId, episodeLabel
                             )
+                            val meta = downloadRepository.getMetadata(slug + (episodeLabel ?: ""))
                             _uiState.update {
                                 it.copy(
                                     downloadKetchId = ketchId,
                                     downloadPhase = DownloadPhase.DOWNLOADING,
                                     downloadStarted = true,
-                                    downloadError = null
+                                    downloadError = null,
+                                    downloadIsZip = m.isZip,
+                                    downloadFilePath = meta?.filePath,
+                                    downloadTitle = title,
+                                    downloadStartedLinkIds = it.downloadStartedLinkIds + (linkId ?: 0)
                                 )
                             }
                             observeDownloadStatus(ketchId, slug + (episodeLabel ?: ""))
@@ -215,16 +220,20 @@ class TVShowDetailViewModel @Inject constructor(
         val slug = series?.slug ?: ""
         val posterUrl = series?.posterUrl ?: ""
         viewModelScope.launch {
-            _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, expandedLinkId = null) }
+            _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, expandedLinkId = null, downloadTitle = title, downloadIsZip = mirror.isZip) }
             val ketchId = downloadRepository.startDownloadWithMetadata(
                 mirror, slug, posterUrl, title, "series", episodeId, episodeLabel
             )
+            val meta = downloadRepository.getMetadata(slug + (episodeLabel ?: ""))
             _uiState.update {
                 it.copy(
                     downloadKetchId = ketchId,
                     downloadPhase = DownloadPhase.DOWNLOADING,
                     downloadStarted = true,
-                    downloadError = null
+                    downloadError = null,
+                    downloadIsZip = mirror.isZip,
+                    downloadFilePath = meta?.filePath,
+                    downloadTitle = title
                 )
             }
             observeDownloadStatus(ketchId, slug + (episodeLabel ?: ""))
@@ -253,7 +262,8 @@ class TVShowDetailViewModel @Inject constructor(
                                 it.copy(
                                     downloadPhase = DownloadPhase.COMPLETE,
                                     downloadExtractPath = updatedMeta?.extractPath,
-                                    downloadIsZip = true
+                                    downloadIsZip = true,
+                                    downloadFilePath = updatedMeta?.filePath
                                 )
                             }
                         } else {
@@ -263,7 +273,8 @@ class TVShowDetailViewModel @Inject constructor(
                                     downloadProgress = 100,
                                     downloadStarted = true,
                                     downloadIsZip = false,
-                                    downloadExtractPath = null
+                                    downloadExtractPath = null,
+                                    downloadFilePath = meta?.filePath
                                 )
                             }
                         }
@@ -546,6 +557,7 @@ data class TVShowDetailUiState(
     val downloadExtractPath: String? = null,
     val downloadFilePath: String? = null,
     val downloadTitle: String = "",
+    val downloadStartedLinkIds: Set<Int> = emptySet(),
 
     val isBookmarked: Boolean = false,
     val isLiked: Boolean = false,

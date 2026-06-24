@@ -7,14 +7,21 @@ import android.os.Build
 import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,8 +30,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -34,9 +43,6 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.VideoFile
-import com.ketch.DownloadModel
-import com.ketch.Status
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -59,6 +65,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -68,7 +75,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.movie.app.best.data.model.DownloadMetadata
 import com.movie.app.best.ui.theme.WasmerGreen
 import com.movie.app.best.ui.theme.WasmerPurple
 import com.movie.app.best.ui.theme.WasmerRed
@@ -123,33 +129,28 @@ fun DownloadsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    var scannedVideos by remember { mutableStateOf<List<LocalVideoFile>>(emptyList()) }
-    var showDeleteDialog by remember { mutableStateOf<LocalVideoFile?>(null) }
+    var showDeleteDialog by remember { mutableStateOf<UnifiedDownloadItem?>(null) }
     var hasStoragePermission by remember { mutableStateOf(true) }
-    var hasNotificationPermission by remember { mutableStateOf(true) }
     var isRefreshing by remember { mutableStateOf(true) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { _ ->
-        scannedVideos = scanWasmerHubVideos(context)
+        viewModel.rescanDownloads()
     }
 
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        hasNotificationPermission = granted
+    ) { _ ->
     }
 
     LaunchedEffect(Unit) {
         isRefreshing = true
         viewModel.rescanDownloads()
-        scannedVideos = scanWasmerHubVideos(context)
         isRefreshing = false
 
         if (Build.VERSION.SDK_INT >= 33) {
             if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                hasNotificationPermission = false
                 notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
@@ -185,9 +186,14 @@ fun DownloadsScreen(
         return
     }
 
-    LaunchedEffect(uiState.completedDownloads) {
-        scannedVideos = scanWasmerHubVideos(context)
+    val unified = uiState.unifiedDownloads
+    val downloadingItems = unified.filter {
+        it.phase == UnifiedDownloadPhase.DOWNLOADING ||
+        it.phase == UnifiedDownloadPhase.PAUSED ||
+        it.phase == UnifiedDownloadPhase.FAILED ||
+        it.phase == UnifiedDownloadPhase.EXTRACTING
     }
+    val readyItems = unified.filter { it.phase == UnifiedDownloadPhase.COMPLETE }
 
     Column(
         modifier = Modifier
@@ -205,7 +211,7 @@ fun DownloadsScreen(
                 color = Color.White,
                 modifier = Modifier.weight(1f)
             )
-            if (isRefreshing) {
+            if (isRefreshing || uiState.isRescanning) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     color = MaterialTheme.colorScheme.primary,
@@ -215,7 +221,6 @@ fun DownloadsScreen(
                 IconButton(onClick = {
                     isRefreshing = true
                     viewModel.rescanDownloads()
-                    scannedVideos = scanWasmerHubVideos(context)
                     isRefreshing = false
                 }) {
                     Icon(imageVector = Icons.Default.FolderOpen, contentDescription = "Refresh",
@@ -276,7 +281,7 @@ fun DownloadsScreen(
             }
         }
 
-        if (uiState.activeDownloads.isEmpty() && uiState.completedDownloads.isEmpty() && scannedVideos.isEmpty() && uiState.extractedPacks.isEmpty() && !uiState.isResolving) {
+        if (unified.isEmpty() && !uiState.isResolving) {
             EmptyDownloadsState()
         } else {
             LazyColumn(
@@ -284,7 +289,7 @@ fun DownloadsScreen(
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
             ) {
-                if (uiState.activeDownloads.isNotEmpty() || uiState.activeZipDownloads.isNotEmpty()) {
+                if (downloadingItems.isNotEmpty()) {
                     item {
                         Text(
                             text = "DOWNLOADING",
@@ -294,83 +299,50 @@ fun DownloadsScreen(
                             modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
                         )
                     }
-                    items(uiState.activeDownloads, key = { it.id }) { download ->
-                        ActiveDownloadItem(
-                            download = download,
-                            onPause = { viewModel.pauseDownload(download.id) },
-                            onResume = { viewModel.resumeDownload(download.id) },
-                            onCancel = { viewModel.cancelDownload(download.id) },
-                            onRetry = { viewModel.retryDownload(download.id) }
-                        )
-                    }
-                    items(uiState.activeZipDownloads, key = { it.metadata.slug + (it.metadata.episodeLabel ?: "") }) { zipInfo ->
-                        ZipDownloadCard(
-                            zipInfo = zipInfo,
+                    items(downloadingItems, key = { it.id }) { item ->
+                        UnifiedDownloadCard(
+                            item = item,
                             onPlay = {
-                                onOpenExtractedSeries(zipInfo.metadata.extractPath ?: "", zipInfo.metadata.slug, zipInfo.metadata.localPosterPath)
-                            }
+                                if (item.isZip && item.extractPath != null) {
+                                    onOpenExtractedSeries(item.extractPath, item.slug, item.posterPath)
+                                } else if (item.filePath.isNotEmpty()) {
+                                    onPlayFile("file://${item.filePath}", item.fileName)
+                                }
+                            },
+                            onPause = { viewModel.pauseDownload(item.ketchId) },
+                            onResume = { viewModel.resumeDownload(item.ketchId) },
+                            onCancel = { viewModel.cancelDownload(item.ketchId) },
+                            onRetry = { viewModel.retryDownload(item.ketchId) },
+                            onDelete = { showDeleteDialog = item }
                         )
                     }
                 }
 
-                if (uiState.completedDownloads.isNotEmpty()) {
+                if (readyItems.isNotEmpty()) {
                     item {
                         Text(
-                            text = "COMPLETED",
+                            text = "READY TO PLAY",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF4CAF50),
+                            color = WasmerGreen,
                             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                         )
                     }
-                    items(uiState.completedDownloads.filter { download ->
-                        scannedVideos.none { it.name == download.fileName }
-                    }, key = { it.id }) { download ->
-                        CompletedDownloadItem(
-                            download = download,
-                            onPlay = { onPlayFile("file://${download.path}/${download.fileName}", download.fileName) },
-                            onDelete = { viewModel.deleteDownload(download.id) }
-                        )
-                    }
-                }
-
-                if (uiState.extractedPacks.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "SERIES PACKS",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFB388FF),
-                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                        )
-                    }
-                    items(uiState.extractedPacks, key = { it.slug + (it.episodeLabel ?: "") }) { pack ->
-                        ExtractedPackItem(
-                            pack = pack,
-                            onOpen = {
-                                onOpenExtractedSeries(pack.extractPath ?: "", pack.slug, pack.localPosterPath)
-                            }
-                        )
-                    }
-                }
-
-                if (scannedVideos.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "DOWNLOADS",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF4CAF50),
-                            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                        )
-                    }
-                    items(scannedVideos, key = { it.path }) { video ->
-                        val meta = uiState.downloadMetadata.find { it.fileName == video.name }
-                        ScannedVideoItem(
-                            video = video,
-                            posterPath = meta?.localPosterPath ?: "",
-                            onPlay = { onPlayFile("file://${video.path}", video.name) },
-                            onDelete = { showDeleteDialog = video }
+                    items(readyItems, key = { it.id }) { item ->
+                        UnifiedDownloadCard(
+                            item = item,
+                            onPlay = {
+                                if (item.isZip && item.extractPath != null) {
+                                    onOpenExtractedSeries(item.extractPath, item.slug, item.posterPath)
+                                } else if (item.filePath.isNotEmpty()) {
+                                    onPlayFile("file://${item.filePath}", item.fileName)
+                                }
+                            },
+                            onPause = { viewModel.pauseDownload(item.ketchId) },
+                            onResume = { viewModel.resumeDownload(item.ketchId) },
+                            onCancel = { viewModel.cancelDownload(item.ketchId) },
+                            onRetry = { viewModel.retryDownload(item.ketchId) },
+                            onDelete = { showDeleteDialog = item }
                         )
                     }
                 }
@@ -380,20 +352,11 @@ fun DownloadsScreen(
         }
     }
 
-    showDeleteDialog?.let { video ->
+    showDeleteDialog?.let { item ->
         DeleteConfirmationDialog(
-            fileName = video.name,
+            fileName = item.title.ifEmpty { item.fileName },
             onConfirm = {
-                try {
-                    if (video.contentUri.isNotEmpty()) {
-                        context.contentResolver.delete(Uri.parse(video.contentUri), null, null)
-                    } else {
-                        File(video.path).delete()
-                    }
-                } catch (_: Exception) {
-                    File(video.path).delete()
-                }
-                scannedVideos = scanWasmerHubVideos(context)
+                viewModel.deleteUnifiedItem(item)
                 showDeleteDialog = null
             },
             onDismiss = { showDeleteDialog = null }
@@ -431,389 +394,72 @@ private fun EmptyDownloadsState() {
 }
 
 @Composable
-private fun ActiveDownloadItem(
-    download: DownloadModel,
+private fun UnifiedDownloadCard(
+    item: UnifiedDownloadItem,
+    onPlay: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onCancel: () -> Unit,
-    onRetry: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = if (download.status == Status.FAILED) Icons.Default.Refresh else Icons.Default.Download,
-                    contentDescription = null,
-                    tint = if (download.status == Status.FAILED) Color(0xFFFF5252) else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = download.fileName.ifEmpty { download.url.substringAfterLast("/") },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            val progressFloat = if (download.progress > 0) download.progress / 100f else 0f
-            val progressColor = when (download.status) {
-                Status.PAUSED -> Color(0xFFFFA000)
-                Status.FAILED -> Color(0xFFFF5252)
-                else -> MaterialTheme.colorScheme.primary
-            }
-
-            LinearProgressIndicator(
-                progress = { progressFloat },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = progressColor,
-                trackColor = Color(0xFF333333)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                val statusText = when (download.status) {
-                    Status.QUEUED -> "Queued..."
-                    Status.STARTED -> "Starting..."
-                    Status.PROGRESS -> {
-                        val speedBytesPerSec = (download.speedInBytePerMs * 1000).toLong()
-                        if (speedBytesPerSec > 0) "${formatFileSize(speedBytesPerSec)}/s" else "Connecting..."
-                    }
-                    Status.PAUSED -> "Paused"
-                    Status.FAILED -> "Failed: ${download.failureReason}"
-                    else -> ""
-                }
-                val downloadedBytes = (download.progress.toLong() * download.total) / 100
-                val sizeText = "${formatFileSize(downloadedBytes)} / ${formatFileSize(download.total)}"
-
-                Column {
-                    Text(
-                        text = statusText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        text = sizeText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.4f),
-                        fontSize = 11.sp
-                    )
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "${download.progress}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = progressColor
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    when (download.status) {
-                        Status.PROGRESS, Status.STARTED -> {
-                            IconButton(onClick = onPause, modifier = Modifier.size(28.dp)) {
-                                Icon(Icons.Default.Pause, "Pause", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
-                            }
-                        }
-                        Status.PAUSED -> {
-                            IconButton(onClick = onResume, modifier = Modifier.size(28.dp)) {
-                                Icon(Icons.Default.PlayArrow, "Resume", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
-                            }
-                        }
-                        Status.FAILED -> {
-                            IconButton(onClick = onRetry, modifier = Modifier.size(28.dp)) {
-                                Icon(Icons.Default.Refresh, "Retry", tint = Color(0xFFFFA000), modifier = Modifier.size(18.dp))
-                            }
-                        }
-                        else -> {}
-                    }
-
-                    IconButton(onClick = onCancel, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Close, "Cancel", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CompletedDownloadItem(
-    download: DownloadModel,
-    onPlay: () -> Unit,
+    onRetry: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val accentColor = when (item.phase) {
+        UnifiedDownloadPhase.COMPLETE -> WasmerGreen
+        UnifiedDownloadPhase.FAILED -> WasmerRed
+        UnifiedDownloadPhase.PAUSED -> Color(0xFFFFA000)
+        UnifiedDownloadPhase.EXTRACTING -> WasmerPurple
+        UnifiedDownloadPhase.DOWNLOADING -> if (item.isZip) WasmerPurple else MaterialTheme.colorScheme.primary
+    }
+
+    val statusText = when (item.phase) {
+        UnifiedDownloadPhase.DOWNLOADING -> "Downloading ${item.progress}%",
+        UnifiedDownloadPhase.PAUSED -> "Paused ${item.progress}%",
+        UnifiedDownloadPhase.EXTRACTING -> "Extracting episodes...",
+        UnifiedDownloadPhase.COMPLETE -> if (item.isZip) "Ready to Play" else "Ready to Play",
+        UnifiedDownloadPhase.FAILED -> "Download Failed"
+    }
+
+    val subtitle = when (item.phase) {
+        UnifiedDownloadPhase.DOWNLOADING -> {
+            val speed = if (item.speedBytesPerSec > 0) "${formatFileSize(item.speedBytesPerSec)}/s" else "Connecting..."
+            val sizeText = if (item.totalBytes > 0) "${formatFileSize(item.downloadedBytes)} / ${formatFileSize(item.totalBytes)}" else speed
+            "$speed  •  $sizeText"
+        }
+        UnifiedDownloadPhase.PAUSED -> "${formatFileSize(item.downloadedBytes)} / ${formatFileSize(item.totalBytes)}",
+        UnifiedDownloadPhase.EXTRACTING -> "Unpacking episodes from archive",
+        UnifiedDownloadPhase.COMPLETE -> if (item.isZip) "${item.episodeCount} episodes extracted" else formatFileSize(item.totalBytes),
+        UnifiedDownloadPhase.FAILED -> item.failureReason ?: "An error occurred"
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "card")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
+        label = "pulse"
+    )
+    val shimmerOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1200), RepeatMode.Restart),
+        label = "shimmer"
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable(onClick = onPlay),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = null,
-                tint = Color(0xFFE50914),
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = download.fileName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = formatFileSize(download.total),
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 11.sp
-                )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = Color.White.copy(alpha = 0.6f),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ScannedVideoItem(
-    video: LocalVideoFile,
-    posterPath: String = "",
-    onPlay: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable(onClick = onPlay),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (posterPath.isNotEmpty() && File(posterPath).exists()) {
-                AsyncImage(
-                    model = File(posterPath),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(48.dp, 64.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp, 64.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xFFE50914).copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = Color(0xFFE50914),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = video.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = video.extension.uppercase(),
-                        color = Color(0xFFE50914).copy(alpha = 0.7f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = formatFileSize(video.size),
-                        color = Color.White.copy(alpha = 0.5f),
-                        fontSize = 11.sp
-                    )
-                }
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = Color.White.copy(alpha = 0.6f),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExtractedPackItem(
-    pack: DownloadMetadata,
-    onOpen: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable(onClick = onOpen),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (pack.localPosterPath.isNotEmpty() && File(pack.localPosterPath).exists()) {
-                AsyncImage(
-                    model = File(pack.localPosterPath),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(48.dp, 64.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp, 64.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xFFB388FF).copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.FolderOpen,
-                        contentDescription = null,
-                        tint = Color(0xFFB388FF),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = pack.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFFB388FF).copy(alpha = 0.2f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            "ZIP",
-                            color = Color(0xFFB388FF),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Text(
-                        text = "Extracted",
-                        color = Color(0xFF4CAF50).copy(alpha = 0.7f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            Icon(
-                Icons.Default.FolderOpen,
-                contentDescription = "Open",
-                tint = Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ZipDownloadCard(
-    zipInfo: ZipDownloadInfo,
-    onPlay: () -> Unit
-) {
-    val accentColor = when (zipInfo.phase) {
-        "extracting" -> Color(0xFFB388FF)
-        "downloading", "initializing" -> WasmerGreen
-        else -> WasmerGreen
-    }
-
-    val statusText = when (zipInfo.phase) {
-        "initializing" -> "Initializing..."
-        "downloading" -> "Downloading ZIP... ${zipInfo.progress}%"
-        "extracting" -> "Extracting episodes..."
-        else -> "Processing..."
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
-        shape = RoundedCornerShape(12.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                enabled = item.phase == UnifiedDownloadPhase.COMPLETE,
+                onClick = onPlay
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = if (item.isZip) Color(0xFF1A1A2E) else Color(0xFF1A1A1A)
+        ),
+        shape = RoundedCornerShape(14.dp)
     ) {
         Column(
             modifier = Modifier
@@ -824,53 +470,60 @@ private fun ZipDownloadCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (zipInfo.metadata.localPosterPath.isNotEmpty() && File(zipInfo.metadata.localPosterPath).exists()) {
+                if (item.posterPath.isNotEmpty() && File(item.posterPath).exists()) {
                     AsyncImage(
-                        model = File(zipInfo.metadata.localPosterPath),
+                        model = File(item.posterPath),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .size(48.dp, 64.dp)
-                            .clip(RoundedCornerShape(6.dp))
+                            .size(52.dp, 72.dp)
+                            .clip(RoundedCornerShape(8.dp))
                     )
                 } else {
                     Box(
                         modifier = Modifier
-                            .size(48.dp, 64.dp)
-                            .clip(RoundedCornerShape(6.dp))
+                            .size(52.dp, 72.dp)
+                            .clip(RoundedCornerShape(8.dp))
                             .background(accentColor.copy(alpha = 0.12f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Default.FolderZip,
+                            if (item.isZip) Icons.Default.FolderZip else Icons.Default.Download,
                             contentDescription = null,
                             tint = accentColor,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = zipInfo.metadata.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
+                        text = item.title,
                         color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(3.dp))
+                    Spacer(Modifier.height(3.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        if (zipInfo.phase == "initializing" || zipInfo.phase == "downloading" || zipInfo.phase == "extracting") {
+                        if (item.phase != UnifiedDownloadPhase.COMPLETE) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
                                 color = accentColor,
                                 strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = accentColor.copy(alpha = pulseAlpha),
+                                modifier = Modifier.size(14.dp)
                             )
                         }
                         Text(
@@ -879,36 +532,113 @@ private fun ZipDownloadCard(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
+                        if (item.isZip) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(WasmerPurple.copy(alpha = 0.2f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    "ZIP",
+                                    color = Color(0xFFB388FF),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        color = Color.White.copy(alpha = 0.4f),
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                when (item.phase) {
+                    UnifiedDownloadPhase.DOWNLOADING -> {
+                        Text(
+                            text = "${item.progress}%",
+                            color = accentColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(end = 4.dp)
+                        )
+                        IconButton(onClick = onPause, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Pause, "Pause", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                        }
+                        IconButton(onClick = onCancel, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, "Cancel", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
+                        }
+                    }
+                    UnifiedDownloadPhase.PAUSED -> {
+                        IconButton(onClick = onResume, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.PlayArrow, "Resume", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                        }
+                        IconButton(onClick = onCancel, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, "Cancel", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
+                        }
+                    }
+                    UnifiedDownloadPhase.FAILED -> {
+                        IconButton(onClick = onRetry, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Refresh, "Retry", tint = Color(0xFFFFA000), modifier = Modifier.size(18.dp))
+                        }
+                        IconButton(onClick = onCancel, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, "Dismiss", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
+                        }
+                    }
+                    UnifiedDownloadPhase.EXTRACTING -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = accentColor,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    UnifiedDownloadPhase.COMPLETE -> {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFFB388FF).copy(alpha = 0.2f))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(accentColor.copy(alpha = 0.15f))
+                                .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onPlay
+                                )
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                "ZIP",
-                                color = Color(0xFFB388FF),
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    tint = accentColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    "Play",
+                                    color = accentColor,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Delete, "Delete", tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(18.dp))
                         }
                     }
                 }
-
-                if (zipInfo.phase == "extracting" || zipInfo.phase == "downloading" || zipInfo.phase == "initializing") {
-                    Text(
-                        text = "${zipInfo.progress}%",
-                        color = accentColor,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
 
-            if (zipInfo.phase == "downloading" && zipInfo.progress > 0) {
-                Spacer(modifier = Modifier.height(8.dp))
+            if (item.phase == UnifiedDownloadPhase.DOWNLOADING && item.progress > 0) {
+                Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(
-                    progress = { zipInfo.progress / 100f },
+                    progress = { item.progress / 100f },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(4.dp)
@@ -916,6 +646,46 @@ private fun ZipDownloadCard(
                     color = accentColor,
                     trackColor = Color.White.copy(alpha = 0.08f)
                 )
+            }
+
+            if (item.phase == UnifiedDownloadPhase.PAUSED && item.progress > 0) {
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { item.progress / 100f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = accentColor,
+                    trackColor = Color.White.copy(alpha = 0.08f)
+                )
+            }
+
+            if (item.phase == UnifiedDownloadPhase.EXTRACTING) {
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = 0.06f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(shimmerOffset)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        accentColor.copy(alpha = 0.3f),
+                                        accentColor.copy(alpha = 0.8f),
+                                        accentColor.copy(alpha = 0.3f)
+                                    )
+                                )
+                            )
+                    )
+                }
             }
         }
     }
@@ -929,7 +699,7 @@ private fun DeleteConfirmationDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete Video") },
+        title = { Text("Delete") },
         text = { Text("Are you sure you want to delete \"$fileName\"?") },
         confirmButton = {
             TextButton(onClick = onConfirm) {
