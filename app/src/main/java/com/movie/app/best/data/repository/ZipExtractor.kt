@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import net.lingala.zip4j.ZipFile
+import net.lingala.zip4j.model.FileHeader
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,38 +42,36 @@ class ZipExtractor @Inject constructor() {
 
         try {
             val zip = ZipFile(zipFile)
-            zip.setRunInThread(true)
 
-            zip.extractAll(extractDir.absolutePath)
+            val headers = zip.fileHeaders.toList()
+            val totalFiles = headers.size
 
-            val monitor = zip.progressMonitor
-            var stuckCount = 0
-            var lastPercent = -1
+            if (totalFiles == 0) {
+                NetworkLogger.logAction("ZIP_EXTRACT_ERR", "No files in ZIP")
+                emit(ExtractionProgress(0, "", ExtractionState.FAILED))
+                return@flow
+            }
 
-            while (true) {
-                val stateName = monitor.state.name
-                val percent = if (monitor.percentDone < 0) 0 else monitor.percentDone
+            NetworkLogger.logAction("ZIP_EXTRACT_START", "totalFiles=$totalFiles extractDir=${extractDir.path}")
 
-                if (stateName == "SUCCESS" || stateName == "CANCELLED" || stateName == "ERROR") break
-                if (percent >= 100) break
+            var extractedCount = 0
 
-                if (percent == lastPercent) {
-                    stuckCount++
-                    if (stuckCount > 300) {
-                        NetworkLogger.logAction("ZIP_EXTRACT_TIMEOUT", "Stuck at $percent% for 30s, breaking")
-                        break
+            headers.forEachIndexed { index, header ->
+                val headerFileName = header.fileName
+
+                if (!header.isDirectory) {
+                    try {
+                        zip.extractFile(header, extractDir.absolutePath)
+                        extractedCount++
+                        NetworkLogger.logAction("ZIP_EXTRACT_FILE", "[$extractedCount/$totalFiles] $headerFileName")
+                    } catch (e: Exception) {
+                        NetworkLogger.logAction("ZIP_EXTRACT_FILE_ERR", "$headerFileName: ${e.message}")
                     }
-                } else {
-                    stuckCount = 0
-                    lastPercent = percent
                 }
 
-                emit(ExtractionProgress(
-                    percent = percent,
-                    currentFile = monitor.fileName ?: "",
-                    state = ExtractionState.IN_PROGRESS
-                ))
-                delay(100)
+                val percent = ((index + 1) * 100) / totalFiles
+                emit(ExtractionProgress(percent, headerFileName, ExtractionState.IN_PROGRESS))
+                delay(50)
             }
 
             val extractedVideos = mutableListOf<String>()
@@ -80,10 +79,10 @@ class ZipExtractor @Inject constructor() {
             extractedVideos.sortBy { File(it).name }
 
             if (extractedVideos.isNotEmpty()) {
-                NetworkLogger.logAction("ZIP_EXTRACT", "Extracted ${extractedVideos.size} videos to ${extractDir.path}")
+                NetworkLogger.logAction("ZIP_EXTRACT", "Done: ${extractedVideos.size} videos, $extractedCount files extracted to ${extractDir.path}")
                 emit(ExtractionProgress(100, "", ExtractionState.COMPLETE))
             } else {
-                NetworkLogger.logAction("ZIP_EXTRACT_ERR", "No videos found in ${extractDir.path}")
+                NetworkLogger.logAction("ZIP_EXTRACT_ERR", "No videos found in ${extractDir.path}. Files extracted: $extractedCount")
                 emit(ExtractionProgress(0, "", ExtractionState.FAILED))
             }
         } catch (e: Exception) {
