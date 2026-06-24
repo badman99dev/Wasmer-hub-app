@@ -124,7 +124,8 @@ fun MovieDetailScreen(
                     onContentClick     = { slug, isSeries ->
                         if (isSeries) onSeriesClick(slug)
                         else onMovieClick(slug)
-                    }
+                    },
+                    onGoToDownloads    = onGoToDownloads
                 )
             }
         }
@@ -228,7 +229,8 @@ private fun MovieDetailContent(
     onToggleBookmark: () -> Unit,
     onToggleLike: () -> Unit,
     onReportClick: () -> Unit = {},
-    onContentClick: (String, Boolean) -> Unit = { _, _ -> }
+    onContentClick: (String, Boolean) -> Unit = { _, _ -> },
+    onGoToDownloads: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val isContentHidden = ModerationSettings.shouldHideDetail(context, movie.contentModeration)
