@@ -2,6 +2,7 @@ package com.movie.app.best.data.repository
 
 import com.movie.app.best.data.debug.NetworkLogger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -30,6 +31,7 @@ class ZipExtractor @Inject constructor() {
     fun extractZipWithProgress(zipPath: String, baseDir: File): Flow<ExtractionProgress> = flow {
         val zipFile = File(zipPath)
         if (!zipFile.exists()) {
+            NetworkLogger.logAction("ZIP_EXTRACT_ERR", "ZIP file not found: $zipPath")
             emit(ExtractionProgress(0, "", ExtractionState.FAILED))
             return@flow
         }
@@ -39,7 +41,7 @@ class ZipExtractor @Inject constructor() {
 
         try {
             val zip = ZipFile(zipFile)
-            zip.isRunInThread = true
+            zip.setRunInThread(true)
 
             zip.extractAll(extractDir.absolutePath)
 
@@ -54,7 +56,7 @@ class ZipExtractor @Inject constructor() {
                     currentFile = monitor.fileName ?: "",
                     state = ExtractionState.IN_PROGRESS
                 ))
-                Thread.sleep(100)
+                delay(100)
             }
 
             val finalState = monitor.state.name
@@ -64,9 +66,8 @@ class ZipExtractor @Inject constructor() {
                 extractedVideos.sortBy { File(it).name }
                 NetworkLogger.logAction("ZIP_EXTRACT", "Extracted ${extractedVideos.size} videos to ${extractDir.path}")
                 emit(ExtractionProgress(100, "", ExtractionState.COMPLETE))
-            } else if (finalState == "CANCELLED") {
-                emit(ExtractionProgress(0, "", ExtractionState.FAILED))
             } else {
+                NetworkLogger.logAction("ZIP_EXTRACT_ERR", "Extraction state: $finalState")
                 emit(ExtractionProgress(0, "", ExtractionState.FAILED))
             }
         } catch (e: Exception) {

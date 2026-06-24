@@ -15,10 +15,12 @@ import com.ketch.DownloadModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.io.File
+import java.util.Collections
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,6 +50,8 @@ class DownloadRepository @Inject constructor(
     private val zipExtractor: ZipExtractor,
     @ApplicationContext private val context: Context
 ) {
+
+    private val extractingKeys = Collections.synchronizedSet(mutableSetOf<String>())
     fun resolveDownloadUrls(linkUrl: String): Flow<Resource<List<ResolvedMirror>>> = flow {
         emit(Resource.Loading())
         try {
@@ -109,15 +113,19 @@ class DownloadRepository @Inject constructor(
         val safeFileName = sanitizeFileName(mirror.fileName)
         val isZip = metadataStore.isZipFile(safeFileName)
 
-        val downloadPath = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "WasmerHub"
-        ).apply { if (!exists()) mkdirs() }.path
+        val downloadPath = if (isZip) {
+            File(context.cacheDir, "wasmer_zips").apply { if (!exists()) mkdirs() }.path
+        } else {
+            File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                "WasmerHub"
+            ).apply { if (!exists()) mkdirs() }.path
+        }
 
         val filePath = File(downloadPath, safeFileName).path
         val metaKey = slug + (episodeLabel ?: "")
 
-        NetworkLogger.logAction("DOWNLOAD_INIT", "slug=$slug poster=$posterUrl isZip=$isZip")
+        NetworkLogger.logAction("DOWNLOAD_INIT", "slug=$slug poster=$posterUrl isZip=$isZip path=$downloadPath")
 
         val localPosterPath = metadataStore.downloadPoster(posterUrl, slug)
 
@@ -219,43 +227,55 @@ class DownloadRepository @Inject constructor(
             return@flow
         }
 
-        metadataStore.updateMetadata(metaKey) { it.copy(status = "extracting", extractionProgress = 0) }
+        if (!extractingKeys.add(metaKey)) {
+            NetworkLogger.logAction("ZIP_SKIP", "key=$metaKey already being extracted")
+            return@flow
+        }
 
-        val downloadDir = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "WasmerHub"
-        )
+        try {
+            metadataStore.updateMetadata(metaKey) { it.copy(status = "extracting", extractionProgress = 0) }
 
-        zipExtractor.extractZipWithProgress(meta.filePath, downloadDir).collect { progress ->
-            when (progress.state) {
-                ExtractionState.IN_PROGRESS -> {
-                    metadataStore.updateMetadata(metaKey) {
-                        it.copy(status = "extracting", extractionProgress = progress.percent)
-                    }
-                    emit(progress)
-                }
-                ExtractionState.COMPLETE -> {
-                    val extractPath = findExtractPath(downloadDir, meta.fileName)
-                    if (extractPath != null) {
-                        try { File(meta.filePath).delete() } catch (_: Exception) {}
-                        try { ketch.clearDb(ketchId) } catch (_: Exception) {}
+            val downloadDir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                "WasmerHub"
+            ).apply { if (!exists()) mkdirs() }
+
+            zipExtractor.extractZipWithProgress(meta.filePath, downloadDir).collect { progress ->
+                when (progress.state) {
+                    ExtractionState.IN_PROGRESS -> {
                         metadataStore.updateMetadata(metaKey) {
-                            it.copy(status = "complete", extractPath = extractPath, filePath = extractPath, extractionProgress = 100)
+                            it.copy(status = "extracting", extractionProgress = progress.percent)
                         }
-                        NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extractPath=$extractPath ZIP_DELETED=true")
-                    } else {
-                        metadataStore.updateMetadata(metaKey) { it.copy(status = "failed") }
-                        NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extraction FAILED, ZIP kept")
+                        emit(progress)
                     }
-                    emit(progress)
-                }
-                ExtractionState.FAILED -> {
-                    metadataStore.updateMetadata(metaKey) { it.copy(status = "failed") }
-                    NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extraction FAILED")
-                    emit(progress)
+                    ExtractionState.COMPLETE -> {
+                        val extractPath = findExtractPath(downloadDir, meta.fileName)
+                        if (extractPath != null) {
+                            try { File(meta.filePath).delete() } catch (_: Exception) {}
+                            try { ketch.clearDb(ketchId) } catch (_: Exception) {}
+                            metadataStore.updateMetadata(metaKey) {
+                                it.copy(status = "complete", extractPath = extractPath, filePath = extractPath, extractionProgress = 100)
+                            }
+                            NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extractPath=$extractPath ZIP_DELETED=true")
+                        } else {
+                            metadataStore.updateMetadata(metaKey) { it.copy(status = "failed") }
+                            NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extraction FAILED, ZIP kept")
+                        }
+                        emit(progress)
+                    }
+                    ExtractionState.FAILED -> {
+                        metadataStore.updateMetadata(metaKey) { it.copy(status = "failed") }
+                        NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extraction FAILED")
+                        emit(progress)
+                    }
                 }
             }
+        } finally {
+            extractingKeys.remove(metaKey)
         }
+    }.catch { e ->
+        NetworkLogger.logAction("ZIP_FLOW_ERR", e.message ?: "unknown")
+        emit(ExtractionProgress(0, "", ExtractionState.FAILED))
     }.flowOn(Dispatchers.IO)
 
     private fun findExtractPath(baseDir: File, zipFileName: String): String? {

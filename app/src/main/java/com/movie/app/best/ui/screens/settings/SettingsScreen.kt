@@ -440,7 +440,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "Wasmer Hub v1.0.8 (Build 8)",
+                text = "Wasmer Hub v1.0.9 (Build 9)",
                 color = Color.White.copy(alpha = 0.2f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 4.dp)

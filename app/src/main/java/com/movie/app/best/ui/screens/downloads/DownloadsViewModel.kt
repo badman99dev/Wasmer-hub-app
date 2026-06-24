@@ -279,8 +279,12 @@ class DownloadsViewModel @Inject constructor(
                 val metaKey = meta.slug + (meta.episodeLabel ?: "")
                 repository.saveMetadataDirect(metaKey, meta.copy(status = "extracting", extractionProgress = 0))
                 refreshUiState()
-                repository.postProcessDownload(ketchId, metaKey).collect { progress ->
-                    refreshUiState()
+                try {
+                    repository.postProcessDownload(ketchId, metaKey).collect { progress ->
+                        refreshUiState()
+                    }
+                } catch (e: Exception) {
+                    com.movie.app.best.data.debug.NetworkLogger.logAction("EXTRACT_ERR_DL1", e.message ?: "unknown")
                 }
                 refreshUiState()
             } else if (meta == null && isZipFile(fileName)) {
@@ -301,8 +305,12 @@ class DownloadsViewModel @Inject constructor(
                 )
                 repository.saveMetadataDirect(metaKey, newMeta)
                 refreshUiState()
-                repository.postProcessDownload(ketchId, metaKey).collect { progress ->
-                    refreshUiState()
+                try {
+                    repository.postProcessDownload(ketchId, metaKey).collect { progress ->
+                        refreshUiState()
+                    }
+                } catch (e: Exception) {
+                    com.movie.app.best.data.debug.NetworkLogger.logAction("EXTRACT_ERR_DL2", e.message ?: "unknown")
                 }
                 refreshUiState()
             }
@@ -322,7 +330,11 @@ class DownloadsViewModel @Inject constructor(
             val allMeta = repository.getAllMetadata()
             allMeta.filter { it.isZip && it.extractPath == null && it.ketchId >= 0 }.forEach { meta ->
                 val metaKey = meta.slug + (meta.episodeLabel ?: "")
-                repository.postProcessDownload(meta.ketchId, metaKey).collect { }
+                try {
+                    repository.postProcessDownload(meta.ketchId, metaKey).collect { }
+                } catch (e: Exception) {
+                    com.movie.app.best.data.debug.NetworkLogger.logAction("EXTRACT_ERR_DL3", e.message ?: "unknown")
+                }
             }
 
             refreshUiState()

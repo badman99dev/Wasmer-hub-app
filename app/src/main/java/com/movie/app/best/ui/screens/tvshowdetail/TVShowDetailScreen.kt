@@ -146,6 +146,16 @@ fun TVShowDetailScreen(
     var sheetTitle by remember { mutableStateOf("") }
     var pendingDownload by remember { mutableStateOf<Pair<String, Int?>?>(null) }
 
+    LaunchedEffect(uiState.downloadPhase) {
+        if (uiState.downloadPhase != com.movie.app.best.data.model.DownloadPhase.NONE && !showDownloadSheet && uiState.series != null) {
+            if (sheetDownloadLinks.isEmpty()) {
+                sheetDownloadLinks = uiState.downloadLinks
+                sheetTitle = uiState.series?.title ?: ""
+            }
+            showDownloadSheet = true
+        }
+    }
+
     val storageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->

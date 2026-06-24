@@ -65,6 +65,12 @@ fun MovieDetailScreen(
     var showDownloadSheet by remember { mutableStateOf(false) }
     var pendingDownload by remember { mutableStateOf<Pair<String, Int?>?>(null) }
 
+    LaunchedEffect(uiState.downloadPhase) {
+        if (uiState.downloadPhase != DownloadPhase.NONE && !showDownloadSheet && uiState.movie != null) {
+            showDownloadSheet = true
+        }
+    }
+
     val storageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->

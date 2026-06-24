@@ -257,13 +257,17 @@ class TVShowDetailViewModel @Inject constructor(
                                     downloadExtractionProgress = 0
                                 )
                             }
-                            downloadRepository.postProcessDownload(ketchId, metaKey).collect { extractionProgress ->
-                                _uiState.update {
-                                    it.copy(
-                                        downloadPhase = DownloadPhase.EXTRACTING,
-                                        downloadExtractionProgress = extractionProgress.percent
-                                    )
+                            try {
+                                downloadRepository.postProcessDownload(ketchId, metaKey).collect { extractionProgress ->
+                                    _uiState.update {
+                                        it.copy(
+                                            downloadPhase = DownloadPhase.EXTRACTING,
+                                            downloadExtractionProgress = extractionProgress.percent
+                                        )
+                                    }
                                 }
+                            } catch (e: Exception) {
+                                com.movie.app.best.data.debug.NetworkLogger.logAction("EXTRACT_ERR_TV", e.message ?: "unknown")
                             }
                             val updatedMeta = downloadRepository.getMetadata(metaKey)
                             _uiState.update {

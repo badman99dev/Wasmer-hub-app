@@ -9,6 +9,7 @@ import com.movie.app.best.data.model.LikeItem
 import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.model.WasmerContentDetailResponse
 import com.movie.app.best.data.debug.NetworkMonitor
+import com.movie.app.best.data.debug.NetworkLogger
 import com.movie.app.best.data.model.WasmerDownloadLink
 import com.movie.app.best.data.model.WasmerMovieDetails
 import com.movie.app.best.data.repository.DownloadRepository
@@ -283,13 +284,17 @@ class MovieDetailViewModel @Inject constructor(
                                     downloadExtractionProgress = 0
                                 )
                             }
-                            downloadRepository.postProcessDownload(ketchId, metaKey).collect { extractionProgress ->
-                                _uiState.update {
-                                    it.copy(
-                                        downloadPhase = DownloadPhase.EXTRACTING,
-                                        downloadExtractionProgress = extractionProgress.percent
-                                    )
+                            try {
+                                downloadRepository.postProcessDownload(ketchId, metaKey).collect { extractionProgress ->
+                                    _uiState.update {
+                                        it.copy(
+                                            downloadPhase = DownloadPhase.EXTRACTING,
+                                            downloadExtractionProgress = extractionProgress.percent
+                                        )
+                                    }
                                 }
+                            } catch (e: Exception) {
+                                NetworkLogger.logAction("EXTRACT_ERR_MOVIE", e.message ?: "unknown")
                             }
                             val updatedMeta = downloadRepository.getMetadata(metaKey)
                             _uiState.update {
