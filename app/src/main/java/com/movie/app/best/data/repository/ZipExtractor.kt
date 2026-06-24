@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import net.lingala.zip4j.ZipFile
-import net.lingala.zip4j.progress.ProgressMonitor
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -46,7 +45,9 @@ class ZipExtractor @Inject constructor() {
 
             val monitor = zip.progressMonitor
 
-            while (monitor.state == ProgressMonitor.State.IN_PROGRESS || monitor.state == ProgressMonitor.State.READY) {
+            while (true) {
+                val stateName = monitor.state.name
+                if (stateName == "SUCCESS" || stateName == "CANCELLED" || stateName == "ERROR") break
                 val percent = if (monitor.percentDone < 0) 0 else monitor.percentDone
                 emit(ExtractionProgress(
                     percent = percent,
@@ -56,13 +57,14 @@ class ZipExtractor @Inject constructor() {
                 Thread.sleep(100)
             }
 
-            if (monitor.state == ProgressMonitor.State.SUCCESS) {
+            val finalState = monitor.state.name
+            if (finalState == "SUCCESS") {
                 val extractedVideos = mutableListOf<String>()
                 scanForVideos(extractDir, extractedVideos)
                 extractedVideos.sortBy { File(it).name }
                 NetworkLogger.logAction("ZIP_EXTRACT", "Extracted ${extractedVideos.size} videos to ${extractDir.path}")
                 emit(ExtractionProgress(100, "", ExtractionState.COMPLETE))
-            } else if (monitor.state == ProgressMonitor.State.CANCELLED) {
+            } else if (finalState == "CANCELLED") {
                 emit(ExtractionProgress(0, "", ExtractionState.FAILED))
             } else {
                 emit(ExtractionProgress(0, "", ExtractionState.FAILED))
