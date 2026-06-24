@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -68,6 +69,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.DownloadMetadata
+import com.movie.app.best.ui.theme.WasmerGreen
+import com.movie.app.best.ui.theme.WasmerPurple
+import com.movie.app.best.ui.theme.WasmerRed
 import java.io.File
 
 data class LocalVideoFile(
@@ -280,7 +284,7 @@ fun DownloadsScreen(
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
             ) {
-                if (uiState.activeDownloads.isNotEmpty()) {
+                if (uiState.activeDownloads.isNotEmpty() || uiState.activeZipDownloads.isNotEmpty()) {
                     item {
                         Text(
                             text = "DOWNLOADING",
@@ -297,6 +301,14 @@ fun DownloadsScreen(
                             onResume = { viewModel.resumeDownload(download.id) },
                             onCancel = { viewModel.cancelDownload(download.id) },
                             onRetry = { viewModel.retryDownload(download.id) }
+                        )
+                    }
+                    items(uiState.activeZipDownloads, key = { it.metadata.slug + (it.metadata.episodeLabel ?: "") }) { zipInfo ->
+                        ZipDownloadCard(
+                            zipInfo = zipInfo,
+                            onPlay = {
+                                onOpenExtractedSeries(zipInfo.metadata.extractPath ?: "", zipInfo.metadata.slug, zipInfo.metadata.localPosterPath)
+                            }
                         )
                     }
                 }
@@ -774,6 +786,137 @@ private fun ExtractedPackItem(
                 tint = Color.White.copy(alpha = 0.5f),
                 modifier = Modifier.size(20.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun ZipDownloadCard(
+    zipInfo: ZipDownloadInfo,
+    onPlay: () -> Unit
+) {
+    val accentColor = when (zipInfo.phase) {
+        "extracting" -> Color(0xFFB388FF)
+        "downloading", "initializing" -> WasmerGreen
+        else -> WasmerGreen
+    }
+
+    val statusText = when (zipInfo.phase) {
+        "initializing" -> "Initializing..."
+        "downloading" -> "Downloading ZIP... ${zipInfo.progress}%"
+        "extracting" -> "Extracting episodes..."
+        else -> "Processing..."
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (zipInfo.metadata.localPosterPath.isNotEmpty() && File(zipInfo.metadata.localPosterPath).exists()) {
+                    AsyncImage(
+                        model = File(zipInfo.metadata.localPosterPath),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(48.dp, 64.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp, 64.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(accentColor.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.FolderZip,
+                            contentDescription = null,
+                            tint = accentColor,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = zipInfo.metadata.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (zipInfo.phase == "initializing" || zipInfo.phase == "downloading" || zipInfo.phase == "extracting") {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                color = accentColor,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                        Text(
+                            text = statusText,
+                            color = accentColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFFB388FF).copy(alpha = 0.2f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                "ZIP",
+                                color = Color(0xFFB388FF),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                if (zipInfo.phase == "extracting" || zipInfo.phase == "downloading" || zipInfo.phase == "initializing") {
+                    Text(
+                        text = "${zipInfo.progress}%",
+                        color = accentColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            if (zipInfo.phase == "downloading" && zipInfo.progress > 0) {
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { zipInfo.progress / 100f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = accentColor,
+                    trackColor = Color.White.copy(alpha = 0.08f)
+                )
+            }
         }
     }
 }

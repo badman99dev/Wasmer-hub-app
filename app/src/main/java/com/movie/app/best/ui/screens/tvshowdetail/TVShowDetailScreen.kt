@@ -313,7 +313,10 @@ fun TVShowDetailScreen(
                     resolvedMirrors = uiState.resolvedMirrors,
                     expandedLinkId = uiState.expandedLinkId,
                     onStartDownload = { linkUrl, linkId -> requestDownload(linkUrl, linkId) },
-                    onPickMirror = { mirror -> viewModel.startDirectDownload(mirror) },
+                    onPickMirror = { mirror ->
+                        showDownloadSheet = false
+                        viewModel.startDirectDownload(mirror)
+                    },
                     onToggleExpand = { linkId -> viewModel.toggleExpandLink(linkId) },
                     onDismiss = { showDownloadSheet = false },
                     onGoToDownloads = {
@@ -628,6 +631,8 @@ private fun TVShowDetailContent(
                     progress = uiState.downloadProgress,
                     isZip = uiState.downloadIsZip,
                     failureReason = uiState.downloadFailureReason,
+                    posterPath = "",
+                    title = uiState.downloadTitle.ifEmpty { series.title },
                     onPlay = {
                         if (uiState.downloadIsZip && uiState.downloadExtractPath != null) {
                             onOpenExtractedSeries(uiState.downloadExtractPath, series.slug, series.posterUrl)

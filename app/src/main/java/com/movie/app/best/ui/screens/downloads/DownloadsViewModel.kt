@@ -22,10 +22,17 @@ data class DownloadsUiState(
     val completedDownloads: List<DownloadModel> = emptyList(),
     val downloadMetadata: List<DownloadMetadata> = emptyList(),
     val extractedPacks: List<DownloadMetadata> = emptyList(),
+    val activeZipDownloads: List<ZipDownloadInfo> = emptyList(),
     val isResolving: Boolean = false,
     val resolveError: String? = null,
     val resolveSuccess: Boolean = false,
     val isRescanning: Boolean = false
+)
+
+data class ZipDownloadInfo(
+    val metadata: DownloadMetadata,
+    val progress: Int,
+    val phase: String
 )
 
 @HiltViewModel
@@ -47,6 +54,20 @@ class DownloadsViewModel @Inject constructor(
     private fun refreshUiState(downloads: List<DownloadModel>? = null) {
         val allMeta = repository.getAllMetadata()
         val packs = allMeta.filter { it.isZip && it.extractPath != null }
+        val activeZips = allMeta.filter { it.isZip && it.extractPath == null }.mapNotNull { meta ->
+            val progress = if (downloads != null) {
+                downloads.find { it.id == meta.ketchId }?.progress ?: 0
+            } else 0
+            val phase = when (meta.status) {
+                "initializing" -> "initializing"
+                "downloading" -> "downloading"
+                "extracting" -> "extracting"
+                "failed" -> "failed"
+                else -> "downloading"
+            }
+            if (phase == "failed") return@mapNotNull null
+            ZipDownloadInfo(metadata = meta, progress = progress, phase = phase)
+        }
         if (downloads != null) {
             val active = downloads.filter {
                 it.status == Status.QUEUED || it.status == Status.STARTED ||
@@ -59,14 +80,16 @@ class DownloadsViewModel @Inject constructor(
                     activeDownloads = active,
                     completedDownloads = completed,
                     downloadMetadata = allMeta,
-                    extractedPacks = packs
+                    extractedPacks = packs,
+                    activeZipDownloads = activeZips
                 )
             }
         } else {
             _uiState.update {
                 it.copy(
                     downloadMetadata = allMeta,
-                    extractedPacks = packs
+                    extractedPacks = packs,
+                    activeZipDownloads = activeZips
                 )
             }
         }

@@ -153,7 +153,10 @@ fun MovieDetailScreen(
                     resolvedMirrors = uiState.resolvedMirrors,
                     expandedLinkId = uiState.expandedLinkId,
                     onStartDownload = { linkUrl, linkId -> requestDownload(linkUrl, linkId) },
-                    onPickMirror = { mirror -> viewModel.startDirectDownload(mirror) },
+                    onPickMirror = { mirror ->
+                        showDownloadSheet = false
+                        viewModel.startDirectDownload(mirror)
+                    },
                     onToggleExpand = { linkId -> viewModel.toggleExpandLink(linkId) },
                     onDismiss = { showDownloadSheet = false },
                     onGoToDownloads = {
@@ -314,6 +317,8 @@ private fun MovieDetailContent(
                 progress = uiState.downloadProgress,
                 isZip = uiState.downloadIsZip,
                 failureReason = uiState.downloadFailureReason,
+                posterPath = "",
+                title = uiState.downloadTitle.ifEmpty { movie.title },
                 onPlay = {
                     if (uiState.downloadIsZip && uiState.downloadExtractPath != null) {
                         onOpenExtractedSeries(uiState.downloadExtractPath, movie.slug, movie.posterUrl)
