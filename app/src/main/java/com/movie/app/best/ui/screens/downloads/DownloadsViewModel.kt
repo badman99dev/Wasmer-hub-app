@@ -236,9 +236,9 @@ class DownloadsViewModel @Inject constructor(
         val dir = File(dirPath)
         if (!dir.exists() || !dir.isDirectory) return 0
         val videoExts = setOf("mp4", "mkv", "avi", "webm", "mov", "flv", "3gp", "ts", "m4v")
-        return dir.listFiles()?.count {
+        return dir.walkTopDown().count {
             it.isFile && it.extension.lowercase() in videoExts
-        } ?: 0
+        }
     }
 
     private fun refreshUiState(downloads: List<DownloadModel>? = null) {

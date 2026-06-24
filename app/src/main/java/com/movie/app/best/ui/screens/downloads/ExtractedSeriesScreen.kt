@@ -79,16 +79,16 @@ fun scanExtractedVideos(extractPath: String): List<ExtractedEpisode> {
     if (!dir.exists() || !dir.isDirectory) return emptyList()
 
     val videoExts = setOf("mp4", "mkv", "avi", "webm", "mov", "flv", "3gp", "ts", "m4v")
-    return dir.listFiles()
-        ?.filter { it.isFile && it.extension.lowercase() in videoExts }
-        ?.sortedBy { it.name }
-        ?.map { file ->
+    return dir.walkTopDown()
+        .filter { it.isFile && it.extension.lowercase() in videoExts }
+        .sortedBy { it.name }
+        .map { file ->
             ExtractedEpisode(
                 fileName = file.name,
                 filePath = file.absolutePath,
                 size = file.length()
             )
-        } ?: emptyList()
+        }.toList()
 }
 
 @Composable
