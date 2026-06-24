@@ -14,7 +14,8 @@ data class DownloadMetadata(
     val episodeId: Int? = null,
     val episodeLabel: String? = null,
     val downloadedAt: Long = System.currentTimeMillis(),
-    val status: String = "initializing"
+    val status: String = "initializing",
+    val extractionProgress: Int = 0
 )
 
 enum class DownloadPhase {

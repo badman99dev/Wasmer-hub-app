@@ -154,7 +154,6 @@ fun MovieDetailScreen(
                     expandedLinkId = uiState.expandedLinkId,
                     onStartDownload = { linkUrl, linkId -> requestDownload(linkUrl, linkId) },
                     onPickMirror = { mirror ->
-                        showDownloadSheet = false
                         viewModel.startDirectDownload(mirror)
                     },
                     onToggleExpand = { linkId -> viewModel.toggleExpandLink(linkId) },
@@ -162,7 +161,9 @@ fun MovieDetailScreen(
                     onGoToDownloads = {
                         showDownloadSheet = false
                         onGoToDownloads()
-                    }
+                    },
+                    isZip = uiState.downloadIsZip,
+                    extractionProgress = uiState.downloadExtractionProgress
                 )
             }
         }

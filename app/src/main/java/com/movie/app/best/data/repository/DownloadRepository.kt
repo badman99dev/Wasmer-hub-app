@@ -15,6 +15,7 @@ import com.ketch.DownloadModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.io.File
 import javax.inject.Inject
@@ -210,34 +211,61 @@ class DownloadRepository @Inject constructor(
         }
     }
 
-    suspend fun postProcessDownload(ketchId: Int, metaKey: String) {
-        val meta = metadataStore.getMetadata(metaKey) ?: return
+    fun postProcessDownload(ketchId: Int, metaKey: String): Flow<ExtractionProgress> = flow {
+        val meta = metadataStore.getMetadata(metaKey) ?: return@flow
         if (!meta.isZip) {
             metadataStore.updateMetadata(metaKey) { it.copy(status = "complete") }
-            return
+            return@flow
         }
 
-        metadataStore.updateMetadata(metaKey) { it.copy(status = "extracting") }
+        metadataStore.updateMetadata(metaKey) { it.copy(status = "extracting", extractionProgress = 0) }
 
         val downloadDir = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
             "WasmerHub"
         )
 
-        val extractedVideos = zipExtractor.extractZip(meta.filePath, downloadDir)
-        val extractPath = if (extractedVideos.isNotEmpty()) {
-            File(extractedVideos.first()).parent
-        } else null
-
-        if (extractPath != null) {
-            try { File(meta.filePath).delete() } catch (_: Exception) {}
-            try { ketch.clearDb(ketchId) } catch (_: Exception) {}
-            metadataStore.updateMetadata(metaKey) { it.copy(status = "complete", extractPath = extractPath, filePath = extractPath) }
-            NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extractPath=$extractPath videos=${extractedVideos.size} ZIP_DELETED=true")
-        } else {
-            metadataStore.updateMetadata(metaKey) { it.copy(status = "failed") }
-            NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extraction FAILED, ZIP kept")
+        zipExtractor.extractZipWithProgress(meta.filePath, downloadDir).collect { progress ->
+            when (progress.state) {
+                ExtractionState.IN_PROGRESS -> {
+                    metadataStore.updateMetadata(metaKey) {
+                        it.copy(status = "extracting", extractionProgress = progress.percent)
+                    }
+                    emit(progress)
+                }
+                ExtractionState.COMPLETE -> {
+                    val extractPath = findExtractPath(downloadDir, meta.fileName)
+                    if (extractPath != null) {
+                        try { File(meta.filePath).delete() } catch (_: Exception) {}
+                        try { ketch.clearDb(ketchId) } catch (_: Exception) {}
+                        metadataStore.updateMetadata(metaKey) {
+                            it.copy(status = "complete", extractPath = extractPath, filePath = extractPath, extractionProgress = 100)
+                        }
+                        NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extractPath=$extractPath ZIP_DELETED=true")
+                    } else {
+                        metadataStore.updateMetadata(metaKey) { it.copy(status = "failed") }
+                        NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extraction FAILED, ZIP kept")
+                    }
+                    emit(progress)
+                }
+                ExtractionState.FAILED -> {
+                    metadataStore.updateMetadata(metaKey) { it.copy(status = "failed") }
+                    NetworkLogger.logAction("ZIP_POSTPROCESS", "key=$metaKey extraction FAILED")
+                    emit(progress)
+                }
+            }
         }
+    }.flowOn(Dispatchers.IO)
+
+    private fun findExtractPath(baseDir: File, zipFileName: String): String? {
+        val folderName = zipFileName.substringBeforeLast(".")
+        val extractDir = File(baseDir, folderName)
+        if (!extractDir.exists() || !extractDir.isDirectory) return null
+        val videoExts = setOf("mp4", "mkv", "avi", "webm", "mov", "flv", "3gp", "ts", "m4v")
+        val hasVideos = extractDir.walkTopDown().any {
+            it.isFile && it.extension.lowercase() in videoExts
+        }
+        return if (hasVideos) extractDir.absolutePath else null
     }
 
     fun pauseDownload(id: Int) {

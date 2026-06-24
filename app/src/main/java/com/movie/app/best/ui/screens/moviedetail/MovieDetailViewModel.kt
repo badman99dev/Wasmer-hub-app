@@ -279,16 +279,25 @@ class MovieDetailViewModel @Inject constructor(
                                     downloadPhase = DownloadPhase.EXTRACTING,
                                     downloadProgress = 100,
                                     downloadStarted = true,
-                                    downloadIsZip = true
+                                    downloadIsZip = true,
+                                    downloadExtractionProgress = 0
                                 )
                             }
-                            downloadRepository.postProcessDownload(ketchId, metaKey)
+                            downloadRepository.postProcessDownload(ketchId, metaKey).collect { extractionProgress ->
+                                _uiState.update {
+                                    it.copy(
+                                        downloadPhase = DownloadPhase.EXTRACTING,
+                                        downloadExtractionProgress = extractionProgress.percent
+                                    )
+                                }
+                            }
                             val updatedMeta = downloadRepository.getMetadata(metaKey)
                             _uiState.update {
                                 it.copy(
                                     downloadPhase = DownloadPhase.COMPLETE,
                                     downloadExtractPath = updatedMeta?.extractPath,
-                                    downloadIsZip = true
+                                    downloadIsZip = true,
+                                    downloadExtractionProgress = 100
                                 )
                             }
                         } else {
@@ -579,6 +588,7 @@ data class MovieDetailUiState(
     val downloadExtractPath: String? = null,
     val downloadFilePath: String? = null,
     val downloadTitle: String = "",
+    val downloadExtractionProgress: Int = 0,
 
     val isBookmarked: Boolean = false,
     val isLiked: Boolean = false,

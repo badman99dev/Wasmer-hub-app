@@ -414,7 +414,7 @@ private fun UnifiedDownloadCard(
     val statusText = when (item.phase) {
         UnifiedDownloadPhase.DOWNLOADING -> "Downloading ${item.progress}%"
         UnifiedDownloadPhase.PAUSED -> "Paused ${item.progress}%"
-        UnifiedDownloadPhase.EXTRACTING -> "Unpacking..."
+        UnifiedDownloadPhase.EXTRACTING -> "Unpacking ${item.extractionProgress}%"
         UnifiedDownloadPhase.COMPLETE -> "Ready to Play"
         UnifiedDownloadPhase.FAILED -> "Download Failed"
     }
@@ -632,29 +632,15 @@ private fun UnifiedDownloadCard(
 
             if (item.phase == UnifiedDownloadPhase.EXTRACTING) {
                 Spacer(Modifier.height(10.dp))
-                Box(
+                LinearProgressIndicator(
+                    progress = { item.extractionProgress / 100f },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color.White.copy(alpha = 0.06f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(shimmerOffset)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        accentColor.copy(alpha = 0.3f),
-                                        accentColor.copy(alpha = 0.8f),
-                                        accentColor.copy(alpha = 0.3f)
-                                    )
-                                )
-                            )
-                    )
-                }
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = accentColor,
+                    trackColor = Color.White.copy(alpha = 0.08f)
+                )
             }
         }
     }

@@ -2,66 +2,83 @@ package com.movie.app.best.data.repository
 
 import com.movie.app.best.data.debug.NetworkLogger
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import net.lingala.zip4j.ZipFile
+import net.lingala.zip4j.progress.ProgressMonitor
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
+
+data class ExtractionProgress(
+    val percent: Int,
+    val currentFile: String,
+    val state: ExtractionState
+)
+
+enum class ExtractionState {
+    IN_PROGRESS,
+    COMPLETE,
+    FAILED
+}
 
 @Singleton
 class ZipExtractor @Inject constructor() {
 
     private val videoExtensions = listOf("mp4", "mkv", "avi", "webm", "mov", "flv", "3gp", "ts", "m4v")
 
-    suspend fun extractZip(zipPath: String, baseDir: File): List<String> = withContext(Dispatchers.IO) {
+    fun extractZipWithProgress(zipPath: String, baseDir: File): Flow<ExtractionProgress> = flow {
         val zipFile = File(zipPath)
-        if (!zipFile.exists()) return@withContext emptyList()
+        if (!zipFile.exists()) {
+            emit(ExtractionProgress(0, "", ExtractionState.FAILED))
+            return@flow
+        }
 
         val folderName = zipFile.nameWithoutExtension
         val extractDir = File(baseDir, folderName).apply { if (!exists()) mkdirs() }
-        val extractedVideos = mutableListOf<String>()
 
         try {
-            when {
-                zipPath.lowercase().endsWith(".zip") -> extractZipFile(zipFile, extractDir, extractedVideos)
-                else -> {
-                    NetworkLogger.logAction("ZIP_EXTRACT", "Unsupported archive format: $zipPath")
-                    return@withContext emptyList()
-                }
+            val zip = ZipFile(zipFile)
+            zip.isRunInThread = true
+
+            zip.extractAll(extractDir.absolutePath)
+
+            val monitor = zip.progressMonitor
+
+            while (monitor.state == ProgressMonitor.State.IN_PROGRESS || monitor.state == ProgressMonitor.State.READY) {
+                val percent = if (monitor.percentDone < 0) 0 else monitor.percentDone
+                emit(ExtractionProgress(
+                    percent = percent,
+                    currentFile = monitor.fileName ?: "",
+                    state = ExtractionState.IN_PROGRESS
+                ))
+                Thread.sleep(100)
+            }
+
+            if (monitor.state == ProgressMonitor.State.SUCCESS) {
+                val extractedVideos = mutableListOf<String>()
+                scanForVideos(extractDir, extractedVideos)
+                extractedVideos.sortBy { File(it).name }
+                NetworkLogger.logAction("ZIP_EXTRACT", "Extracted ${extractedVideos.size} videos to ${extractDir.path}")
+                emit(ExtractionProgress(100, "", ExtractionState.COMPLETE))
+            } else if (monitor.state == ProgressMonitor.State.CANCELLED) {
+                emit(ExtractionProgress(0, "", ExtractionState.FAILED))
+            } else {
+                emit(ExtractionProgress(0, "", ExtractionState.FAILED))
             }
         } catch (e: Exception) {
             NetworkLogger.logAction("ZIP_EXTRACT_ERR", e.message ?: "unknown")
+            emit(ExtractionProgress(0, "", ExtractionState.FAILED))
         }
+    }.flowOn(Dispatchers.IO)
 
-        extractedVideos.sortBy { File(it).name }
-        NetworkLogger.logAction("ZIP_EXTRACT", "Extracted ${extractedVideos.size} videos to ${extractDir.path}")
-        extractedVideos
-    }
-
-    private fun extractZipFile(zipFile: File, extractDir: File, extractedVideos: MutableList<String>) {
-        FileInputStream(zipFile).use { fis ->
-            ZipInputStream(fis).use { zis ->
-                var entry: ZipEntry? = zis.nextEntry
-                while (entry != null) {
-                    if (!entry.isDirectory) {
-                        val entryName = entry.name.substringAfterLast("/")
-                        val outFile = File(extractDir, entryName)
-
-                        outFile.parentFile?.mkdirs()
-
-                        if (isVideoFile(entryName)) {
-                            FileOutputStream(outFile).use { fos ->
-                                zis.copyTo(fos)
-                            }
-                            extractedVideos.add(outFile.absolutePath)
-                        }
-                    }
-                    zis.closeEntry()
-                    entry = zis.nextEntry
-                }
+    private fun scanForVideos(dir: File, result: MutableList<String>) {
+        dir.listFiles()?.forEach { file ->
+            if (file.isDirectory) {
+                scanForVideos(file, result)
+            } else if (isVideoFile(file.name)) {
+                result.add(file.absolutePath)
             }
         }
     }

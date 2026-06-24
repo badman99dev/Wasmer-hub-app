@@ -7,12 +7,16 @@ import androidx.lifecycle.viewModelScope
 import com.movie.app.best.data.model.DownloadMetadata
 import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.repository.DownloadRepository
+import com.movie.app.best.data.repository.ExtractionProgress
+import com.movie.app.best.data.repository.ExtractionState
 import com.ketch.DownloadModel
 import com.ketch.Status
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
@@ -34,7 +38,8 @@ data class UnifiedDownloadItem(
     val extractPath: String?,
     val slug: String,
     val failureReason: String?,
-    val episodeCount: Int
+    val episodeCount: Int,
+    val extractionProgress: Int = 0
 )
 
 enum class UnifiedDownloadPhase {
@@ -106,6 +111,36 @@ class DownloadsViewModel @Inject constructor(
                     )
                 )
             }
+
+            // Safety net: SUCCESS ZIP downloads that haven't been extracted yet
+            downloads?.filter { it.status == Status.SUCCESS }?.forEach { dl ->
+                if (dl.id in seenKetchIds) return@forEach
+                val meta = allMeta.find { it.ketchId == dl.id }
+                if (meta?.isZip == true && meta.extractPath == null) {
+                    seenKetchIds.add(dl.id)
+                    result.add(
+                        UnifiedDownloadItem(
+                            id = "extracting_${meta.slug}_${meta.episodeLabel ?: ""}",
+                            title = meta.title,
+                            fileName = meta.fileName,
+                            posterPath = meta.localPosterPath,
+                            isZip = true,
+                            phase = UnifiedDownloadPhase.EXTRACTING,
+                            progress = meta.extractionProgress,
+                            speedBytesPerSec = 0,
+                            totalBytes = 0,
+                            downloadedBytes = 0,
+                            ketchId = meta.ketchId,
+                            filePath = meta.filePath,
+                            extractPath = null,
+                            slug = meta.slug,
+                            failureReason = null,
+                            episodeCount = 0,
+                            extractionProgress = meta.extractionProgress
+                        )
+                    )
+                }
+            }
         }
 
         allMeta.filter { it.status == "extracting" }.forEach { meta ->
@@ -118,7 +153,7 @@ class DownloadsViewModel @Inject constructor(
                     posterPath = meta.localPosterPath,
                     isZip = true,
                     phase = UnifiedDownloadPhase.EXTRACTING,
-                    progress = 100,
+                    progress = meta.extractionProgress,
                     speedBytesPerSec = 0,
                     totalBytes = 0,
                     downloadedBytes = 0,
@@ -127,7 +162,8 @@ class DownloadsViewModel @Inject constructor(
                     extractPath = null,
                     slug = meta.slug,
                     failureReason = null,
-                    episodeCount = 0
+                    episodeCount = 0,
+                    extractionProgress = meta.extractionProgress
                 )
             )
         }
@@ -241,9 +277,11 @@ class DownloadsViewModel @Inject constructor(
 
             if (meta != null && meta.isZip && meta.extractPath == null) {
                 val metaKey = meta.slug + (meta.episodeLabel ?: "")
-                repository.saveMetadataDirect(metaKey, meta.copy(status = "extracting"))
+                repository.saveMetadataDirect(metaKey, meta.copy(status = "extracting", extractionProgress = 0))
                 refreshUiState()
-                repository.postProcessDownload(ketchId, metaKey)
+                repository.postProcessDownload(ketchId, metaKey).collect { progress ->
+                    refreshUiState()
+                }
                 refreshUiState()
             } else if (meta == null && isZipFile(fileName)) {
                 val slug = fileName.substringBeforeLast(".").replace(Regex("[^a-zA-Z0-9-]"), "-").lowercase()
@@ -258,11 +296,14 @@ class DownloadsViewModel @Inject constructor(
                     ketchId = ketchId,
                     isZip = true,
                     contentType = "series",
-                    status = "extracting"
+                    status = "extracting",
+                    extractionProgress = 0
                 )
                 repository.saveMetadataDirect(metaKey, newMeta)
                 refreshUiState()
-                repository.postProcessDownload(ketchId, metaKey)
+                repository.postProcessDownload(ketchId, metaKey).collect { progress ->
+                    refreshUiState()
+                }
                 refreshUiState()
             }
         }
@@ -281,7 +322,7 @@ class DownloadsViewModel @Inject constructor(
             val allMeta = repository.getAllMetadata()
             allMeta.filter { it.isZip && it.extractPath == null && it.ketchId >= 0 }.forEach { meta ->
                 val metaKey = meta.slug + (meta.episodeLabel ?: "")
-                repository.postProcessDownload(meta.ketchId, metaKey)
+                repository.postProcessDownload(meta.ketchId, metaKey).collect { }
             }
 
             refreshUiState()

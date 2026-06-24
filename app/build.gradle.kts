@@ -16,8 +16,8 @@ android {
         applicationId = "com.wasmer.hub"
         minSdk = 24
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.0.7"
+        versionCode = 8
+        versionName = "1.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -112,6 +112,9 @@ dependencies {
     
     // Ketch Download Manager (WorkManager-based)
     implementation("com.github.khushpanchal:Ketch:2.0.6")
+
+    // Zip4j - ZIP extraction with progress monitoring
+    implementation("net.lingala.zip4j:zip4j:2.11.5")
     
     // DI
     implementation(libs.hilt.android)

@@ -63,6 +63,8 @@ fun DownloadBottomSheetContent(
     onToggleExpand: (Int?) -> Unit,
     onDismiss: () -> Unit,
     onGoToDownloads: () -> Unit = {},
+    isZip: Boolean = false,
+    extractionProgress: Int = 0,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -125,7 +127,9 @@ fun DownloadBottomSheetContent(
                 phase = downloadPhase,
                 progress = downloadProgress,
                 failureReason = downloadFailureReason,
-                onGoToDownloads = onGoToDownloads
+                onGoToDownloads = onGoToDownloads,
+                isZip = isZip,
+                extractionProgress = extractionProgress
             )
         }
 
@@ -186,7 +190,9 @@ private fun DownloadStatusPopup(
     phase: DownloadPhase,
     progress: Int,
     failureReason: String?,
-    onGoToDownloads: () -> Unit
+    onGoToDownloads: () -> Unit,
+    isZip: Boolean = false,
+    extractionProgress: Int = 0
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "capsule")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -217,9 +223,9 @@ private fun DownloadStatusPopup(
 
     val title = when (phase) {
         DownloadPhase.INITIALIZING -> "Initializing..."
-        DownloadPhase.DOWNLOADING -> "Downloading... $progress%"
-        DownloadPhase.EXTRACTING -> "Extracting ZIP..."
-        DownloadPhase.COMPLETE -> "Download Complete!"
+        DownloadPhase.DOWNLOADING -> if (isZip) "Downloading ZIP... $progress%" else "Downloading... $progress%"
+        DownloadPhase.EXTRACTING -> "Unpacking... $extractionProgress%"
+        DownloadPhase.COMPLETE -> if (isZip) "Ready to Play!" else "Download Complete!"
         DownloadPhase.CANCELLED -> "Download Cancelled"
         DownloadPhase.FAILED -> "Download Failed"
         else -> ""
@@ -227,9 +233,9 @@ private fun DownloadStatusPopup(
 
     val subtitle = when (phase) {
         DownloadPhase.INITIALIZING -> "Preparing poster and metadata..."
-        DownloadPhase.DOWNLOADING -> "File is downloading in background"
-        DownloadPhase.EXTRACTING -> "Extracting episodes from archive..."
-        DownloadPhase.COMPLETE -> "File saved to Downloads/WasmerHub"
+        DownloadPhase.DOWNLOADING -> if (isZip) "ZIP downloading in background" else "File is downloading in background"
+        DownloadPhase.EXTRACTING -> "Preparing episodes"
+        DownloadPhase.COMPLETE -> if (isZip) "Episodes ready to play" else "File saved to Downloads/WasmerHub"
         DownloadPhase.CANCELLED -> "Download was cancelled"
         DownloadPhase.FAILED -> failureReason ?: "An error occurred during download"
         else -> ""
@@ -325,6 +331,7 @@ private fun DownloadStatusPopup(
 
         val progressWidth = when (phase) {
             DownloadPhase.DOWNLOADING -> progress / 100f
+            DownloadPhase.EXTRACTING -> extractionProgress / 100f
             else -> shimmerOffset
         }
 
