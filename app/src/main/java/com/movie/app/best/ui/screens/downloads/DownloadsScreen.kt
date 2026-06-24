@@ -412,10 +412,10 @@ private fun UnifiedDownloadCard(
     }
 
     val statusText = when (item.phase) {
-        UnifiedDownloadPhase.DOWNLOADING -> "Downloading ${item.progress}%",
-        UnifiedDownloadPhase.PAUSED -> "Paused ${item.progress}%",
-        UnifiedDownloadPhase.EXTRACTING -> "Extracting episodes...",
-        UnifiedDownloadPhase.COMPLETE -> if (item.isZip) "Ready to Play" else "Ready to Play",
+        UnifiedDownloadPhase.DOWNLOADING -> "Downloading ${item.progress}%"
+        UnifiedDownloadPhase.PAUSED -> "Paused ${item.progress}%"
+        UnifiedDownloadPhase.EXTRACTING -> "Extracting episodes..."
+        UnifiedDownloadPhase.COMPLETE -> if (item.isZip) "Ready to Play" else "Ready to Play"
         UnifiedDownloadPhase.FAILED -> "Download Failed"
     }
 
@@ -425,9 +425,9 @@ private fun UnifiedDownloadCard(
             val sizeText = if (item.totalBytes > 0) "${formatFileSize(item.downloadedBytes)} / ${formatFileSize(item.totalBytes)}" else speed
             "$speed  •  $sizeText"
         }
-        UnifiedDownloadPhase.PAUSED -> "${formatFileSize(item.downloadedBytes)} / ${formatFileSize(item.totalBytes)}",
-        UnifiedDownloadPhase.EXTRACTING -> "Unpacking episodes from archive",
-        UnifiedDownloadPhase.COMPLETE -> if (item.isZip) "${item.episodeCount} episodes extracted" else formatFileSize(item.totalBytes),
+        UnifiedDownloadPhase.PAUSED -> "${formatFileSize(item.downloadedBytes)} / ${formatFileSize(item.totalBytes)}"
+        UnifiedDownloadPhase.EXTRACTING -> "Unpacking episodes from archive"
+        UnifiedDownloadPhase.COMPLETE -> if (item.isZip) "${item.episodeCount} episodes extracted" else formatFileSize(item.totalBytes)
         UnifiedDownloadPhase.FAILED -> item.failureReason ?: "An error occurred"
     }
 
