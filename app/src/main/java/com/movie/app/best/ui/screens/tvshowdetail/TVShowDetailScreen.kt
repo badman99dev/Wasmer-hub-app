@@ -98,6 +98,7 @@ import com.movie.app.best.ui.components.ErrorView
 import com.movie.app.best.ui.components.StorylineWarningBadge
 import com.movie.app.best.ui.screens.moviedetail.components.DetailActionButtons
 import com.movie.app.best.ui.screens.moviedetail.components.DownloadBottomSheetContent
+import com.movie.app.best.ui.screens.moviedetail.components.DownloadStatusChip
 import com.movie.app.best.ui.screens.moviedetail.components.ReportDrawer
 import com.movie.app.best.ui.screens.moviedetail.components.StreamRequestWaitingPopup
 import com.movie.app.best.ui.screens.moviedetail.components.StreamRequestResultModal
@@ -211,6 +212,9 @@ fun TVShowDetailScreen(
                     onContentClick = { slug, isSeries ->
                         if (isSeries) onSeriesClick(slug)
                         else onMovieClick(slug)
+                    },
+                    onOpenExtractedSeries = { extractPath, slug, posterPath ->
+                        onGoToDownloads()
                     }
                 )
             }
@@ -338,7 +342,8 @@ private fun TVShowDetailContent(
     onToggleBookmark: () -> Unit,
     onToggleLike: () -> Unit,
     onReportClick: () -> Unit = {},
-    onContentClick: (String, Boolean) -> Unit = { _, _ -> }
+    onContentClick: (String, Boolean) -> Unit = { _, _ -> },
+    onOpenExtractedSeries: (String, String, String) -> Unit = { _, _, _ -> }
 ) {
     val context = LocalContext.current
     val isContentHidden = ModerationSettings.shouldHideDetail(context, series.contentModeration)
@@ -617,6 +622,19 @@ private fun TVShowDetailContent(
                     onMyListClick = onToggleBookmark,
                     onLikeClick = onToggleLike,
                     onRequestStream = onRequestStream
+                )
+
+                DownloadStatusChip(
+                    phase = uiState.downloadPhase,
+                    progress = uiState.downloadProgress,
+                    isZip = uiState.downloadIsZip,
+                    failureReason = uiState.downloadFailureReason,
+                    onPlay = {
+                        if (uiState.downloadIsZip && uiState.downloadExtractPath != null) {
+                            onOpenExtractedSeries(uiState.downloadExtractPath, series.slug, series.posterUrl)
+                        }
+                    },
+                    onDismiss = { }
                 )
             }
         }

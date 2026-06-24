@@ -236,13 +236,35 @@ class TVShowDetailViewModel @Inject constructor(
             downloadRepository.observeDownloadStatus(ketchId).collect { statusInfo ->
                 when (statusInfo.phase) {
                     DownloadPhase.COMPLETE -> {
-                        downloadRepository.postProcessDownload(ketchId, metaKey)
-                        _uiState.update {
-                            it.copy(
-                                downloadPhase = DownloadPhase.COMPLETE,
-                                downloadProgress = 100,
-                                downloadStarted = true
-                            )
+                        val meta = downloadRepository.getMetadata(metaKey)
+                        if (meta?.isZip == true) {
+                            _uiState.update {
+                                it.copy(
+                                    downloadPhase = DownloadPhase.EXTRACTING,
+                                    downloadProgress = 100,
+                                    downloadStarted = true,
+                                    downloadIsZip = true
+                                )
+                            }
+                            downloadRepository.postProcessDownload(ketchId, metaKey)
+                            val updatedMeta = downloadRepository.getMetadata(metaKey)
+                            _uiState.update {
+                                it.copy(
+                                    downloadPhase = DownloadPhase.COMPLETE,
+                                    downloadExtractPath = updatedMeta?.extractPath,
+                                    downloadIsZip = true
+                                )
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    downloadPhase = DownloadPhase.COMPLETE,
+                                    downloadProgress = 100,
+                                    downloadStarted = true,
+                                    downloadIsZip = false,
+                                    downloadExtractPath = null
+                                )
+                            }
                         }
                     }
                     DownloadPhase.CANCELLED -> {
@@ -256,8 +278,14 @@ class TVShowDetailViewModel @Inject constructor(
                         }
                     }
                     DownloadPhase.DOWNLOADING -> {
+                        val meta = downloadRepository.getMetadata(metaKey)
                         _uiState.update {
-                            it.copy(downloadPhase = DownloadPhase.DOWNLOADING, downloadProgress = statusInfo.progress, downloadStarted = true)
+                            it.copy(
+                                downloadPhase = DownloadPhase.DOWNLOADING,
+                                downloadProgress = statusInfo.progress,
+                                downloadStarted = true,
+                                downloadIsZip = meta?.isZip == true
+                            )
                         }
                     }
                     else -> {}
@@ -513,6 +541,10 @@ data class TVShowDetailUiState(
     val downloadProgress: Int = 0,
     val downloadKetchId: Int? = null,
     val downloadFailureReason: String? = null,
+    val downloadIsZip: Boolean = false,
+    val downloadExtractPath: String? = null,
+    val downloadFilePath: String? = null,
+    val downloadTitle: String = "",
 
     val isBookmarked: Boolean = false,
     val isLiked: Boolean = false,

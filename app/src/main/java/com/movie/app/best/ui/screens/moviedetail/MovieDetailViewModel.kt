@@ -196,7 +196,7 @@ class MovieDetailViewModel @Inject constructor(
         val slug = movie?.slug ?: ""
         val posterUrl = movie?.posterUrl ?: ""
         viewModelScope.launch {
-            _uiState.update { it.copy(downloadLoadingLinkId = linkId, downloadError = null, downloadPhase = DownloadPhase.NONE) }
+            _uiState.update { it.copy(downloadLoadingLinkId = linkId, downloadError = null, downloadPhase = DownloadPhase.NONE, downloadTitle = title) }
             downloadRepository.resolveDownloadUrls(linkUrl).collect { result ->
                 when (result) {
                     is Resource.Loading -> {}
@@ -211,7 +211,8 @@ class MovieDetailViewModel @Inject constructor(
                                     downloadKetchId = ketchId,
                                     downloadPhase = DownloadPhase.DOWNLOADING,
                                     downloadStarted = true,
-                                    downloadError = null
+                                    downloadError = null,
+                                    downloadIsZip = m.isZip
                                 )
                             }
                             observeDownloadStatus(ketchId, slug)
@@ -245,14 +246,15 @@ class MovieDetailViewModel @Inject constructor(
         val slug = movie?.slug ?: ""
         val posterUrl = movie?.posterUrl ?: ""
         viewModelScope.launch {
-            _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, expandedLinkId = null) }
+            _uiState.update { it.copy(downloadPhase = DownloadPhase.INITIALIZING, expandedLinkId = null, downloadTitle = title, downloadIsZip = mirror.isZip) }
             val ketchId = downloadRepository.startDownloadWithMetadata(mirror, slug, posterUrl, title, "movie")
             _uiState.update {
                 it.copy(
                     downloadKetchId = ketchId,
                     downloadPhase = DownloadPhase.DOWNLOADING,
                     downloadStarted = true,
-                    downloadError = null
+                    downloadError = null,
+                    downloadIsZip = mirror.isZip
                 )
             }
             observeDownloadStatus(ketchId, slug)
@@ -265,13 +267,35 @@ class MovieDetailViewModel @Inject constructor(
             downloadRepository.observeDownloadStatus(ketchId).collect { statusInfo ->
                 when (statusInfo.phase) {
                     DownloadPhase.COMPLETE -> {
-                        downloadRepository.postProcessDownload(ketchId, metaKey)
-                        _uiState.update {
-                            it.copy(
-                                downloadPhase = DownloadPhase.COMPLETE,
-                                downloadProgress = 100,
-                                downloadStarted = true
-                            )
+                        val meta = downloadRepository.getMetadata(metaKey)
+                        if (meta?.isZip == true) {
+                            _uiState.update {
+                                it.copy(
+                                    downloadPhase = DownloadPhase.EXTRACTING,
+                                    downloadProgress = 100,
+                                    downloadStarted = true,
+                                    downloadIsZip = true
+                                )
+                            }
+                            downloadRepository.postProcessDownload(ketchId, metaKey)
+                            val updatedMeta = downloadRepository.getMetadata(metaKey)
+                            _uiState.update {
+                                it.copy(
+                                    downloadPhase = DownloadPhase.COMPLETE,
+                                    downloadExtractPath = updatedMeta?.extractPath,
+                                    downloadIsZip = true
+                                )
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    downloadPhase = DownloadPhase.COMPLETE,
+                                    downloadProgress = 100,
+                                    downloadStarted = true,
+                                    downloadIsZip = false,
+                                    downloadExtractPath = null
+                                )
+                            }
                         }
                     }
                     DownloadPhase.CANCELLED -> {
@@ -285,8 +309,14 @@ class MovieDetailViewModel @Inject constructor(
                         }
                     }
                     DownloadPhase.DOWNLOADING -> {
+                        val meta = downloadRepository.getMetadata(metaKey)
                         _uiState.update {
-                            it.copy(downloadPhase = DownloadPhase.DOWNLOADING, downloadProgress = statusInfo.progress, downloadStarted = true)
+                            it.copy(
+                                downloadPhase = DownloadPhase.DOWNLOADING,
+                                downloadProgress = statusInfo.progress,
+                                downloadStarted = true,
+                                downloadIsZip = meta?.isZip == true
+                            )
                         }
                     }
                     else -> {}
@@ -540,6 +570,10 @@ data class MovieDetailUiState(
     val downloadProgress: Int = 0,
     val downloadKetchId: Int? = null,
     val downloadFailureReason: String? = null,
+    val downloadIsZip: Boolean = false,
+    val downloadExtractPath: String? = null,
+    val downloadFilePath: String? = null,
+    val downloadTitle: String = "",
 
     val isBookmarked: Boolean = false,
     val isLiked: Boolean = false,

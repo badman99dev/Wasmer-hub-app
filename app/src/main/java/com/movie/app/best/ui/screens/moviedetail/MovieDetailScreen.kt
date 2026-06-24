@@ -27,6 +27,7 @@ import com.movie.app.best.ui.components.ErrorView
 import com.movie.app.best.ui.components.SkeletonDetailPage
 import com.movie.app.best.ui.components.StorylineWarningBadge
 import com.movie.app.best.ui.screens.moviedetail.components.*
+import com.movie.app.best.data.model.DownloadPhase
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -301,6 +302,21 @@ private fun MovieDetailContent(
                 onMyListClick   = onToggleBookmark,
                 onLikeClick     = onToggleLike,
                 onRequestStream = onRequestStream
+            )
+
+            DownloadStatusChip(
+                phase = uiState.downloadPhase,
+                progress = uiState.downloadProgress,
+                isZip = uiState.downloadIsZip,
+                failureReason = uiState.downloadFailureReason,
+                onPlay = {
+                    if (uiState.downloadIsZip && uiState.downloadExtractPath != null) {
+                        onGoToDownloads()
+                    } else if (uiState.downloadFilePath != null) {
+                        onPlayClick("", "file://${uiState.downloadFilePath}", uiState.downloadTitle, "", movie.id.toString(), movie.slug)
+                    }
+                },
+                onDismiss = { }
             )
 
             // 3. Meta info chips
