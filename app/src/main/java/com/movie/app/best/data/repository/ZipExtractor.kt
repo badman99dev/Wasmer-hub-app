@@ -46,11 +46,27 @@ class ZipExtractor @Inject constructor() {
             zip.extractAll(extractDir.absolutePath)
 
             val monitor = zip.progressMonitor
+            var stuckCount = 0
+            var lastPercent = -1
 
             while (true) {
                 val stateName = monitor.state.name
-                if (stateName == "SUCCESS" || stateName == "CANCELLED" || stateName == "ERROR") break
                 val percent = if (monitor.percentDone < 0) 0 else monitor.percentDone
+
+                if (stateName == "SUCCESS" || stateName == "CANCELLED" || stateName == "ERROR") break
+                if (percent >= 100) break
+
+                if (percent == lastPercent) {
+                    stuckCount++
+                    if (stuckCount > 300) {
+                        NetworkLogger.logAction("ZIP_EXTRACT_TIMEOUT", "Stuck at $percent% for 30s, breaking")
+                        break
+                    }
+                } else {
+                    stuckCount = 0
+                    lastPercent = percent
+                }
+
                 emit(ExtractionProgress(
                     percent = percent,
                     currentFile = monitor.fileName ?: "",
@@ -59,15 +75,15 @@ class ZipExtractor @Inject constructor() {
                 delay(100)
             }
 
-            val finalState = monitor.state.name
-            if (finalState == "SUCCESS") {
-                val extractedVideos = mutableListOf<String>()
-                scanForVideos(extractDir, extractedVideos)
-                extractedVideos.sortBy { File(it).name }
+            val extractedVideos = mutableListOf<String>()
+            scanForVideos(extractDir, extractedVideos)
+            extractedVideos.sortBy { File(it).name }
+
+            if (extractedVideos.isNotEmpty()) {
                 NetworkLogger.logAction("ZIP_EXTRACT", "Extracted ${extractedVideos.size} videos to ${extractDir.path}")
                 emit(ExtractionProgress(100, "", ExtractionState.COMPLETE))
             } else {
-                NetworkLogger.logAction("ZIP_EXTRACT_ERR", "Extraction state: $finalState")
+                NetworkLogger.logAction("ZIP_EXTRACT_ERR", "No videos found in ${extractDir.path}")
                 emit(ExtractionProgress(0, "", ExtractionState.FAILED))
             }
         } catch (e: Exception) {
