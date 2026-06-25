@@ -17,13 +17,12 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.movie.app.best.ui.screens.home.components.CardSize
 
 // Smooth shimmer brush — no lag, pure Compose, no external lib needed
 @Composable
@@ -115,114 +115,53 @@ fun SkeletonPosterCard(modifier: Modifier = Modifier) {
 fun SkeletonHomeContent() {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .background(Color.Black)
     ) {
-        SkeletonHeroBanner()
-        Spacer(modifier = Modifier.height(28.dp))
-        SkeletonHomePosterRow(cardWidth = 155.dp, cardHeight = 220.dp)
-        Spacer(modifier = Modifier.height(28.dp))
-        SkeletonHomePosterRow(cardWidth = 165.dp, cardHeight = 245.dp)
-        Spacer(modifier = Modifier.height(28.dp))
-        SkeletonHomePosterRow(cardWidth = 155.dp, cardHeight = 220.dp)
-        Spacer(modifier = Modifier.height(28.dp))
-        SkeletonHomePosterRow(cardWidth = 155.dp, cardHeight = 220.dp)
-        Spacer(modifier = Modifier.height(28.dp))
-        SkeletonHomeGridSection()
+        // New Releases
+        SkeletonHomeSectionHeader()
+        SkeletonHomeMovieRow(cardSize = CardSize.LARGE, count = 6)
+
+        // Binge-Worthy Series
+        SkeletonHomeSectionHeader()
+        SkeletonHomeMovieRow(cardSize = CardSize.NORMAL, count = 6)
+
+        // Trending Now
+        SkeletonHomeSectionHeader()
+        SkeletonHomeMovieRow(cardSize = CardSize.NORMAL, count = 6)
+
+        // More to Explore
+        SkeletonHomeSectionHeader(showSeeAll = false)
+        SkeletonHomeGridSection(showSeeAll = false)
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
 @Composable
-private fun SkeletonHeroBanner() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(520.dp)
+private fun SkeletonHomeMovieRow(cardSize: CardSize, count: Int) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        SkeletonBox(
-            modifier = Modifier.fillMaxSize(),
-            shape = RoundedCornerShape(0.dp)
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 24.dp, start = 16.dp, end = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            SkeletonBox(
-                modifier = Modifier
-                    .fillMaxWidth(0.80f)
-                    .height(26.dp),
-                shape = RoundedCornerShape(6.dp)
-            )
-            SkeletonBox(
-                modifier = Modifier
-                    .fillMaxWidth(0.60f)
-                    .height(26.dp),
-                shape = RoundedCornerShape(6.dp)
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SkeletonLine(width = 44.dp, height = 14.dp)
-                SkeletonLine(width = 44.dp, height = 14.dp)
-                SkeletonBox(
-                    modifier = Modifier
-                        .width(68.dp)
-                        .height(26.dp),
-                    shape = RoundedCornerShape(50)
-                )
-                SkeletonCircle(size = 28.dp)
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                SkeletonBox(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(10.dp)
-                )
-                SkeletonBox(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(10.dp)
-                )
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                repeat(10) {
-                    SkeletonBox(
-                        modifier = Modifier.size(6.dp),
-                        shape = CircleShape
-                    )
-                }
-            }
+        items(count) {
+            SkeletonPosterCard(modifier = Modifier.width(cardSize.width))
         }
     }
 }
 
 @Composable
-private fun SkeletonHomeSectionHeader() {
+private fun SkeletonHomeSectionHeader(showSeeAll: Boolean = true) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(start = 16.dp, end = 10.dp, top = 24.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         SkeletonLine(width = 160.dp, height = 18.dp)
-        SkeletonLine(width = 60.dp, height = 14.dp)
+        if (showSeeAll) {
+            SkeletonLine(width = 60.dp, height = 14.dp)
+        }
     }
 }
 
@@ -275,9 +214,9 @@ private fun SkeletonHomePosterRow(cardWidth: Dp, cardHeight: Dp) {
 }
 
 @Composable
-private fun SkeletonHomeGridSection() {
+private fun SkeletonHomeGridSection(showSeeAll: Boolean = true) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SkeletonHomeSectionHeader()
+        SkeletonHomeSectionHeader(showSeeAll = showSeeAll)
         val cardWidth = (LocalConfiguration.current.screenWidthDp.dp - 48.dp) / 3
         val cardHeight = cardWidth * 1.5f
         Column(

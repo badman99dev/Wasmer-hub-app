@@ -43,7 +43,6 @@ import com.movie.app.best.data.model.Zee5Bucket
 import com.movie.app.best.data.model.Zee5Item
 import com.movie.app.best.ui.components.GlassBadge
 import com.movie.app.best.ui.components.SkeletonBox
-import com.movie.app.best.ui.components.SkeletonCircle
 import com.movie.app.best.ui.theme.WasmerRed
 import com.movie.app.best.ui.theme.WasmerBlack
 import com.movie.app.best.ui.theme.WasmerCardDark
@@ -639,34 +638,6 @@ private fun Zee5ShimmerContent() {
             .fillMaxSize()
             .background(WasmerBlack)
     ) {
-        // Header shimmer
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SkeletonBox(
-                modifier = Modifier.width(80.dp).height(28.dp),
-                shape = RoundedCornerShape(6.dp)
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            SkeletonCircle(size = 28.dp)
-        }
-
-        // Tab bar shimmer
-        LazyRow(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(4) {
-                SkeletonBox(
-                    modifier = Modifier.width(70.dp).height(38.dp),
-                    shape = RoundedCornerShape(24.dp)
-                )
-            }
-        }
-
         // Hero shimmer
         SkeletonBox(
             modifier = Modifier

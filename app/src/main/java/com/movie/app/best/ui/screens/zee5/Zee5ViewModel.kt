@@ -71,8 +71,8 @@ class Zee5ViewModel @Inject constructor(
 
     // Collection IDs for different tabs
     companion object {
-        const val MOVIES_COLLECTION = "0-8-5016"
-        const val TV_SHOWS_COLLECTION = "0-8-5794"
+        const val MOVIES_COLLECTION = "0-8-movies"
+        const val TV_SHOWS_COLLECTION = "0-8-tvshows"
         const val HOME_COLLECTION = "0-8-homepage"
         const val EPISODE_PAGE_LIMIT = 25
     }
@@ -187,7 +187,7 @@ class Zee5ViewModel @Inject constructor(
     }
 
     private fun addBucket(bucket: Zee5Bucket): Boolean {
-        val id = bucket.id ?: bucket.collectionId ?: return false
+        val id = bucket.id ?: bucket.collectionId ?: bucket.title ?: "bucket_${seenBucketIds.size}"
         return if (seenBucketIds.contains(id)) {
             false
         } else {
