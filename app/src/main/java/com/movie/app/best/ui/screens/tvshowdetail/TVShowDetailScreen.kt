@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -37,10 +36,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
@@ -97,6 +94,10 @@ import com.movie.app.best.ui.components.SkeletonDetailPage
 import com.movie.app.best.ui.components.ErrorView
 import com.movie.app.best.ui.components.StorylineWarningBadge
 import com.movie.app.best.ui.screens.moviedetail.components.DetailActionButtons
+import com.movie.app.best.ui.screens.moviedetail.components.DetailHeroSection
+import com.movie.app.best.ui.screens.moviedetail.components.MetaChipsRow
+import com.movie.app.best.ui.screens.moviedetail.components.ExpandableDescription
+import com.movie.app.best.ui.screens.moviedetail.components.CastSection
 import com.movie.app.best.ui.screens.moviedetail.components.DownloadBottomSheetContent
 import com.movie.app.best.ui.screens.moviedetail.components.DownloadStatusChip
 import com.movie.app.best.ui.screens.moviedetail.components.ReportDrawer
@@ -410,269 +411,42 @@ private fun TVShowDetailContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(550.dp)
-        ) {
-            BlurredContent(
-                shouldBlur = shouldBlurPoster,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                AsyncImage(
-                    model = series.backdropUrl.ifEmpty { series.posterUrl },
-                    contentDescription = series.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+        DetailHeroSection(
+            movie = series,
+            onBackClick = onBackClick,
+            onReportClick = onReportClick
+        )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.1f),
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
-                                MaterialTheme.colorScheme.background
-                            ),
-                            startY = 0f,
-                            endY = 1000f
-                        )
-                    )
-            )
-
-            IconButton(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp)
-                    .background(
-                        color = Color.Black.copy(alpha = 0.5f),
-                        shape = CircleShape
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White
-                )
-            }
-
-            IconButton(
-                onClick = onReportClick,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 16.dp, end = 16.dp, bottom = 16.dp)
-                    .background(
-                        color = Color(0xFFE50914).copy(alpha = 0.6f),
-                        shape = CircleShape
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Flag,
-                    contentDescription = "Report",
-                    tint = Color.White
-                )
-            }
-
-            if (series.qualityLabel.isNotEmpty()) {
-                val qLabel = series.qualityLabel
-                val bgColor = when {
-                    qLabel.contains("4K", ignoreCase = true) -> Color(0xFFFFD700).copy(alpha = 0.25f)
-                    qLabel.contains("UHD", ignoreCase = true) -> Color(0xFF00E5FF).copy(alpha = 0.2f)
-                    qLabel.contains("HD", ignoreCase = true) -> Color(0xFF4FC3F7).copy(alpha = 0.15f)
-                    qLabel.contains("CAM", ignoreCase = true) -> Color(0xFFFF5252).copy(alpha = 0.2f)
-                    else -> Color.White.copy(alpha = 0.15f)
+        DetailActionButtons(
+            hasStream = series.hasStream,
+            streamRequested = uiState.streamRequested,
+            isInMyList = uiState.isBookmarked,
+            isLiked = uiState.isLiked,
+            isSeries = true,
+            onPlayClick = {
+                onWatchNow(series.imdbId, series.title, series.id.toString(), series.slug, selectedSeason)
+            },
+            onDownloadClick = {
+                val allLinks = uiState.linksByEpisode.values.flatten() + uiState.downloadLinks
+                if (allLinks.isNotEmpty()) {
+                    onOpenEpisodeDownloadSheet(allLinks, series.title)
                 }
-                val textColor = when {
-                    qLabel.contains("4K", ignoreCase = true) -> Color(0xFFFFD700)
-                    qLabel.contains("UHD", ignoreCase = true) -> Color(0xFF00E5FF)
-                    qLabel.contains("HD", ignoreCase = true) -> Color(0xFF4FC3F7)
-                    qLabel.contains("CAM", ignoreCase = true) -> Color(0xFFFF5252)
-                    else -> Color.White
-                }
-                val borderColor = textColor.copy(alpha = 0.3f)
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(16.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(Brush.linearGradient(colors = listOf(bgColor, Color.White.copy(alpha = 0.08f), bgColor)))
-                        .border(0.5.dp, Brush.linearGradient(colors = listOf(borderColor, Color.White.copy(alpha = 0.1f), borderColor)), RoundedCornerShape(50))
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
-                ) {
-                    Text(
-                        text = qLabel,
-                        color = textColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            },
+            onMyListClick = onToggleBookmark,
+            onLikeClick = onToggleLike,
+            onRequestStream = onRequestStream
+        )
 
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(16.dp)
-                    .fillMaxWidth()
-            ) {
-                Text(
-                    text = series.title,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-
-                if (series.originalTitle.isNotEmpty() && series.originalTitle != series.title) {
-                    Text(
-                        text = series.originalTitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.5f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (series.releaseYear.isNotEmpty()) {
-                        Text(
-                            text = series.releaseYear,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
-                        Text(text = " • ", color = Color.White.copy(alpha = 0.7f))
-                    }
-
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = Color(0xFFFFC107)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = series.rating,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f)
-                    )
-
-                    if (series.seasonLabel.isNotEmpty()) {
-                        Text(text = " • ", color = Color.White.copy(alpha = 0.7f))
-                        Text(
-                            text = series.seasonLabel,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
-                    }
-
-                    if (series.totalEpisodes > 0) {
-                        Text(text = " • ", color = Color.White.copy(alpha = 0.7f))
-                        Text(
-                            text = "${series.totalEpisodes} episodes",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
-                    }
-
-                    if (series.status.isNotEmpty()) {
-                        Text(text = " • ", color = Color.White.copy(alpha = 0.7f))
-                        Text(
-                            text = series.status,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-
-                if (series.runtime.isNotEmpty()) {
-                    Text(
-                        text = series.runtime,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.5f)
-                    )
-                }
-
-                if (series.audioLabel.isNotEmpty() || series.language.isNotEmpty()) {
-                    Text(
-                        text = listOfNotNull(
-                            if (series.audioLabel.isNotEmpty()) series.audioLabel else null,
-                            if (series.language.isNotEmpty()) series.language else null
-                        ).joinToString(" • "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.5f)
-                    )
-                }
-
-                if (series.country.isNotEmpty()) {
-                    Text(
-                        text = series.country,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.5f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                DetailActionButtons(
-                    hasStream = series.hasStream,
-                    streamRequested = uiState.streamRequested,
-                    isInMyList = uiState.isBookmarked,
-                    isLiked = uiState.isLiked,
-                    isSeries = true,
-                    onPlayClick = {
-                        onWatchNow(series.imdbId, series.title, series.id.toString(), series.slug, selectedSeason)
-                    },
-                    onDownloadClick = {
-                        val allLinks = uiState.linksByEpisode.values.flatten() + uiState.downloadLinks
-                        if (allLinks.isNotEmpty()) {
-                            onOpenEpisodeDownloadSheet(allLinks, series.title)
-                        }
-                    },
-                    onMyListClick = onToggleBookmark,
-                    onLikeClick = onToggleLike,
-                    onRequestStream = onRequestStream
-                )
-
-            }
-        }
+        MetaChipsRow(movie = series)
 
         if (series.description.isNotEmpty()) {
-            Text(
-                text = series.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.padding(16.dp)
-            )
+            ExpandableDescription(text = series.description)
             if (ModerationSettings.shouldBlurStoryline(context, series.contentModeration)) {
-                StorylineWarningBadge(isSexual = true, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                StorylineWarningBadge(isSexual = true, modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
             }
         }
 
-        if (series.director.isNotEmpty()) {
-            SectionTitle("Director")
-            Text(
-                text = series.director,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.8f),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-            )
-        }
-
-        if (series.cast.isNotEmpty()) {
-            SectionTitle("Cast")
-            Text(
-                text = series.cast,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.8f),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-            )
-        }
+        CastSection(director = series.director, cast = series.cast)
 
         if (seasonKeys.isNotEmpty()) {
             SectionTitle("Episodes")
