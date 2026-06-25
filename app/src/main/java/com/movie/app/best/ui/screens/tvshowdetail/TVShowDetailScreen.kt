@@ -513,6 +513,13 @@ private fun TVShowDetailContent(
             }
         }
 
+        TVDownloadSection(
+            uiState = uiState,
+            onStartDownload = onStartDownload
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         if (uiState.screenshots.isNotEmpty()) {
             val shouldBlurScreenshots = ModerationSettings.shouldBlurScreenshots(context, series.contentModeration)
             var screenshotViewerOpen by remember { mutableStateOf(false) }
@@ -584,7 +591,7 @@ private fun TVShowDetailContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(uiState.moreSeasons, key = { it.id }) { season ->
-                    MoreSeasonCard(season = season)
+                    MoreSeasonCard(season = season, onClick = { onSeriesClick(season.slug) })
                 }
             }
         }
@@ -600,11 +607,6 @@ private fun TVShowDetailContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-        TVDownloadSection(
-            uiState = uiState,
-            onStartDownload = onStartDownload
-        )
         Spacer(modifier = Modifier.height(8.dp))
         TVCommentFormSection(
             isPosting = uiState.isCommentPosting,
@@ -820,10 +822,17 @@ private fun CommentItem(comment: WasmerComment) {
 
 @Composable
 private fun MoreSeasonCard(
-    season: WasmerSeason
+    season: WasmerSeason,
+    onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.width(130.dp),
+        modifier = Modifier
+            .width(130.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
         shape = RoundedCornerShape(8.dp)
     ) {
         Column {
@@ -898,7 +907,7 @@ private fun TVDownloadSection(
     if (links.isEmpty()) return
 
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        SectionTitle("Download")
+        SectionTitle("Full Season Pack")
 
         links.forEach { link ->
             val isLoading = uiState.downloadLoadingLinkId == link.id

@@ -136,6 +136,7 @@ data class WasmerEpisode(
 data class WasmerSeason(
     val id: Int,
     val title: String,
+    val slug: String = "",
     @SerializedName("season_label") val seasonLabel: String,
     @SerializedName("poster_url") val posterUrl: String,
     @SerializedName("quality_label") val qualityLabel: String,
