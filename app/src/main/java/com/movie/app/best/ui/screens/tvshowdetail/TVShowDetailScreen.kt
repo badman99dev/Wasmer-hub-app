@@ -591,7 +591,7 @@ private fun TVShowDetailContent(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(uiState.moreSeasons, key = { it.id }) { season ->
-                    MoreSeasonCard(season = season, onClick = { onSeriesClick(season.slug) })
+                    MoreSeasonCard(season = season, onClick = { onContentClick(season.slug, true) })
                 }
             }
         }
