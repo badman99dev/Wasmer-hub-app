@@ -281,21 +281,7 @@ data class Zee5PlaybackResponse(
     val isZee5Content: Boolean = true
 }
 
-// ─── ZEE5 Suggestion (direct GraphQL, no tokens) ───
-
-data class Zee5SuggestionRequest(
-    val operationName: String = "GetSearchSuggestions",
-    val query: String = GQL_SUGGESTION_QUERY,
-    val variables: Zee5SuggestionVariables
-)
-
-data class Zee5SuggestionVariables(
-    val input: Zee5SuggestionInput
-)
-
-data class Zee5SuggestionInput(
-    val query: String
-)
+// ─── ZEE5 Suggestion (APQ GET, tokens required) ───
 
 data class Zee5SuggestionResponse(
     val data: Zee5SuggestionData? = null
@@ -306,14 +292,15 @@ data class Zee5SuggestionData(
 )
 
 data class Zee5SearchSuggestions(
-    val suggestions: List<Zee5SuggestionItem> = emptyList()
+    val suggestions: List<Zee5SuggestionItem> = emptyList(),
+    @SerializedName("totalResultsCount") val totalResultsCount: Int? = null,
+    val limit: Int? = null
 )
 
 data class Zee5SuggestionItem(
-    val text: String = ""
+    val text: String = "",
+    val `in`: String? = null
 )
-
-const val GQL_SUGGESTION_QUERY = "query GetSearchSuggestions(\$input: SearchSuggestionInput!) { searchSuggestions(searchSuggestionInput: \$input) { suggestions { text } } }"
 
 // ─── ZEE5 Tokens (from Vercel /tokens endpoint) ───
 

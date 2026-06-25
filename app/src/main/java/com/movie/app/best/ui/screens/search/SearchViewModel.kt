@@ -4,9 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.movie.app.best.data.model.MeiliHit
 import com.movie.app.best.data.model.Zee5Bucket
-import com.movie.app.best.data.model.Zee5SuggestionInput
-import com.movie.app.best.data.model.Zee5SuggestionRequest
-import com.movie.app.best.data.model.Zee5SuggestionVariables
 import com.movie.app.best.data.remote.Zee5ApiService
 import com.movie.app.best.data.remote.Zee5SuggestionApiService
 import com.movie.app.best.data.repository.MeiliSearchRepository
@@ -65,13 +62,21 @@ class SearchViewModel @Inject constructor(
                 try {
                     val tokens = zee5TokenRepository.getTokens()
                     val headers = if (tokens != null) zee5TokenRepository.buildAuthHeaders(tokens) else emptyMap()
+                    val variables = org.json.JSONObject().apply {
+                        put("searchSuggestionInput", org.json.JSONObject().apply {
+                            put("query", query)
+                            put("limit", 10)
+                            put("page", 0)
+                            put("country", "IN")
+                            put("languages", org.json.JSONArray().put("en"))
+                            put("profileType", 1)
+                        })
+                    }.toString()
+                    val extensions = """{"persistedQuery":{"version":1,"sha256Hash":"33f0ac3d9172ff39e53d7a83883da324e305a0713465509798ccfdf7b81ca117"}}"""
                     zee5SuggestionApi.getSuggestions(
                         headers = headers,
-                        body = Zee5SuggestionRequest(
-                            variables = Zee5SuggestionVariables(
-                                input = Zee5SuggestionInput(query = query)
-                            )
-                        )
+                        variables = java.net.URLEncoder.encode(variables, "UTF-8"),
+                        extensions = java.net.URLEncoder.encode(extensions, "UTF-8")
                     )
                 } catch (_: Exception) { null }
             }
