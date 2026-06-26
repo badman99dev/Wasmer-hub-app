@@ -430,7 +430,10 @@ fun AppNavigation(
             )
         ) { backStackEntry ->
             com.movie.app.best.ui.screens.zee5.Zee5WatchScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onRelatedItemClick = { id ->
+                    navController.navigate("zee5_detail/$id")
+                }
             )
         }
 

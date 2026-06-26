@@ -157,15 +157,9 @@ fun Zee5DetailScreen(
                         )
                     }
 
-                    val hasEpisodes = when (episodesState) {
-                        is Zee5EpisodesState.Success -> (episodesState as Zee5EpisodesState.Success).episodes.isNotEmpty()
-                        else -> false
-                    }
-
                     item {
                         Zee5DetailActions(
                             detail = detail!!,
-                            hasEpisodes = hasEpisodes,
                             onPlayClick = {
                                 navController.navigate("zee5_watch/${contentId}")
                             }
@@ -421,7 +415,6 @@ fun Zee5DetailHero(
 @Composable
 fun Zee5DetailActions(
     detail: Zee5DetailResponse,
-    hasEpisodes: Boolean,
     onPlayClick: () -> Unit
 ) {
     Column(
@@ -429,58 +422,22 @@ fun Zee5DetailActions(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        if (detail.isTvShow && hasEpisodes) {
-            Button(
-                onClick = onPlayClick,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = WasmerRed),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Resume Episode ${detail.episodeNumber ?: 1}",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Button(
-                onClick = { },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = WasmerCardDark),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.Filled.Download, contentDescription = null, tint = Color.White)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Download Season 1",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-        } else {
-            Button(
-                onClick = onPlayClick,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = WasmerRed),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Watch Now",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
+        Button(
+            onClick = onPlayClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = WasmerRed),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Watch Now",
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
         }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),

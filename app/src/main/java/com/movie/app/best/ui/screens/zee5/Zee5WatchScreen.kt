@@ -68,6 +68,7 @@ import okhttp3.OkHttpClient
 @Composable
 fun Zee5WatchScreen(
     onBackClick: () -> Unit,
+    onRelatedItemClick: (String) -> Unit = {},
     viewModel: Zee5WatchViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -342,9 +343,10 @@ fun Zee5WatchScreen(
                 .background(WasmerBlack)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            state.currentEpisode?.let { episode ->
+            val title = state.currentEpisode?.title ?: state.detail?.title
+            if (!title.isNullOrEmpty()) {
                 Text(
-                    text = episode.title ?: "",
+                    text = title,
                     color = Color.White,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -378,7 +380,15 @@ fun Zee5WatchScreen(
                         }
                         Spacer(modifier = Modifier.width(6.dp))
                     }
-                    episode.episodeNumber?.let {
+                    state.detail?.languages?.firstOrNull()?.let { lang ->
+                        Text(
+                            text = lang,
+                            color = WasmerSubText,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    state.currentEpisode?.episodeNumber?.let {
                         Text(
                             text = "Episode $it",
                             color = WasmerSubText,
@@ -404,7 +414,8 @@ fun Zee5WatchScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            state.currentEpisode?.description?.let { desc ->
+            val description = state.currentEpisode?.description ?: state.detail?.description
+            description?.let { desc ->
                 Text(
                     text = desc,
                     color = Color.White.copy(alpha = 0.75f),
@@ -445,62 +456,84 @@ fun Zee5WatchScreen(
             }
         }
 
-        Text(
-            text = "Episodes",
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
+        when {
+            state.detail?.isTvShow == true -> {
+                Text(
+                    text = "Episodes",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
 
-        if (state.episodes.isEmpty() && !state.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No episodes available", color = WasmerSubText, fontSize = 14.sp)
+                if (state.episodes.isEmpty() && !state.isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No episodes available", color = WasmerSubText, fontSize = 14.sp)
+                    }
+                } else {
+                    LazyColumn(
+                        state = episodeListState,
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
+                    ) {
+                        items(state.episodes, key = { it.id ?: it.episodeNumber?.toString() ?: it.title ?: "" }) { episode ->
+                            Zee5WatchEpisodeCard(
+                                episode = episode,
+                                isPlaying = state.currentEpisode?.id == episode.id,
+                                onPlayClick = { viewModel.onEpisodeClick(episode) }
+                            )
+                        }
+
+                        if (state.isLoadingMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(24.dp))
+                                }
+                            }
+                        }
+
+                        if (!state.hasMoreEpisodes && state.episodes.isNotEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    GlassBadge(text = "Reached to bottom")
+                                }
+                            }
+                        }
+
+                        item { Spacer(modifier = Modifier.height(80.dp)) }
+                    }
+                }
             }
-        } else {
-            LazyColumn(
-                state = episodeListState,
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                items(state.episodes, key = { it.id ?: it.episodeNumber?.toString() ?: it.title ?: "" }) { episode ->
-                    Zee5WatchEpisodeCard(
-                        episode = episode,
-                        isPlaying = state.currentEpisode?.id == episode.id,
-                        onPlayClick = { viewModel.onEpisodeClick(episode) }
+            state.detail?.isMovie == true -> {
+                val related = state.detail?.related
+                if (!related.isNullOrEmpty()) {
+                    Zee5RelatedSection(
+                        related = related,
+                        onItemClick = { item ->
+                            item.id?.let { onRelatedItemClick(it) }
+                        }
                     )
-                }
-
-                if (state.isLoadingMore) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = WasmerRed, modifier = Modifier.size(24.dp))
-                        }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No recommendations available", color = WasmerSubText, fontSize = 14.sp)
                     }
                 }
-
-                if (!state.hasMoreEpisodes && state.episodes.isNotEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            GlassBadge(text = "Reached to bottom")
-                        }
-                    }
-                }
-
-                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
     }
