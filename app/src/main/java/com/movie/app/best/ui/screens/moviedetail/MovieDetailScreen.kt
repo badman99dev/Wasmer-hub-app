@@ -35,6 +35,7 @@ fun MovieDetailScreen(
     slug: String,
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String) -> Unit,
+    onTrailerClick: (youtubeId: String, title: String) -> Unit = { _, _ -> },
     onWatchClick: (imdbId: String, title: String, movieId: String, slug: String, hasStream: Boolean, playerUrl: String, posterUrl: String) -> Unit = { _, _, _, _, _, _, _ -> },
     onSeriesClick: (slug: String) -> Unit,
     onMovieClick: (slug: String) -> Unit = {},
@@ -349,7 +350,7 @@ private fun MovieDetailContent(
             TrailersRow(
                 youtubeId      = movie.youtubeId,
                 onTrailerClick = {
-                    onPlayClick("", "", movie.title, movie.youtubeId, movie.id.toString(), movie.slug)
+                    onTrailerClick(movie.youtubeId, movie.title)
                 }
             )
 

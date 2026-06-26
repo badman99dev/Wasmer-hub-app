@@ -89,6 +89,11 @@ sealed class Screen(val route: String) {
             return "videoPlayer?playerUrl=${URLEncoder.encode(playerUrl, "UTF-8")}&streamUrl=${URLEncoder.encode(streamUrl, "UTF-8")}&title=${URLEncoder.encode(title, "UTF-8")}&youtubeId=${URLEncoder.encode(youtubeId, "UTF-8")}&movieId=${URLEncoder.encode(movieId, "UTF-8")}&slug=${URLEncoder.encode(slug, "UTF-8")}&isLive=$isLive&contentSource=${URLEncoder.encode(contentSource, "UTF-8")}"
         }
     }
+    object YoutubeTrailer : Screen("youtubeTrailer/{youtubeId}?title={title}") {
+        fun createRoute(youtubeId: String, title: String): String {
+            return "youtubeTrailer/${Uri.encode(youtubeId)}?title=${URLEncoder.encode(title, "UTF-8")}"
+        }
+    }
 }
 
 @Composable
@@ -190,6 +195,9 @@ fun AppNavigation(
                 onPlayClick = { playerUrl, streamUrl, title, youtubeId, movieId, slug ->
                     navController.navigate(Screen.VideoPlayer.createRoute(playerUrl, streamUrl, title, youtubeId, movieId, slug))
                 },
+                onTrailerClick = { youtubeId, title ->
+                    navController.navigate(Screen.YoutubeTrailer.createRoute(youtubeId, title))
+                },
                 onWatchClick = { imdbId, mTitle, mId, mSlug, mHasStream, mPlayerUrl, mPosterUrl ->
                     navController.navigate(Screen.MovieWatch.createRoute(mSlug, imdbId, mTitle, mId, mHasStream, mPlayerUrl, mPosterUrl))
                 },                onSeriesClick = { seriesSlug ->
@@ -228,6 +236,9 @@ fun AppNavigation(
                 onBackClick = { navController.popBackStack() },
                 onPlayClick = { playerUrl, streamUrl, title, youtubeId, movieId, slug ->
                     navController.navigate(Screen.VideoPlayer.createRoute(playerUrl, streamUrl, title, youtubeId, movieId, slug))
+                },
+                onTrailerClick = { youtubeId, title ->
+                    navController.navigate(Screen.YoutubeTrailer.createRoute(youtubeId, title))
                 },
                 onWatchNow = { imdbId, title, movieId, slug, targetSeason ->
                     navController.navigate(Screen.SeriesWatch.createRoute(imdbId, title, movieId, slug, targetSeason))
@@ -372,6 +383,22 @@ fun AppNavigation(
                 slug = slug,
                 isLive = isLive,
                 contentSource = contentSource
+            )
+        }
+
+        composable(
+            route = Screen.YoutubeTrailer.route,
+            arguments = listOf(
+                navArgument("youtubeId") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType; defaultValue = "" }
+            )
+        ) { backStackEntry ->
+            val ytId = backStackEntry.arguments?.getString("youtubeId") ?: ""
+            val ytTitle = backStackEntry.arguments?.getString("title") ?: ""
+            com.movie.app.best.ui.screens.player.YoutubeTrailerScreen(
+                youtubeId = ytId,
+                title = ytTitle,
+                onBackClick = { navController.popBackStack() }
             )
         }
 

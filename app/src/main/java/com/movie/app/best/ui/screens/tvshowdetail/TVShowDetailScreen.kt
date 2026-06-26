@@ -98,6 +98,7 @@ import com.movie.app.best.ui.screens.moviedetail.components.DetailHeroSection
 import com.movie.app.best.ui.screens.moviedetail.components.MetaChipsRow
 import com.movie.app.best.ui.screens.moviedetail.components.ExpandableDescription
 import com.movie.app.best.ui.screens.moviedetail.components.CastSection
+import com.movie.app.best.ui.screens.moviedetail.components.TrailersRow
 import com.movie.app.best.ui.screens.moviedetail.components.DownloadBottomSheetContent
 import com.movie.app.best.ui.screens.moviedetail.components.DownloadStatusChip
 import com.movie.app.best.ui.screens.moviedetail.components.ReportDrawer
@@ -116,6 +117,7 @@ fun TVShowDetailScreen(
     slug: String,
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String) -> Unit,
+    onTrailerClick: (youtubeId: String, title: String) -> Unit = { _, _ -> },
     onWatchNow: (imdbId: String, title: String, movieId: String, slug: String, targetSeason: Int) -> Unit = { _, _, _, _, _ -> },
     onMovieClick: (String) -> Unit = {},
     onSeriesClick: (String) -> Unit = {},
@@ -212,6 +214,7 @@ fun TVShowDetailScreen(
                     uiState = uiState,
                     onBackClick = onBackClick,
                     onPlayClick = onPlayClick,
+                    onTrailerClick = onTrailerClick,
                     onWatchNow = onWatchNow,
                     onPostComment = viewModel::postComment,
                     onRequestStream = viewModel::requestStream,
@@ -348,6 +351,7 @@ private fun TVShowDetailContent(
     uiState: TVShowDetailUiState,
     onBackClick: () -> Unit,
     onPlayClick: (playerUrl: String, streamUrl: String, title: String, youtubeId: String, movieId: String, slug: String) -> Unit,
+    onTrailerClick: (youtubeId: String, title: String) -> Unit = { _, _ -> },
     onWatchNow: (imdbId: String, title: String, movieId: String, slug: String, targetSeason: Int) -> Unit,
     onPostComment: (name: String, msg: String) -> Unit,
     onRequestStream: () -> Unit,
@@ -516,6 +520,13 @@ private fun TVShowDetailContent(
         TVDownloadSection(
             uiState = uiState,
             onStartDownload = onStartDownload
+        )
+
+        TrailersRow(
+            youtubeId = series.youtubeId,
+            onTrailerClick = {
+                onTrailerClick(series.youtubeId, series.title)
+            }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
