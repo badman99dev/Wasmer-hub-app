@@ -83,6 +83,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
+import java.net.URLEncoder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

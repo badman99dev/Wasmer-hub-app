@@ -48,9 +48,9 @@ class ApkUpdateRepository @Inject constructor() {
             } else {
                 when (dl.status) {
                     Status.QUEUED -> ApkUpdateState.Downloading(0)
-                    Status.STARTED, Status.DOWNLOADING -> ApkUpdateState.Downloading(dl.progress)
+                    Status.STARTED, Status.PROGRESS -> ApkUpdateState.Downloading(dl.progress)
                     Status.PAUSED -> ApkUpdateState.Paused(dl.progress)
-                    Status.COMPLETED -> {
+                    Status.SUCCESS -> {
                         val file = File(dl.path)
                         if (file.exists()) ApkUpdateState.Completed(file) else ApkUpdateState.Error("File not found")
                     }
