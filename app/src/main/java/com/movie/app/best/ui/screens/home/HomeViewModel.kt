@@ -6,6 +6,7 @@ import com.movie.app.best.data.model.Resource
 import com.movie.app.best.data.model.WasmerMovie
 import com.movie.app.best.data.model.WasmerNotification
 import com.movie.app.best.data.model.WasmerSliderResult
+import com.movie.app.best.data.model.LiveChannel
 import com.movie.app.best.data.debug.NetworkMonitor
 import com.movie.app.best.data.repository.MeiliSearchRepository
 import com.movie.app.best.data.repository.MovieRepository
@@ -53,6 +54,7 @@ class HomeViewModel @Inject constructor(
         loadTrending()
         loadMyFeed()
         loadNotification()
+        loadLiveChannels()
     }
 
     fun loadTrending() {
@@ -243,6 +245,34 @@ class HomeViewModel @Inject constructor(
     fun dismissNotification() {
         _uiState.update { it.copy(notification = null) }
     }
+
+    fun loadLiveChannels() {
+        viewModelScope.launch {
+            repository.getBroadcasts().collect { result ->
+                when (result) {
+                    is Resource.Loading -> {
+                        _uiState.update { it.copy(isLiveChannelsLoading = true) }
+                    }
+                    is Resource.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                liveChannels = result.data ?: emptyList(),
+                                isLiveChannelsLoading = false
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                liveChannels = emptyList(),
+                                isLiveChannelsLoading = false
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 data class HomeUiState(
@@ -268,5 +298,8 @@ data class HomeUiState(
 
     val notification: WasmerNotification? = null,
     val isNotificationLoading: Boolean = false,
-    val notificationError: String? = null
+    val notificationError: String? = null,
+
+    val liveChannels: List<LiveChannel> = emptyList(),
+    val isLiveChannelsLoading: Boolean = false
 )

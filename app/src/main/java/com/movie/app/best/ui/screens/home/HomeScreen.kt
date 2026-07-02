@@ -71,6 +71,7 @@ fun HomeScreen(
         ) {
             item {
                 LiveChannelsCarousel(
+                    channels = uiState.liveChannels,
                     onChannelClick = { channel ->
                         navController.navigate(
                             "videoPlayer?playerUrl=${channel.streamUrl}&title=${channel.name}&isLive=true"

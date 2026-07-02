@@ -27,13 +27,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.movie.app.best.data.model.LiveChannel
-import com.movie.app.best.data.model.LiveChannels
 
 @Composable
 fun LiveChannelsCarousel(
+    channels: List<LiveChannel>,
     onChannelClick: (LiveChannel) -> Unit,
 ) {
-    val channels = remember { LiveChannels.all }
     val listState = rememberLazyListState()
 
     Column(

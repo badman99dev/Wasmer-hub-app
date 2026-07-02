@@ -9,6 +9,8 @@ import com.movie.app.best.data.model.WasmerCategoryOffsetResult
 import com.movie.app.best.data.model.WasmerOffsetResult
 import com.movie.app.best.data.model.WasmerSearchResult
 import com.movie.app.best.data.model.WasmerSliderResult
+import com.movie.app.best.data.model.BroadcastResponse
+import com.movie.app.best.data.model.LiveChannel
 import com.movie.app.best.data.remote.MovieApiService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -89,6 +91,20 @@ class MovieRepository @Inject constructor(
     fun getCategories(): Flow<Resource<List<WasmerCategory>>> = flow {
         emit(Resource.Loading())
         emit(safeApiCall { apiService.getCategories() })
+    }
+
+    fun getBroadcasts(): Flow<Resource<List<LiveChannel>>> = flow {
+        emit(Resource.Loading())
+        try {
+            val response = apiService.getBroadcasts()
+            if (response.status == "success" && response.data != null) {
+                Resource.Success(response.data.channels)
+            } else {
+                Resource.Error(response.message ?: "Unknown error")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Network error")
+        }.also { emit(it) }
     }
 
     fun postComment(authHeader: String, movieId: Int, msg: String): Flow<Resource<Map<String, String>>> = flow {

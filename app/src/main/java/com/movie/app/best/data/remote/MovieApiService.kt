@@ -6,6 +6,7 @@ import com.movie.app.best.data.model.WasmerSliderResult
 import com.movie.app.best.data.model.WasmerOffsetResult
 import com.movie.app.best.data.model.WasmerCategoryOffsetResult
 import com.movie.app.best.data.model.ContentModerationResponse
+import com.movie.app.best.data.model.BroadcastResponse
 import retrofit2.http.Body
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
@@ -95,6 +96,9 @@ interface MovieApiService {
     suspend fun getSimilar(
         @Query("imdb_id") imdbId: String
     ): WasmerApiResponse<WasmerOffsetResult>
+
+    @GET("broadcast")
+    suspend fun getBroadcasts(): WasmerApiResponse<BroadcastResponse>
 }
 
 data class ContentModerationApiResponse(
