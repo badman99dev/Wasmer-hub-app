@@ -1,5 +1,6 @@
 package com.movie.app.best.ui.screens.settings
 
+import com.movie.app.best.BuildConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -440,7 +441,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "Wasmer Hub v1.0.11 (Build 11)",
+                text = "Wasmer Hub v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})",
                 color = Color.White.copy(alpha = 0.2f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 4.dp)
