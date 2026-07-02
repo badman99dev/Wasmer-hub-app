@@ -111,6 +111,7 @@ dependencies {
     
     // Ketch Download Manager (WorkManager-based)
     implementation("com.github.khushpanchal:Ketch:2.0.6")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     // Zip4j - ZIP extraction with progress monitoring
     implementation("net.lingala.zip4j:zip4j:2.11.5")

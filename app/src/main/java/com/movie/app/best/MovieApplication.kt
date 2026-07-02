@@ -1,6 +1,7 @@
 package com.movie.app.best
 
 import android.app.Application
+import androidx.work.Configuration
 import com.movie.app.best.data.settings.VideoQualitySettings
 import com.ketch.Ketch
 import com.ketch.NotificationConfig
@@ -11,28 +12,40 @@ import org.acra.ktx.initAcra
 import org.acra.data.StringFormat
 
 @HiltAndroidApp
-class MovieApplication : Application() {
+class MovieApplication : Application(), Configuration.Provider {
 
     lateinit var ketch: Ketch
         private set
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setMinimumLoggingLevel(android.util.Log.INFO)
+            .build()
+
+    private fun isAcraProcess(): Boolean {
+        val processName = android.app.Application.getProcessName(this)
+        return processName.endsWith(":acra")
+    }
 
     override fun onCreate() {
         super.onCreate()
 
         VideoQualitySettings.initCache(this)
 
-        ketch = Ketch.builder()
-            .setNotificationConfig(
-                NotificationConfig(
-                    enabled = true,
-                    smallIcon = android.R.drawable.stat_sys_download,
-                    showSpeed = true,
-                    showSize = true,
-                    showTime = true
-                )
-            ).build(this)
+        if (!isAcraProcess()) {
+            ketch = Ketch.builder()
+                .setNotificationConfig(
+                    NotificationConfig(
+                        enabled = true,
+                        smallIcon = android.R.drawable.stat_sys_download,
+                        showSpeed = true,
+                        showSize = true,
+                        showTime = true
+                    )
+                ).build(this)
 
-        Thread { CrashPasteManager.ensurePasteExists(this) }.start()
+            Thread { CrashPasteManager.ensurePasteExists(this) }.start()
+        }
 
         initAcra {
             buildConfigClass = BuildConfig::class.java
