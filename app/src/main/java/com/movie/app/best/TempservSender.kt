@@ -36,7 +36,7 @@ class TempservSender : ReportSender {
             writeJson.put("text", reportText)
             writeJson.put("action", "clean&add")
 
-            val conn = URL("https://tempserv.badman993944.workers.dev/api/paste/$slug")
+            val conn = URL("https://tempserv.cmdnode.xyz/api/paste/$slug")
                 .openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.setRequestProperty("Content-Type", "application/json")
@@ -49,7 +49,7 @@ class TempservSender : ReportSender {
             conn.inputStream.bufferedReader().readText()
             conn.disconnect()
 
-            val url = CrashPasteManager.getUrl(prefs) ?: "https://tempserv.badman993944.workers.dev/paste/$slug"
+            val url = CrashPasteManager.getUrl(prefs) ?: "https://tempserv.cmdnode.xyz/paste/$slug"
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(ClipData.newPlainText("Crash URL", url))
 

@@ -11,7 +11,7 @@ object CrashPasteManager {
     private const val KEY_SLUG = "paste_slug"
     private const val KEY_TOKEN = "paste_token"
     private const val KEY_URL = "paste_url"
-    private const val BASE = "https://tempserv.badman993944.workers.dev"
+    private const val BASE = "https://tempserv.cmdnode.xyz"
 
     fun ensurePasteExists(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

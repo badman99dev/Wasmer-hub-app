@@ -139,7 +139,7 @@ jobs:
           APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -1)
           APK_NAME=$(basename "$APK_PATH")
           RESP=$(curl -s -X POST \
-            https://tempserv.badman993944.workers.dev/api/upload \
+            https://tempserv.cmdnode.xyz/api/upload \
             -F "mode=file" \
             -F "expiry=6hr" \
             -F "paths=[\"$APK_NAME\"]" \
@@ -229,7 +229,7 @@ jobs:
         if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
         run: |
           RESP=$(curl -s -X POST \
-            https://tempserv.badman993944.workers.dev/api/upload \
+            https://tempserv.cmdnode.xyz/api/upload \
             -F "mode=file" \
             -F "expiry=6hr" \
             -F "paths=[\"wasmer-hub.apk\"]" \

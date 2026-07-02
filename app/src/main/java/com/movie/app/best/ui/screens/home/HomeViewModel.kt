@@ -59,7 +59,7 @@ class HomeViewModel @Inject constructor(
                     allTabMovies = data,
                     isAllTabLoading = false,
                     allTabOffset = 0,
-                    allTabTotal = data.size,
+                    allTabTotal = Int.MAX_VALUE,
                     canLoadMoreAllTab = data.size >= 45
                 )
             }

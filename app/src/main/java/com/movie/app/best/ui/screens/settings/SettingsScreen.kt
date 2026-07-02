@@ -133,7 +133,7 @@ fun SettingsScreen(
                         val file = File(context.cacheDir, "wasmer_debug_${System.currentTimeMillis()}.log")
                         file.writeText(logs)
                         val fileName = URLEncoder.encode(file.name, "UTF-8")
-                        val connection = java.net.URL("https://tempserv.badman993944.workers.dev/api/upload")
+                        val connection = java.net.URL("https://tempserv.cmdnode.xyz/api/upload")
                             .openConnection() as java.net.HttpURLConnection
                         connection.requestMethod = "POST"
                         connection.doOutput = true
@@ -165,7 +165,7 @@ fun SettingsScreen(
                                     json.optString("slug", "")
                                 } catch (_: Exception) { "" }
                                 if (slug.isNotEmpty()) {
-                                    uploadedLink = "https://tempserv.badman993944.workers.dev/file/$slug/dl"
+                                    uploadedLink = "https://tempserv.cmdnode.xyz/file/$slug/dl"
                                 } else {
                                     uploadError = "Upload succeeded but no link returned"
                                 }
