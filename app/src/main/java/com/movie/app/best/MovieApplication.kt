@@ -23,7 +23,13 @@ class MovieApplication : Application(), Configuration.Provider {
             .build()
 
     private fun isAcraProcess(): Boolean {
-        val processName = android.app.Application.getProcessName(this)
+        val processName = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            android.app.Application.getProcessName()
+        } else {
+            val pid = android.os.Process.myPid()
+            (getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager)
+                .runningAppProcesses?.find { it.pid == pid }?.processName ?: packageName
+        }
         return processName.endsWith(":acra")
     }
 
