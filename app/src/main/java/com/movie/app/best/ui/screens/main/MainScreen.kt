@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
@@ -37,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,12 +53,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.movie.app.best.data.debug.NetworkMonitor
+import com.movie.app.best.data.model.UpdateResponse
+import com.movie.app.best.data.repository.PrefetchCache
 import com.movie.app.best.ui.components.CategoryDrawerContent
 import com.movie.app.best.ui.navigation.AppNavigation
 import com.movie.app.best.ui.navigation.BottomNavigationBar
 import com.movie.app.best.ui.navigation.Screen
 import com.movie.app.best.ui.screens.auth.AuthViewModel
 import com.movie.app.best.ui.screens.splash.SplashScreen
+import com.movie.app.best.ui.screens.settings.UpdateViewModel
+import com.movie.app.best.ui.screens.settings.UpdateUiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -63,6 +71,8 @@ import kotlinx.coroutines.launch
 fun MainScreen() {
     var splashScreenFinished by remember { mutableStateOf(false) }
     var storagePermissionGranted by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val updateViewModel: UpdateViewModel = hiltViewModel()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -81,7 +91,49 @@ fun MainScreen() {
             storagePermissionGranted = true
         }
 
-        MainContent()
+        val updateResp = PrefetchCache.updateResponse
+
+        if (updateResp != null && updateResp.maintenance) {
+            MaintenanceScreen(
+                message = updateResp.maintenanceMessage.ifBlank { "Server under maintenance. Please try again later." },
+                onRetry = {
+                    splashScreenFinished = false
+                    PrefetchCache.clear()
+                }
+            )
+        } else if (updateResp != null && updateResp.forceUpdate) {
+            ForceUpdateScreen(
+                data = updateResp,
+                updateViewModel = updateViewModel,
+                context = context
+            )
+        } else if (updateResp != null && updateResp.updateAvailable) {
+            val prefs = remember { context.getSharedPreferences("update_cache", android.content.Context.MODE_PRIVATE) }
+            val lastShown = remember { prefs.getLong("last_prompt_time", 0L) }
+            val shouldShow = remember { (System.currentTimeMillis() - lastShown) >= 24 * 60 * 60 * 1000 }
+
+            if (shouldShow) {
+                LaunchedEffect(Unit) {
+                    prefs.edit().putLong("last_prompt_time", System.currentTimeMillis()).apply()
+                }
+                NormalUpdateDialog(
+                    data = updateResp,
+                    onDismiss = {},
+                    onUpdate = {
+                        updateViewModel.startDownload(context, updateResp.downloadUrl)
+                    }
+                )
+            }
+            MainContent()
+        } else {
+            if (updateResp != null && !updateResp.updateAvailable) {
+                val prefs = remember { context.getSharedPreferences("update_cache", android.content.Context.MODE_PRIVATE) }
+                LaunchedEffect(Unit) {
+                    prefs.edit().remove("last_prompt_time").apply()
+                }
+            }
+            MainContent()
+        }
     }
 }
 
@@ -257,4 +309,217 @@ private fun BackOnlineBanner() {
             fontWeight = FontWeight.SemiBold
         )
     }
+}
+
+@Composable
+private fun MaintenanceScreen(message: String, onRetry: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("🔧", fontSize = 48.sp)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "Maintenance Mode",
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                message,
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 14.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            androidx.compose.material3.OutlinedButton(
+                onClick = onRetry,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+            ) {
+                Text("Try Again", color = Color.White)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ForceUpdateScreen(
+    data: UpdateResponse,
+    updateViewModel: UpdateViewModel,
+    context: android.content.Context
+) {
+    val updateState by updateViewModel.state.collectAsState()
+    val apkRepo = remember { com.movie.app.best.data.repository.ApkUpdateRepository() }
+
+    androidx.activity.compose.BackHandler(enabled = true) {}
+
+    when (val s = updateState) {
+        is UpdateUiState.Downloading -> {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Downloading Update...", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { s.progress / 100f },
+                        color = Color(0xFFE50914),
+                        trackColor = Color.White.copy(alpha = 0.1f),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("$s.progress%", color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+                }
+            }
+        }
+        is UpdateUiState.DownloadComplete -> {
+            LaunchedEffect(Unit) {
+                apkRepo.installApk(context, s.file)
+            }
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("✅", fontSize = 40.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Download Complete", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Installing update...", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+                }
+            }
+        }
+        else -> {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = 32.dp)
+                ) {
+                    Text("⚠️", fontSize = 48.sp)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Update Required",
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        data.forceUpdateMessage.ifBlank { "This version is no longer supported. Please update to continue." },
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontSize = 14.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "v${data.version} · ${data.downloadSizeMb} MB",
+                        color = Color(0xFFE50914),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (data.whatsNew.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        val lines = data.whatsNew.lines()
+                            .map { it.removePrefix("## ").removePrefix("# ").trim() }
+                            .filter { it.isNotBlank() && !it.startsWith("What's New") }
+                        lines.forEach { line ->
+                            val clean = line.removePrefix("- ").trim()
+                            if (clean.isNotBlank()) {
+                                androidx.compose.foundation.layout.Row(
+                                    modifier = Modifier.padding(vertical = 2.dp),
+                                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Start
+                                ) {
+                                    Text("▸ ", color = Color(0xFFE50914), fontSize = 12.sp)
+                                    Text(clean, color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    androidx.compose.material3.Button(
+                        onClick = { updateViewModel.startDownload(context, data.downloadUrl) },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFE50914)),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Update Now", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NormalUpdateDialog(
+    data: UpdateResponse,
+    onDismiss: () -> Unit,
+    onUpdate: () -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            androidx.compose.material3.Icon(
+                imageVector = androidx.compose.material.icons.Icons.Default.SystemUpdate,
+                contentDescription = null,
+                tint = Color(0xFFE50914),
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Update Available", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column {
+                Text(
+                    "v${data.version} · ${data.downloadSizeMb} MB",
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 13.sp
+                )
+                if (data.whatsNew.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("What's New:", color = Color(0xFFE50914), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    val lines = data.whatsNew.lines()
+                        .map { it.removePrefix("## ").removePrefix("# ").trim() }
+                        .filter { it.isNotBlank() && !it.startsWith("What's New") }
+                    lines.forEach { line ->
+                        val clean = line.removePrefix("- ").trim()
+                        if (clean.isNotBlank()) {
+                            androidx.compose.foundation.layout.Row(modifier = Modifier.padding(vertical = 2.dp)) {
+                                Text("▸ ", color = Color(0xFFE50914), fontSize = 12.sp)
+                                Text(clean, color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.Button(
+                onClick = onUpdate,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFE50914))
+            ) {
+                Text("Update", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("Later", color = Color.White.copy(alpha = 0.5f))
+            }
+        },
+        containerColor = Color(0xFF1A1A1A),
+        titleContentColor = Color.White,
+        textContentColor = Color.White.copy(alpha = 0.7f)
+    )
 }

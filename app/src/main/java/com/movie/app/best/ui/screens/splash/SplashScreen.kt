@@ -18,16 +18,19 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.movie.app.best.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun SplashScreen(onSplashScreenFinish: () -> Unit) {
+    val splashViewModel: SplashViewModel = hiltViewModel()
     val alpha = remember { Animatable(0f) }
     val scale = remember { Animatable(0.55f) }
 
     LaunchedEffect(Unit) {
+        splashViewModel.prefetch()
         launch {
             scale.animateTo(
                 targetValue = 1f,

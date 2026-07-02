@@ -60,6 +60,8 @@ object NetworkModule {
                 .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36")
                 .header("Accept", "application/json")
                 .header("Accept-Language", "en-US,en;q=0.9")
+                .header("X-App-Version-Code", com.movie.app.best.BuildConfig.VERSION_CODE.toString())
+                .header("X-App-Version-Name", com.movie.app.best.BuildConfig.VERSION_NAME)
                 .build()
             chain.proceed(request)
         }

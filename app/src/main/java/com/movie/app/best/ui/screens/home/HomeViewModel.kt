@@ -7,6 +7,7 @@ import com.movie.app.best.data.model.WasmerMovie
 import com.movie.app.best.data.model.WasmerNotification
 import com.movie.app.best.data.model.WasmerSliderResult
 import com.movie.app.best.data.model.LiveChannel
+import com.movie.app.best.data.repository.PrefetchCache
 import com.movie.app.best.data.debug.NetworkMonitor
 import com.movie.app.best.data.repository.MeiliSearchRepository
 import com.movie.app.best.data.repository.MovieRepository
@@ -40,21 +41,47 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch { zee5TokenRepository.prefetchTokens() }
     }
 
+    fun loadAllContent() {
+        val cache = PrefetchCache
+
+        if (cache.slider != null) {
+            _uiState.update { it.copy(sliderMovies = cache.slider!!, isSliderLoading = false) }
+        } else { loadSlider() }
+
+        if (cache.trending != null) {
+            _uiState.update { it.copy(trendingMovies = cache.trending!!, isTrendingLoading = false) }
+        } else { loadTrending() }
+
+        if (cache.latestUploads != null) {
+            val data = cache.latestUploads!!
+            _uiState.update {
+                it.copy(
+                    allTabMovies = data,
+                    isAllTabLoading = false,
+                    allTabOffset = 0,
+                    allTabTotal = data.size,
+                    canLoadMoreAllTab = data.size >= 45
+                )
+            }
+        } else { loadAllTab() }
+
+        if (cache.notification != null) {
+            _uiState.update { it.copy(notification = cache.notification, isNotificationLoading = false) }
+        } else { loadNotification() }
+
+        if (cache.liveChannels != null) {
+            _uiState.update { it.copy(liveChannels = cache.liveChannels!!, isLiveChannelsLoading = false) }
+        } else { loadLiveChannels() }
+
+        loadMyFeed()
+    }
+
     init {
         viewModelScope.launch {
             NetworkMonitor.refreshCounter.collect {
                 if (it > 0) loadAllContent()
             }
         }
-    }
-
-    fun loadAllContent() {
-        loadSlider()
-        loadAllTab()
-        loadTrending()
-        loadMyFeed()
-        loadNotification()
-        loadLiveChannels()
     }
 
     fun loadTrending() {
