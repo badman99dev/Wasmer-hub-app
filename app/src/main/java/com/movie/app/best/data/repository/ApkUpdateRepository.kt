@@ -52,12 +52,16 @@ class ApkUpdateRepository @Inject constructor() {
                     Status.STARTED, Status.PROGRESS -> ApkUpdateState.Downloading(dl.progress)
                     Status.PAUSED -> ApkUpdateState.Paused(dl.progress)
                     Status.SUCCESS -> {
-                        val file = File(dl.path)
-                        val actualFile = if (file.exists()) file else getDownloadedApk(ctx)
-                        if (actualFile != null && actualFile.exists()) {
+                        val actualFile = File(dl.path, dl.fileName)
+                        if (actualFile.isFile) {
                             ApkUpdateState.Completed(actualFile)
                         } else {
-                            ApkUpdateState.Error("APK file not found at ${dl.path}")
+                            val fallback = getDownloadedApk(ctx)
+                            if (fallback != null && fallback.isFile) {
+                                ApkUpdateState.Completed(fallback)
+                            } else {
+                                ApkUpdateState.Error("APK file not found. path=${dl.path} name=${dl.fileName}")
+                            }
                         }
                     }
                     Status.FAILED -> ApkUpdateState.Error("Download failed")
@@ -69,6 +73,8 @@ class ApkUpdateRepository @Inject constructor() {
     }
 
     fun installApk(context: Context, apkFile: File) {
+        if (!apkFile.isFile) return
+
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
@@ -86,12 +92,14 @@ class ApkUpdateRepository @Inject constructor() {
 
     fun getDownloadedApk(context: Context): File? {
         val file = File(context.cacheDir, "$UPDATE_DIR/$APK_NAME")
-        return if (file.exists()) file else null
+        return if (file.isFile) file else null
     }
 
     fun cleanupOldApk(context: Context) {
-        val file = File(context.cacheDir, "$UPDATE_DIR/$APK_NAME")
-        if (file.exists()) file.delete()
+        val updateDir = File(context.cacheDir, UPDATE_DIR)
+        if (updateDir.exists()) {
+            updateDir.listFiles()?.forEach { it.delete() }
+        }
     }
 }
 
