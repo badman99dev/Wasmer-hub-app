@@ -5,9 +5,21 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      force:
-        description: 'Force build'
-        default: 'true'
+      build_mode:
+        description: 'Build mode: test (no release), minor (patch bump + release), major (major bump + release)'
+        type: choice
+        options:
+          - test
+          - minor
+          - major
+        default: test
+      whats_new:
+        description: "What's new in this version? (Markdown supported. Leave empty for default.)"
+        type: string
+        default: ''
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   build:
@@ -41,17 +53,23 @@ jobs:
           cp -f app/debug.keystore ~/.android/debug.keystore
           keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android 2>&1 | grep SHA1
 
-      - name: Build Debug APK
+      # ──────────────────────────────────────────────
+      #  MODE: TEST (default — same as current behavior)
+      # ──────────────────────────────────────────────
+      - name: Build Debug APK (test mode)
+        if: ${{ github.event.inputs.build_mode == 'test' || github.event.inputs.build_mode == '' || github.event_name == 'push' }}
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK as Artifact
+      - name: Upload APK as Artifact (test)
+        if: ${{ github.event.inputs.build_mode == 'test' || github.event.inputs.build_mode == '' || github.event_name == 'push' }}
         uses: actions/upload-artifact@v4
         with:
           name: WasmerHub-APK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
 
-      - name: Upload APK to tempserv
+      - name: Upload APK to tempserv (test)
+        if: ${{ github.event.inputs.build_mode == 'test' || github.event.inputs.build_mode == '' || github.event_name == 'push' }}
         run: |
           APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -1)
           APK_NAME=$(basename "$APK_PATH")
@@ -64,3 +82,212 @@ jobs:
           echo "TEMPSERV_RESPONSE=$RESP"
           DL_LINK=$(echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('url','') or d.get('slug',''))" 2>/dev/null || echo "PARSE_ERROR")
           echo "===APK_LINK=== $DL_LINK"
+
+      # ──────────────────────────────────────────────
+      #  MODE: MINOR / MAJOR (version bump + release)
+      # ──────────────────────────────────────────────
+
+      - name: Fetch latest release version
+        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
+        id: fetch_version
+        run: |
+          LATEST_TAG=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tag_name',''))" 2>/dev/null || echo "")
+
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "None" ]; then
+            echo "No previous release found. Starting fresh."
+            CUR_VERSION="1.0.0"
+            CUR_CODE="1"
+          else
+            CUR_VERSION="${LATEST_TAG#v}"
+            CUR_CODE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('body','').strip())" 2>/dev/null || echo "")
+
+            # Try to extract versionCode from release.json asset
+            CUR_CODE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+              | python3 -c "
+          import sys,json
+          d=json.load(sys.stdin)
+          for a in d.get('assets',[]):
+              if a['name']=='release.json':
+                  print(a['browser_download_url'])
+                  break
+          " 2>/dev/null || echo "")
+
+            if [ -n "$CUR_CODE" ] && [[ "$CUR_CODE" == http* ]]; then
+              CUR_CODE=$(curl -sL "$CUR_CODE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('versionCode',1))" 2>/dev/null || echo "1")
+            else
+              CUR_CODE="1"
+            fi
+          fi
+
+          echo "cur_version=$CUR_VERSION" >> $GITHUB_OUTPUT
+          echo "cur_code=$CUR_CODE" >> $GITHUB_OUTPUT
+          echo "Current: version=$CUR_VERSION code=$CUR_CODE"
+
+      - name: Calculate new version
+        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
+        id: new_version
+        run: |
+          CUR_VERSION="${{ steps.fetch_version.outputs.cur_version }}"
+          CUR_CODE="${{ steps.fetch_version.outputs.cur_code }}"
+          MODE="${{ github.event.inputs.build_mode }}"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CUR_VERSION"
+
+          if [ "$MODE" = "major" ]; then
+            NEW_VERSION="$((MAJOR + 1)).0.0"
+          else
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          fi
+
+          NEW_CODE=$((CUR_CODE + 1))
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "new_code=$NEW_CODE" >> $GITHUB_OUTPUT
+          echo "New: version=$NEW_VERSION code=$NEW_CODE (mode=$MODE, was $CUR_VERSION/$CUR_CODE)"
+
+      - name: Patch build.gradle.kts with new version
+        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
+          NEW_CODE="${{ steps.new_version.outputs.new_code }}"
+
+          sed -i "s/versionCode = [0-9]*/versionCode = $NEW_CODE/" app/build.gradle.kts
+          sed -i "s/versionName = \"[^\"]*\"/versionName = \"$NEW_VERSION\"/" app/build.gradle.kts
+
+          echo "=== Patched build.gradle.kts ==="
+          grep -E "versionCode|versionName" app/build.gradle.kts
+
+      - name: Set whats_new content
+        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
+        id: whats_new
+        run: |
+          INPUT_WN="${{ github.event.inputs.whats_new }}"
+          if [ -z "$INPUT_WN" ] || [ "$INPUT_WN" = "" ]; then
+            WN="## What's New
+
+          - Bug fixes and improvements
+          - Performance enhancements"
+          else
+            WN="$INPUT_WN"
+          fi
+
+          # Write to file for release.json + GitHub release body
+          printf '%s' "$WN" > whats_new.md
+          echo "content<<EOF" >> $GITHUB_OUTPUT
+          printf '%s\n' "$WN" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Build Release APK (minor/major)
+        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK to wasmer-hub.apk
+        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          cp "$APK_PATH" wasmer-hub.apk
+          ls -la wasmer-hub.apk
+
+      - name: Upload APK as Artifact (minor/major)
+        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasmer-hub-apk
+          path: wasmer-hub.apk
+          retention-days: 30
+
+      - name: Upload APK to tempserv (minor/major)
+        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
+        run: |
+          RESP=$(curl -s -X POST \
+            https://tempserv.badman993944.workers.dev/api/upload \
+            -F "mode=file" \
+            -F "expiry=6hr" \
+            -F "paths=[\"wasmer-hub.apk\"]" \
+            -F "files=@wasmer-hub.apk")
+          echo "TEMPSERV_RESPONSE=$RESP"
+          DL_LINK=$(echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('url','') or d.get('slug',''))" 2>/dev/null || echo "PARSE_ERROR")
+          echo "===APK_LINK=== $DL_LINK"
+
+      - name: Get git SHA
+        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
+        id: sha
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "SHA: $SHA"
+
+      - name: Generate release.json
+        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
+          NEW_CODE="${{ steps.new_version.outputs.new_code }}"
+          SHA="${{ steps.sha.outputs.sha }}"
+          UPDATED_ON=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          WN=$(cat whats_new.md)
+
+          python3 -c "
+          import json
+          data = {
+              'version': '$NEW_VERSION',
+              'versionCode': $NEW_CODE,
+              'whats_new': '''$WN''',
+              'sha': '$SHA',
+              'updated_on': '$UPDATED_ON'
+          }
+          with open('release.json', 'w') as f:
+              json.dump(data, f, indent=2, ensure_ascii=False)
+          print(json.dumps(data, indent=2))
+          "
+
+      - name: Create GitHub Release
+        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
+          TAG="v$NEW_VERSION"
+          WN=$(cat whats_new.md)
+
+          # Create release with APK + release.json as assets
+          curl -s -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" \
+            -d "{
+              \"tag_name\": \"$TAG\",
+              \"target_commitish\": \"${{ github.sha }}\",
+              \"name\": \"$TAG\",
+              \"body\": $(python3 -c "import json,sys; print(json.dumps(open('whats_new.md').read()))"),
+              \"draft\": false,
+              \"prerelease\": false
+            }" > release_resp.json
+
+          RELEASE_ID=$(python3 -c "import json; print(json.load(open('release_resp.json')).get('id',''))" 2>/dev/null || echo "")
+
+          if [ -z "$RELEASE_ID" ]; then
+            echo "❌ Failed to create release!"
+            cat release_resp.json
+            exit 1
+          fi
+
+          echo "Release created: ID=$RELEASE_ID, Tag=$TAG"
+
+          # Upload wasmer-hub.apk
+          curl -s -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary @wasmer-hub.apk \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=wasmer-hub.apk"
+
+          # Upload release.json
+          curl -s -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @release.json \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=release.json"
+
+          echo "✅ Release $TAG created with wasmer-hub.apk + release.json"
