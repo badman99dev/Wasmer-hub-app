@@ -57,7 +57,69 @@ jobs:
           keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android 2>&1 | grep SHA1
 
       # ──────────────────────────────────────────────
-      #  MODE: TEST (default — same as current behavior)
+      #  SHARED: Fetch latest release version (test + minor + major)
+      # ──────────────────────────────────────────────
+
+      - name: Fetch latest release version
+        id: fetch_version
+        run: |
+          LATEST_TAG=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tag_name',''))" 2>/dev/null || echo "")
+
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "None" ]; then
+            echo "No previous release found. Starting fresh."
+            CUR_VERSION="1.0.0"
+            CUR_CODE="1"
+          else
+            CUR_VERSION="${LATEST_TAG#v}"
+            CUR_CODE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+              | python3 -c "
+          import sys,json
+          d=json.load(sys.stdin)
+          for a in d.get('assets',[]):
+              if a['name']=='release.json':
+                  print(a['browser_download_url'])
+                  break
+          " 2>/dev/null || echo "")
+
+            if [ -n "$CUR_CODE" ] && [[ "$CUR_CODE" == http* ]]; then
+              CUR_CODE=$(curl -sL "$CUR_CODE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('versionCode',1))" 2>/dev/null || echo "1")
+            else
+              CUR_CODE="1"
+            fi
+          fi
+
+          echo "cur_version=$CUR_VERSION" >> $GITHUB_OUTPUT
+          echo "cur_code=$CUR_CODE" >> $GITHUB_OUTPUT
+          echo "Current: version=$CUR_VERSION code=$CUR_CODE"
+
+      - name: Calculate new version (test = patch bump, no release)
+        if: ${{ github.event.inputs.build_mode == 'test' || github.event.inputs.build_mode == '' || github.event_name == 'push' }}
+        id: test_version
+        run: |
+          CUR_VERSION="${{ steps.fetch_version.outputs.cur_version }}"
+          CUR_CODE="${{ steps.fetch_version.outputs.cur_code }}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CUR_VERSION"
+          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          NEW_CODE=$((CUR_CODE + 1))
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "new_code=$NEW_CODE" >> $GITHUB_OUTPUT
+          echo "Test build: version=$NEW_VERSION code=$NEW_CODE (was $CUR_VERSION/$CUR_CODE)"
+
+      - name: Patch build.gradle.kts (test mode)
+        if: ${{ github.event.inputs.build_mode == 'test' || github.event.inputs.build_mode == '' || github.event_name == 'push' }}
+        run: |
+          NEW_VERSION="${{ steps.test_version.outputs.new_version }}"
+          NEW_CODE="${{ steps.test_version.outputs.new_code }}"
+          sed -i "s/versionCode = [0-9]*/versionCode = $NEW_CODE/" app/build.gradle.kts
+          sed -i "s/versionName = \"[^\"]*\"/versionName = \"$NEW_VERSION\"/" app/build.gradle.kts
+          echo "=== Patched build.gradle.kts ==="
+          grep -E "versionCode|versionName" app/build.gradle.kts
+
+      # ──────────────────────────────────────────────
+      #  MODE: TEST (default — bump + build, NO release)
       # ──────────────────────────────────────────────
       - name: Build Debug APK (test mode)
         if: ${{ github.event.inputs.build_mode == 'test' || github.event.inputs.build_mode == '' || github.event_name == 'push' }}
@@ -90,48 +152,7 @@ jobs:
       #  MODE: MINOR / MAJOR (version bump + release)
       # ──────────────────────────────────────────────
 
-      - name: Fetch latest release version
-        if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
-        id: fetch_version
-        run: |
-          LATEST_TAG=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
-            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tag_name',''))" 2>/dev/null || echo "")
-
-          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "None" ]; then
-            echo "No previous release found. Starting fresh."
-            CUR_VERSION="1.0.0"
-            CUR_CODE="1"
-          else
-            CUR_VERSION="${LATEST_TAG#v}"
-            CUR_CODE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
-              | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('body','').strip())" 2>/dev/null || echo "")
-
-            # Try to extract versionCode from release.json asset
-            CUR_CODE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
-              | python3 -c "
-          import sys,json
-          d=json.load(sys.stdin)
-          for a in d.get('assets',[]):
-              if a['name']=='release.json':
-                  print(a['browser_download_url'])
-                  break
-          " 2>/dev/null || echo "")
-
-            if [ -n "$CUR_CODE" ] && [[ "$CUR_CODE" == http* ]]; then
-              CUR_CODE=$(curl -sL "$CUR_CODE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('versionCode',1))" 2>/dev/null || echo "1")
-            else
-              CUR_CODE="1"
-            fi
-          fi
-
-          echo "cur_version=$CUR_VERSION" >> $GITHUB_OUTPUT
-          echo "cur_code=$CUR_CODE" >> $GITHUB_OUTPUT
-          echo "Current: version=$CUR_VERSION code=$CUR_CODE"
-
-      - name: Calculate new version
+      - name: Calculate new version (minor/major)
         if: ${{ github.event.inputs.build_mode == 'minor' || github.event.inputs.build_mode == 'major' }}
         id: new_version
         run: |
