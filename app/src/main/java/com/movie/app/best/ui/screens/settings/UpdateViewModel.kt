@@ -26,7 +26,7 @@ class UpdateViewModel @Inject constructor(
     private val _state = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val state: StateFlow<UpdateUiState> = _state.asStateFlow()
 
-    private var currentKetchId: Int = -1
+    private var currentDownloadId: Long = -1L
 
     fun checkForUpdate() {
         _state.value = UpdateUiState.Checking
@@ -50,11 +50,11 @@ class UpdateViewModel @Inject constructor(
 
     fun startDownload(context: Context, url: String) {
         apkRepo.cleanupOldApk(context)
-        currentKetchId = apkRepo.downloadApk(context, url)
+        currentDownloadId = apkRepo.downloadApk(context, url)
         _state.value = UpdateUiState.Downloading(progress = 0)
 
         viewModelScope.launch {
-            apkRepo.observeUpdateProgress(context, currentKetchId).collect { state ->
+            apkRepo.observeUpdateProgress(context, currentDownloadId).collect { state ->
                 when (state) {
                     is ApkUpdateState.Downloading -> {
                         _state.value = UpdateUiState.Downloading(state.progress)
