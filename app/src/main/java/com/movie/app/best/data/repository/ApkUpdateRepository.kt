@@ -40,7 +40,8 @@ class ApkUpdateRepository @Inject constructor() {
     }
 
     fun observeUpdateProgress(context: Context, ketchId: Int): Flow<ApkUpdateState> {
-        val app = context.applicationContext as MovieApplication
+        val ctx = context.applicationContext
+        val app = ctx as MovieApplication
         return app.ketch.observeDownloads().map { downloads ->
             val dl = downloads.find { it.id == ketchId }
             if (dl == null) {
@@ -52,7 +53,12 @@ class ApkUpdateRepository @Inject constructor() {
                     Status.PAUSED -> ApkUpdateState.Paused(dl.progress)
                     Status.SUCCESS -> {
                         val file = File(dl.path)
-                        if (file.exists()) ApkUpdateState.Completed(file) else ApkUpdateState.Error("File not found")
+                        val actualFile = if (file.exists()) file else getDownloadedApk(ctx)
+                        if (actualFile != null && actualFile.exists()) {
+                            ApkUpdateState.Completed(actualFile)
+                        } else {
+                            ApkUpdateState.Error("APK file not found at ${dl.path}")
+                        }
                     }
                     Status.FAILED -> ApkUpdateState.Error("Download failed")
                     Status.CANCELLED -> ApkUpdateState.Cancelled
