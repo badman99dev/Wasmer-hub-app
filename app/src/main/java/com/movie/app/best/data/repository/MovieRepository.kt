@@ -11,6 +11,7 @@ import com.movie.app.best.data.model.WasmerSearchResult
 import com.movie.app.best.data.model.WasmerSliderResult
 import com.movie.app.best.data.model.BroadcastResponse
 import com.movie.app.best.data.model.LiveChannel
+import com.movie.app.best.data.model.UpdateResponse
 import com.movie.app.best.data.remote.MovieApiService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -105,6 +106,19 @@ class MovieRepository @Inject constructor(
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Network error")
         }.also { emit(it) }
+    }
+
+    suspend fun checkForUpdate(currentCode: Int): Resource<UpdateResponse> {
+        return try {
+            val response = apiService.checkForUpdate(currentCode)
+            if (response.status == "success" && response.data != null) {
+                Resource.Success(response.data)
+            } else {
+                Resource.Error(response.message ?: "Unknown error")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Network error")
+        }
     }
 
     fun postComment(authHeader: String, movieId: Int, msg: String): Flow<Resource<Map<String, String>>> = flow {

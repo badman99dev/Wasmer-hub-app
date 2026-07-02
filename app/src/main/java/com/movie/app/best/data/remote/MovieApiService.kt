@@ -7,6 +7,7 @@ import com.movie.app.best.data.model.WasmerOffsetResult
 import com.movie.app.best.data.model.WasmerCategoryOffsetResult
 import com.movie.app.best.data.model.ContentModerationResponse
 import com.movie.app.best.data.model.BroadcastResponse
+import com.movie.app.best.data.model.UpdateResponse
 import retrofit2.http.Body
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
@@ -99,6 +100,9 @@ interface MovieApiService {
 
     @GET("broadcast")
     suspend fun getBroadcasts(): WasmerApiResponse<BroadcastResponse>
+
+    @GET("app-update")
+    suspend fun checkForUpdate(@Query("currentCode") currentCode: Int): WasmerApiResponse<UpdateResponse>
 }
 
 data class ContentModerationApiResponse(

@@ -68,17 +68,27 @@ import androidx.compose.ui.unit.sp
 import com.movie.app.best.data.debug.NetworkLogger
 import com.movie.app.best.data.settings.ModerationSettings
 import com.movie.app.best.data.settings.VideoQualitySettings
+import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.net.URLEncoder
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.window.Dialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    updateViewModel: UpdateViewModel = hiltViewModel()
 ) {
     var debugEnabled by remember { mutableStateOf(NetworkLogger.isEnabled()) }
     var showLogs by remember { mutableStateOf(false) }
@@ -424,6 +434,13 @@ fun SettingsScreen(
             SettingsSectionTitle("About")
 
             SettingsItem(
+                icon = Icons.Default.SystemUpdate,
+                title = "Check for Update",
+                subtitle = "Check if a new version is available",
+                onClick = { updateViewModel.checkForUpdate() }
+            )
+
+            SettingsItem(
                 icon = Icons.Default.Info,
                 title = "About Us",
                 subtitle = "Learn more about Wasmer Hub",
@@ -449,6 +466,52 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    val updateState by updateViewModel.state.collectAsState()
+
+    when (val s = updateState) {
+        is UpdateUiState.Checking -> {
+            LoadingDialog("Checking for updates...")
+        }
+        is UpdateUiState.UpToDate -> {
+            InfoDialog(
+                title = "Up to Date!",
+                message = "You're running the latest version v${BuildConfig.VERSION_NAME}.",
+                onDismiss = { updateViewModel.resetState() }
+            )
+        }
+        is UpdateUiState.UpdateAvailable -> {
+            UpdateAvailableDialog(
+                data = s.data,
+                onDismiss = { updateViewModel.resetState() },
+                onUpdate = {
+                    updateViewModel.startDownload(context, s.data.downloadUrl)
+                }
+            )
+        }
+        is UpdateUiState.Downloading -> {
+            DownloadProgressDialog(
+                progress = s.progress,
+                onDismiss = { updateViewModel.resetState() }
+            )
+        }
+        is UpdateUiState.DownloadComplete -> {
+            InstallDialog(
+                onInstall = {
+                    updateViewModel.installApk(context, s.file)
+                },
+                onDismiss = { updateViewModel.resetState() }
+            )
+        }
+        is UpdateUiState.Error -> {
+            InfoDialog(
+                title = "Error",
+                message = s.message,
+                onDismiss = { updateViewModel.resetState() }
+            )
+        }
+        else -> {}
     }
 }
 
@@ -662,4 +725,189 @@ private fun PlayerOptionChip(label: String, selected: Boolean, onClick: () -> Un
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
         )
     }
+}
+
+@Composable
+private fun LoadingDialog(message: String) {
+    Dialog(onDismissRequest = {}) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(color = Color(0xFFE50914), modifier = Modifier.size(32.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(message, color = Color.White, fontSize = 14.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoDialog(title: String, message: String, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, color = Color.White, fontWeight = FontWeight.Bold) },
+        text = { Text(message, color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("OK", color = Color(0xFFE50914))
+            }
+        },
+        containerColor = Color(0xFF1A1A1A),
+        titleContentColor = Color.White,
+        textContentColor = Color.White.copy(alpha = 0.7f)
+    )
+}
+
+@Composable
+private fun UpdateAvailableDialog(
+    data: com.movie.app.best.data.model.UpdateResponse,
+    onDismiss: () -> Unit,
+    onUpdate: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF121212))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SystemUpdate,
+                        contentDescription = null,
+                        tint = Color(0xFFE50914),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("Update Available", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(
+                            "v${data.version} · ${data.downloadSizeMb} MB",
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                if (data.whatsNew.isNotBlank()) {
+                    Text(
+                        "What's New",
+                        color = Color(0xFFE50914),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val lines = data.whatsNew.lines()
+                        .map { it.removePrefix("## ").removePrefix("# ").trim() }
+                        .filter { it.isNotBlank() && !it.startsWith("What's New") }
+                    lines.forEach { line ->
+                        val cleanLine = line.removePrefix("- ").trim()
+                        if (cleanLine.isNotBlank()) {
+                            Row(modifier = Modifier.padding(vertical = 3.dp, horizontal = 4.dp)) {
+                                Text("▸ ", color = Color(0xFFE50914), fontSize = 13.sp)
+                                Text(cleanLine, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Later", color = Color.White.copy(alpha = 0.5f))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = onUpdate,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE50914))
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Update Now", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadProgressDialog(
+    progress: Int,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = {}) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Downloading Update", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                LinearProgressIndicator(
+                    progress = { progress / 100f },
+                    color = Color(0xFFE50914),
+                    trackColor = Color.White.copy(alpha = 0.1f),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("$progress%", color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun InstallDialog(
+    onInstall: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50), modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Download Complete", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = { Text("APK downloaded successfully. Tap Install to update Wasmer Hub.", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp) },
+        confirmButton = {
+            Button(
+                onClick = onInstall,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE50914))
+            ) {
+                Text("Install", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color.White.copy(alpha = 0.5f))
+            }
+        },
+        containerColor = Color(0xFF1A1A1A),
+        titleContentColor = Color.White,
+        textContentColor = Color.White.copy(alpha = 0.7f)
+    )
 }
