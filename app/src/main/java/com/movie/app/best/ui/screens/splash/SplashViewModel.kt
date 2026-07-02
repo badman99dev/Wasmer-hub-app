@@ -1,4 +1,4 @@
-package com.movie.app.best.ui/screens.splash
+package com.movie.app.best.ui.screens.splash
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
